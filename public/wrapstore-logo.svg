@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 74" fill="none" className="wrapstore-logo">
+  <!-- Outer Border Frame -->
+  <rect x="3" y="3" width="254" height="68" fill="#FFFFFF" stroke="#000000" stroke-width="4.5" />
+  
+  <!-- Left Solid Black Box -->
+  <rect x="8.5" y="8.5" width="118" height="57" fill="#000000" />
+  
+  <!-- WRAP Text in White -->
+  <text x="67.5" y="47.5" fill="#FFFFFF" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="27" font-weight="600" letter-spacing="2.5" text-anchor="middle">WRAP</text>
+  
+  <!-- STORE Text in Black -->
+  <text x="187" y="47.5" fill="#000000" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="27" font-weight="800" letter-spacing="2.5" text-anchor="middle">STORE</text>
+</svg>

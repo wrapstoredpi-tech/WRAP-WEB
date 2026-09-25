@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-base: #FAFAF8;
+    --color-text-charcoal: #1A1A1A;
+    --color-text-muted: #6B6B6B;
+    --color-accent-amber: #C7622D;
+  }
+
+  html {
+    background-color: #FAFAF8;
+    color: #1A1A1A;
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Accessible and subtle focus styles */
+  :focus-visible {
+    outline: 2px solid #C7622D;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Editorial letter-spacing & metadata helpers */
+  .tracking-editorial {
+    letter-spacing: 0.08em;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Hide scrollbar for clean horizontal scrolling */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
