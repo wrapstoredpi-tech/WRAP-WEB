@@ -2,15 +2,35 @@ import React, { useState } from 'react';
 import { Badge } from '../ui/Badge';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+const PLACEHOLDER_IMG =
+  'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=800&q=75';
+
+/**
+ * ImageGallery
+ *
+ * Props:
+ *   images   — string[]  — already-resolved public URLs from normaliseProduct().images
+ *              (may be empty if the product truly has no images in the DB)
+ *   product  — normalised product object (used for name, badges, hasRealImages)
+ *   className — string
+ *
+ * Behaviour:
+ *  - If images is non-empty, shows all of them in order (main + thumbnails).
+ *  - If images is empty (product.hasRealImages === false), shows the placeholder
+ *    in the main view without thumbnails — clearly indicating no product photo yet.
+ */
 export function ImageGallery({ images = [], product, className = '' }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
 
-  const rawImages = images && images.length > 0 ? images : [product.image_url];
-  const imageList = rawImages
-    .map((img) => (typeof img === 'object' && img !== null ? img.url : img))
-    .filter(Boolean);
-  const currentImage = imageList[selectedIndex] || imageList[0] || product.image_url;
+  // Resolve the list of displayable URLs
+  // images[] already contains public_url strings from normaliseProduct.
+  // Fall back to placeholder ONLY when there are truly no images.
+  const imageList = images.length > 0 ? images : [];
+  const hasRealImages = imageList.length > 0;
+  const displayImages = hasRealImages ? imageList : [PLACEHOLDER_IMG];
+
+  const currentImage = displayImages[Math.min(selectedIndex, displayImages.length - 1)];
 
   const handleSelect = (index) => {
     if (index === selectedIndex) return;
@@ -22,16 +42,17 @@ export function ImageGallery({ images = [], product, className = '' }) {
   };
 
   const handleNext = () => {
-    const nextIndex = (selectedIndex + 1) % imageList.length;
+    const nextIndex = (selectedIndex + 1) % displayImages.length;
     handleSelect(nextIndex);
   };
 
   const handlePrev = () => {
-    const prevIndex = (selectedIndex - 1 + imageList.length) % imageList.length;
+    const prevIndex = (selectedIndex - 1 + displayImages.length) % displayImages.length;
     handleSelect(prevIndex);
   };
 
-  const isOutOfStock = product.current_stock === 0;
+  // Use stock_status from products_with_availability view
+  const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || (product.available_stock ?? product.current_stock ?? 0) === 0;
   const hasDiscount = product.discount_percentage > 0;
 
   return (
@@ -48,6 +69,15 @@ export function ImageGallery({ images = [], product, className = '' }) {
           `}
         />
 
+        {/* Placeholder notice */}
+        {!hasRealImages && (
+          <div className="absolute bottom-3 inset-x-3 flex justify-center">
+            <span className="text-[10px] bg-neutral-900/60 text-white px-2 py-1 rounded-sm backdrop-blur-sm">
+              No product photo yet
+            </span>
+          </div>
+        )}
+
         {/* Badges Overlay */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
           {isOutOfStock ? (
@@ -58,15 +88,15 @@ export function ImageGallery({ images = [], product, className = '' }) {
             <Badge variant="discount" size="md">
               Save {product.discount_percentage}%
             </Badge>
-          ) : product.is_primary ? (
+          ) : product.online_featured ? (
             <Badge variant="new" size="md">
               Featured Edition
             </Badge>
           ) : null}
         </div>
 
-        {/* Navigation Arrows for multi-image galleries (desktop hover) */}
-        {imageList.length > 1 && (
+        {/* Navigation Arrows — only when multiple real images */}
+        {hasRealImages && displayImages.length > 1 && (
           <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             <button
               type="button"
@@ -93,10 +123,10 @@ export function ImageGallery({ images = [], product, className = '' }) {
           </div>
         )}
 
-        {/* Pagination Dots Indicator on Mobile */}
-        {imageList.length > 1 && (
+        {/* Pagination Dots on Mobile — only with multiple real images */}
+        {hasRealImages && displayImages.length > 1 && (
           <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5 sm:hidden">
-            {imageList.map((_, idx) => (
+            {displayImages.map((_, idx) => (
               <span
                 key={idx}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -108,10 +138,10 @@ export function ImageGallery({ images = [], product, className = '' }) {
         )}
       </div>
 
-      {/* Thumbnails Strip */}
-      {imageList.length > 1 && (
+      {/* Thumbnails Strip — only when there are ≥2 real images */}
+      {hasRealImages && displayImages.length > 1 && (
         <div className="grid grid-cols-4 sm:grid-cols-4 gap-3">
-          {imageList.map((img, idx) => {
+          {displayImages.map((img, idx) => {
             const isSelected = selectedIndex === idx;
             return (
               <button

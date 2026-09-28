@@ -129,12 +129,12 @@ export function ProductInfoPanel({
       <div className="pb-4 border-b border-neutral-200 space-y-1.5">
         <div className="flex items-baseline gap-3">
           <span className="text-h2 font-semibold text-neutral-900">
-            ${product.selling_price.toFixed(2)}
+            ₹{product.selling_price.toLocaleString()}
           </span>
 
           {hasDiscount && originalPrice && (
             <span className="text-body-lg text-neutral-400 line-through font-normal">
-              ${originalPrice}
+              ₹{Number(originalPrice).toLocaleString()}
             </span>
           )}
 
@@ -166,7 +166,7 @@ export function ProductInfoPanel({
           <div className="flex items-center gap-2 text-amber-900">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
             <Badge variant="lowstock" size="sm">
-              Only {product.current_stock} left
+              Only {product.available_stock} left
             </Badge>
             <span className="text-xs text-amber-700 font-medium">&bull; Order soon to secure batch allocation</span>
           </div>
@@ -324,7 +324,7 @@ export function ProductInfoPanel({
                 ? 'Out of Stock'
                 : added
                 ? `Added (${quantity}) to Bag`
-                : `Add to Bag \u2022 $${(product.selling_price * (quantity || 1)).toFixed(2)}`}
+                : `Add to Bag • ₹${(product.selling_price * (quantity || 1)).toLocaleString()}`}
             </Button>
           </div>
         </div>

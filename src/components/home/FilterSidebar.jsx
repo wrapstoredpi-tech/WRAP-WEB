@@ -8,11 +8,16 @@ import { PRICE_RANGES } from '../../lib/useProducts';
 /**
  * FilterSidebar
  * Props:
- *   filters        — current filter state
+ *   filters        — current filter state (includes category, category_id, subcategory, subcategory_id)
  *   onFilterChange — (key, value) => void
  *   onResetFilters — () => void
  *   totalResultsCount — number
- *   filterOptions  — { categories, brands, allColors, brandModelsMap } derived from live products
+ *   filterOptions  — {
+ *     categories,        // string[] starting with 'All Categories'
+ *     categoryObjects,   // [{ id, name }]
+ *     subcategoryMap,    // { [categoryId]: [{ id, name }] }
+ *     brands, allColors, brandModelsMap
+ *   }
  *   isMobileDrawer — boolean
  *   onClose        — () => void (only in drawer mode)
  */
@@ -26,30 +31,33 @@ export function FilterSidebar({
   onClose,
   isMobileDrawer = false,
 }) {
-  const { category, subcategory, brand, selectedModel, priceRange, selectedColor, inStockOnly } = filters;
+  const { category, category_id, subcategory, subcategory_id, brand, selectedModel, priceRange, selectedColor, inStockOnly } = filters;
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
 
-  // Destructure from live filterOptions
   const {
     categories = ['All Categories'],
+    categoryObjects = [],
+    subcategoryMap = {},
     brands = ['All Brands', 'Apple', 'Samsung'],
     allColors = [],
     brandModelsMap = {},
   } = filterOptions;
 
+  // Subcategories for the currently selected category
+  const currentSubcategories = useMemo(() => {
+    if (!category_id) return [];
+    return subcategoryMap[category_id] || [];
+  }, [category_id, subcategoryMap]);
+
   // Available models for the currently selected brand
   const availableModels = useMemo(() => {
     if (!brand || brand === 'All Brands') {
-      // Aggregate all brand models
-      return Array.from(
-        new Set(Object.values(brandModelsMap).flat())
-      );
+      return Array.from(new Set(Object.values(brandModelsMap).flat()));
     }
     return brandModelsMap[brand] || [];
   }, [brand, brandModelsMap]);
 
-  // Filter models list based on search query
   const filteredModels = useMemo(() => {
     if (!modelSearchQuery.trim()) return availableModels;
     return availableModels.filter((model) =>
@@ -59,6 +67,7 @@ export function FilterSidebar({
 
   const activeFilterCount = [
     category !== 'All Categories',
+    Boolean(subcategory_id),
     brand !== 'All Brands' && brand !== '',
     Boolean(selectedModel),
     priceRange !== 'All Prices',
@@ -85,7 +94,6 @@ export function FilterSidebar({
     onFilterChange('selectedColor', selectedColor === c ? '' : c);
   };
 
-  // Display brands for the brand picker (exclude "All Brands" sentinel)
   const brandOptions = useMemo(() => {
     return brands.filter((b) => b !== 'All Brands');
   }, [brands]);
@@ -196,7 +204,6 @@ export function FilterSidebar({
             </div>
           )}
 
-          {/* Model Chips List */}
           <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
             {filteredModels.length > 0 ? (
               filteredModels.map((model) => {
@@ -247,7 +254,7 @@ export function FilterSidebar({
       {/* SECONDARY FILTERS                                                  */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
 
-      {/* 1. Category Filter */}
+      {/* 1. Category Filter (from real categories table) */}
       <div className="space-y-3">
         <label className="text-metadata uppercase font-semibold text-neutral-500 tracking-editorial block">
           Category
@@ -275,6 +282,52 @@ export function FilterSidebar({
             );
           })}
         </div>
+
+        {/* Nested subcategories when a category is selected */}
+        {currentSubcategories.length > 0 && (
+          <div className="ml-3 border-l border-neutral-200 pl-3 space-y-0.5 pt-1">
+            <span className="text-[10px] uppercase tracking-editorial font-bold text-neutral-400 block mb-1">
+              Sub-type
+            </span>
+            {/* All sub-types */}
+            <button
+              type="button"
+              onClick={() => onFilterChange('subcategory', 'All Types')}
+              className={`
+                w-full text-left px-2 py-1.5 text-xs transition-colors flex items-center justify-between border
+                ${
+                  !subcategory_id
+                    ? 'bg-neutral-800 text-white font-medium border-neutral-800'
+                    : 'bg-transparent text-neutral-600 border-transparent hover:bg-neutral-100 hover:text-neutral-900'
+                }
+              `}
+            >
+              <span>All Types</span>
+              {!subcategory_id && <Check className="w-3 h-3 text-accent" />}
+            </button>
+            {currentSubcategories.map((sub) => {
+              const isSubSelected = subcategory_id === sub.id;
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => onFilterChange('subcategory', sub.name)}
+                  className={`
+                    w-full text-left px-2 py-1.5 text-xs transition-colors flex items-center justify-between border
+                    ${
+                      isSubSelected
+                        ? 'bg-neutral-800 text-white font-medium border-neutral-800'
+                        : 'bg-transparent text-neutral-600 border-transparent hover:bg-neutral-100 hover:text-neutral-900'
+                    }
+                  `}
+                >
+                  <span>{sub.name}</span>
+                  {isSubSelected && <Check className="w-3 h-3 text-accent" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 2. Color Filter */}

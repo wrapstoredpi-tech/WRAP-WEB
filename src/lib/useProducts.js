@@ -3,7 +3,7 @@
  * ─────────────────────
  * Central data hook for WrapStore website.
  *
- * REAL SCHEMA (discovered 2026-09-25):
+ * REAL SCHEMA (discovered 2026-09-28):
  * ─────────────────────────────────────
  *  View: products_with_availability
  *    id, product_id, name, product_type
@@ -11,7 +11,7 @@
  *    mobile_brand   — e.g. "Apple", "Samsung"
  *    mobile_model   — COMMA-SEPARATED STRING of compatible models
  *                     e.g. "iPhone 16 Pro Max, iPhone 16 Pro, iPhone 15 Pro Max"
- *    color_variants — JSONB array | null  (null for most current products)
+ *    color_variants — JSONB array | plain string | null
  *    selling_price, discount_percentage, gst_percentage
  *    available_stock — int (current_stock - reserved_stock)
  *    stock_status    — 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'
@@ -19,13 +19,12 @@
  *    created_at, updated_at
  *
  *  Table: product_images
- *    product_id, image_url, display_order, is_primary
- *    (currently empty in DB — fallback to placeholder handled in normalise())
+ *    product_id, public_url, sort_order, is_primary, storage_path
+ *    (NOT image_url or display_order)
  *
  *  Tables: categories, subcategories
- *    RLS blocks anon reads of these tables in the current policy set.
- *    We derive category/subcategory labels from the product fields themselves
- *    (mobile_brand, product_type) until RLS is opened for anon.
+ *    id, name, (subcategories also have category_id)
+ *    Anon can read these tables — use them directly.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -68,27 +67,45 @@ export function parseColors(colorVariants) {
 
 /**
  * Normalise a raw products_with_availability row into the shape
- * the UI components expect (mirrors the old mock shape).
+ * the UI components expect.
+ *
+ * @param {object} raw      - raw DB row
+ * @param {object} imagesMap - { [productId]: [{ public_url, sort_order, is_primary, storage_path }] }
+ * @param {object} catMap    - { [categoryId]: { id, name } }
+ * @param {object} subMap    - { [subcategoryId]: { id, name, category_id } }
  */
-export function normaliseProduct(raw, imagesMap = {}) {
+export function normaliseProduct(raw, imagesMap = {}, catMap = {}, subMap = {}) {
   const compatible_models = parseModels(raw.mobile_model);
   const color_variants = parseColors(raw.color_variants);
 
-  // Images from product_images table (keyed by product id)
+  // ── Images ──────────────────────────────────────────────────────────────────
+  // DB columns: public_url, sort_order, is_primary (NOT image_url / display_order)
   const dbImages = imagesMap[raw.id] || [];
+  // Sort by sort_order ascending (already ordered from query, but defensive)
+  const sortedImages = [...dbImages].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  // Primary image for card thumbnail: is_primary=true, else first, else placeholder
   const primaryImg =
-    dbImages.find((img) => img.is_primary)?.image_url ||
-    dbImages[0]?.image_url ||
-    PLACEHOLDER_IMG;
+    sortedImages.find((img) => img.is_primary)?.public_url ||
+    sortedImages[0]?.public_url ||
+    null; // null = truly no images
 
-  const images = dbImages.length > 0
-    ? dbImages.map((img) => img.image_url)
-    : [PLACEHOLDER_IMG];
+  // Full image URL array for gallery (only real images; placeholder added lazily in UI)
+  const images = sortedImages.length > 0
+    ? sortedImages.map((img) => img.public_url).filter(Boolean)
+    : [];
 
-  // Derive category label from product_type / mobile_brand
-  const category = deriveCategoryLabel(raw.product_type, raw.mobile_brand);
-  const subcategory = raw.mobile_brand || 'Universal';
+  // image_url: for card thumbnail — only fall back to placeholder if truly no images
+  const image_url = primaryImg || PLACEHOLDER_IMG;
 
+  // ── Categories ──────────────────────────────────────────────────────────────
+  const categoryObj = raw.category_id ? catMap[raw.category_id] : null;
+  const subcategoryObj = raw.subcategory_id ? subMap[raw.subcategory_id] : null;
+
+  const category = categoryObj?.name || 'Other';
+  const subcategory = subcategoryObj?.name || 'Other';
+
+  // ── Pricing ──────────────────────────────────────────────────────────────────
   const mrp =
     raw.discount_percentage > 0
       ? Math.round(raw.selling_price / (1 - raw.discount_percentage / 100))
@@ -117,14 +134,15 @@ export function normaliseProduct(raw, imagesMap = {}) {
     mrp,
     discount_percentage: raw.discount_percentage || 0,
     gst_percentage: raw.gst_percentage || 18,
-    // Stock — use the view's precomputed fields, NOT raw current_stock comparisons
+    // Stock — use the view's precomputed fields
     available_stock: raw.available_stock,
-    current_stock: raw.available_stock, // alias for legacy UI that reads current_stock
-    stock_status: raw.stock_status, // 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'
-    // Images
-    image_url: primaryImg,
-    images,
-    images_with_meta: dbImages,
+    current_stock: raw.available_stock, // alias for legacy UI
+    stock_status: raw.stock_status,     // 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'
+    // Images — public_url is the real column name
+    image_url,                          // primary image URL (or placeholder)
+    images,                             // array of real image URLs (empty if none)
+    hasRealImages: images.length > 0,   // true only when DB has actual image rows
+    images_with_meta: sortedImages,     // full image objects incl. sort_order, is_primary
     // Meta
     is_active: raw.is_active,
     online_visible: raw.online_visible,
@@ -135,34 +153,25 @@ export function normaliseProduct(raw, imagesMap = {}) {
   };
 }
 
-/**
- * Derive a human-readable category name from product_type and mobile_brand.
- * This is used until categories table is accessible via anon RLS.
- */
-function deriveCategoryLabel(productType, mobileBrand) {
-  if (!productType) return 'Accessories';
-  const t = productType.toLowerCase();
-  if (t.includes('case') || t.includes('cover')) return 'Mobile Cases';
-  if (t.includes('cable') || t.includes('charger') || t.includes('wireless')) return 'Gadgets';
-  if (t.includes('sleeve') || t.includes('stand') || t.includes('desk') || t.includes('mat')) return 'Accessories';
-  return 'Mobile Cases'; // default for wrapstore catalog
-}
-
 // ─── Primary hook ─────────────────────────────────────────────────────────────
 
 /**
  * useProducts()
- * Fetches all online-visible products from products_with_availability,
- * enriches them with product_images, and sets up a Realtime subscription
- * so stock/visibility changes from the POS appear live.
+ * Fetches all online-visible active products from products_with_availability,
+ * enriches them with product_images (using real columns: public_url, sort_order,
+ * is_primary, storage_path), reads real categories & subcategories tables,
+ * and sets up Realtime subscriptions on products, product_images, categories
+ * and subcategories so any POS change appears live without a manual refresh.
  */
 export function useProducts() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);     // [{ id, name }]
+  const [subcategories, setSubcategories] = useState([]); // [{ id, name, category_id }]
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const channelRef = useRef(null);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!supabaseConfigured || !supabase) {
       setIsLoading(false);
       setError('Supabase not configured');
@@ -170,7 +179,7 @@ export function useProducts() {
     }
 
     try {
-      // 1. Fetch products from the view (RLS: online_visible=true & is_active=true enforced server-side)
+      // 1. Fetch products (RLS: online_visible=true & is_active=true)
       const { data: rawProducts, error: prodErr } = await supabase
         .from('products_with_availability')
         .select('*')
@@ -180,15 +189,48 @@ export function useProducts() {
 
       if (prodErr) throw prodErr;
 
-      // 2. Fetch images for all returned products
+      // 2. Fetch categories
+      const { data: catData, error: catErr } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name', { ascending: true });
+
+      if (catErr) {
+        // Non-fatal: log and continue with empty categories
+        console.warn('[useProducts] categories fetch error:', catErr.message);
+      }
+
+      // 3. Fetch subcategories
+      const { data: subData, error: subErr } = await supabase
+        .from('subcategories')
+        .select('id, name, category_id')
+        .order('name', { ascending: true });
+
+      if (subErr) {
+        console.warn('[useProducts] subcategories fetch error:', subErr.message);
+      }
+
+      // Build lookup maps
+      const catMap = {};
+      (catData || []).forEach((c) => { catMap[c.id] = c; });
+
+      const subMap = {};
+      (subData || []).forEach((s) => { subMap[s.id] = s; });
+
+      // 4. Fetch images for all products
+      // REAL columns: public_url, sort_order, is_primary, storage_path
       let imagesMap = {};
       if (rawProducts && rawProducts.length > 0) {
         const productIds = rawProducts.map((p) => p.id);
-        const { data: imgData } = await supabase
+        const { data: imgData, error: imgErr } = await supabase
           .from('product_images')
-          .select('product_id, image_url, display_order, is_primary')
+          .select('product_id, public_url, sort_order, is_primary, storage_path')
           .in('product_id', productIds)
-          .order('display_order', { ascending: true });
+          .order('sort_order', { ascending: true });
+
+        if (imgErr) {
+          console.warn('[useProducts] product_images fetch error:', imgErr.message);
+        }
 
         if (imgData) {
           imagesMap = imgData.reduce((acc, img) => {
@@ -199,8 +241,14 @@ export function useProducts() {
         }
       }
 
-      const normalised = (rawProducts || []).map((p) => normaliseProduct(p, imagesMap));
+      // 5. Normalise
+      const normalised = (rawProducts || []).map((p) =>
+        normaliseProduct(p, imagesMap, catMap, subMap)
+      );
+
       setProducts(normalised);
+      setCategories(catData || []);
+      setSubcategories(subData || []);
       setError(null);
     } catch (err) {
       console.error('[useProducts] fetch error:', err);
@@ -212,17 +260,19 @@ export function useProducts() {
 
   // Initial fetch
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    fetchAll();
+  }, [fetchAll]);
 
   // ── Realtime subscription ──────────────────────────────────────────────────
+  // Listen to products, product_images, categories AND subcategories so any
+  // POS change (new product, image upload, category rename) appears live.
   useEffect(() => {
     if (!supabaseConfigured || !supabase) return;
 
     let channel = null;
 
     try {
-      const channelTopic = `ws-products-${Math.random().toString(36).substring(2, 9)}`;
+      const channelTopic = `ws-wrapstore-${Math.random().toString(36).substring(2, 9)}`;
       channel = supabase.channel(channelTopic);
 
       channel
@@ -231,19 +281,36 @@ export function useProducts() {
           { event: '*', schema: 'public', table: 'products' },
           (payload) => {
             console.log('[Realtime] products change:', payload.eventType);
-            fetchProducts();
+            fetchAll();
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'product_images' },
-          () => {
-            fetchProducts();
+          (payload) => {
+            console.log('[Realtime] product_images change:', payload.eventType);
+            fetchAll();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'categories' },
+          (payload) => {
+            console.log('[Realtime] categories change:', payload.eventType);
+            fetchAll();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'subcategories' },
+          (payload) => {
+            console.log('[Realtime] subcategories change:', payload.eventType);
+            fetchAll();
           }
         )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('[Realtime] subscribed to products & product_images');
+            console.log('[Realtime] subscribed to products, product_images, categories, subcategories');
           }
         });
 
@@ -262,11 +329,9 @@ export function useProducts() {
         channelRef.current = null;
       }
     };
-  }, [fetchProducts]);
+  }, [fetchAll]);
 
-
-
-  return { products, isLoading, error, refetch: fetchProducts };
+  return { products, categories, subcategories, isLoading, error, refetch: fetchAll };
 }
 
 // ─── Single product hook ───────────────────────────────────────────────────────
@@ -283,10 +348,9 @@ export function useProduct(id) {
       return;
     }
 
-    async function fetch() {
+    async function fetchSingle() {
       setIsLoading(true);
       try {
-        // Try matching by UUID id first, then product_id string
         const isUuid = /^[0-9a-f-]{36}$/i.test(id);
         const { data, error: err } = await supabase
           .from('products_with_availability')
@@ -298,15 +362,24 @@ export function useProduct(id) {
 
         if (err) throw err;
 
-        // Fetch images
-        const { data: imgData } = await supabase
-          .from('product_images')
-          .select('product_id, image_url, display_order, is_primary')
-          .eq('product_id', data.id)
-          .order('display_order', { ascending: true });
+        // Fetch categories & subcategories
+        const [catRes, subRes, imgRes] = await Promise.all([
+          supabase.from('categories').select('id, name'),
+          supabase.from('subcategories').select('id, name, category_id'),
+          supabase
+            .from('product_images')
+            .select('product_id, public_url, sort_order, is_primary, storage_path')
+            .eq('product_id', data.id)
+            .order('sort_order', { ascending: true }),
+        ]);
 
-        const imagesMap = { [data.id]: imgData || [] };
-        setProduct(normaliseProduct(data, imagesMap));
+        const catMap = {};
+        (catRes.data || []).forEach((c) => { catMap[c.id] = c; });
+        const subMap = {};
+        (subRes.data || []).forEach((s) => { subMap[s.id] = s; });
+
+        const imagesMap = { [data.id]: imgRes.data || [] };
+        setProduct(normaliseProduct(data, imagesMap, catMap, subMap));
         setError(null);
       } catch (err) {
         console.error('[useProduct] fetch error:', err);
@@ -316,22 +389,48 @@ export function useProduct(id) {
       }
     }
 
-    fetch();
+    fetchSingle();
   }, [id]);
 
   return { product, isLoading, error };
 }
 
-// ─── Categories / models derived from live product data ───────────────────────
+// ─── Filter options derived from live data + real categories ──────────────────
 
 /**
- * Derive filter options from the live product list.
- * (categories & subcategories tables are not readable by anon in current RLS)
+ * Build filter options from live products AND real categories/subcategories.
+ *
+ * @param {object[]} products      - normalised products
+ * @param {object[]} categories    - [{ id, name }]
+ * @param {object[]} subcategories - [{ id, name, category_id }]
  */
-export function deriveFilterOptions(products) {
-  // Unique categories
-  const categorySet = new Set(products.map((p) => p.category).filter(Boolean));
-  const categories = ['All Categories', ...Array.from(categorySet).sort()];
+export function deriveFilterOptions(products, categories = [], subcategories = []) {
+  // Categories: use real categories table, but only include ones that have products.
+  // Always add "All Categories" sentinel at front.
+  const usedCategoryIds = new Set(products.map((p) => p.category_id).filter(Boolean));
+  const liveCategories = categories.filter((c) => usedCategoryIds.has(c.id));
+
+  // If we have real categories, use them; otherwise fall back to derived names.
+  let categoryList;
+  if (liveCategories.length > 0) {
+    categoryList = ['All Categories', ...liveCategories.map((c) => c.name)];
+    // Products with no category_id → "Other"
+    const hasOther = products.some((p) => !p.category_id);
+    if (hasOther && !categoryList.includes('Other')) {
+      categoryList.push('Other');
+    }
+  } else {
+    // Fallback: derive from normalised product.category field
+    const catSet = new Set(products.map((p) => p.category).filter(Boolean));
+    categoryList = ['All Categories', ...Array.from(catSet).sort()];
+  }
+
+  // Subcategories grouped under each category (for nested nav)
+  const subcategoryMap = {}; // { [categoryId]: [{ id, name }] }
+  subcategories.forEach((sub) => {
+    if (!subcategoryMap[sub.category_id]) subcategoryMap[sub.category_id] = [];
+    subcategoryMap[sub.category_id].push(sub);
+  });
 
   // Unique colors
   const allColors = Array.from(
@@ -352,7 +451,9 @@ export function deriveFilterOptions(products) {
   }
 
   return {
-    categories,
+    categories: categoryList,
+    categoryObjects: liveCategories,           // [{ id, name }] for ID-based filtering
+    subcategoryMap,                            // { [categoryId]: [{ id, name }] }
     brands: ['All Brands', ...Array.from(brandSet).sort()],
     allColors,
     brandModelsMap,

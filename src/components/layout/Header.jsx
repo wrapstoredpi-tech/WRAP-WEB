@@ -1,18 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingBag, User, Menu, X, ArrowRight } from 'lucide-react';
+import { Search, ShoppingBag, User, Menu, X, ArrowRight, ChevronDown } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Logo } from '../ui/Logo';
 import { useCart } from '../../context/CartContext';
 import { useProductsContext } from '../../context/ProductsContext';
-
-const NAV_CATEGORIES = [
-  { name: 'Phone Cases', href: '/?category=Mobile%20Cases' },
-  { name: 'Accessories', href: '/?category=Accessories' },
-  { name: 'Gadgets', href: '/?category=Gadgets' },
-  { name: 'New Arrivals', href: '/', badge: 'New' },
-  { name: 'Shop by Brand', href: '/#brand-select' },
-];
 
 export function Header({
   cartCount: propCartCount,
@@ -21,40 +13,52 @@ export function Header({
   onCartClick,
 }) {
   const { itemCount, openMiniCart } = useCart();
-  const { products: liveProducts } = useProductsContext();
+  const { products: liveProducts, categories: liveCategories, subcategories: liveSubcategories } = useProductsContext();
   const effectiveCartCount = propCartCount !== undefined ? propCartCount : itemCount;
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hoveredCategory, setHoveredCategory] = useState(null);
   const navigate = useNavigate();
 
-  // Filter search results dynamically against live product data
+  // Build nav from real categories + "New Arrivals" sentinel
+  const navCategories = useMemo(() => {
+    const catItems = liveCategories.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      href: `/?category=${encodeURIComponent(cat.name)}`,
+      // subcategories nested under this category
+      subs: liveSubcategories.filter((s) => s.category_id === cat.id),
+    }));
+    return [
+      { id: '__new', name: 'New Arrivals', href: '/', badge: 'New', subs: [] },
+      ...catItems,
+      { id: '__brand', name: 'Shop by Brand', href: '/#brand-select', subs: [] },
+    ];
+  }, [liveCategories, liveSubcategories]);
+
+  // Filter search results dynamically
   const searchResults = searchQuery.trim()
     ? liveProducts.filter(
         (p) =>
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (p.category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (p.mobile_brand || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (p.mobile_model || '').toLowerCase().includes(searchQuery.toLowerCase())
+          (p.compatible_models || []).some((m) =>
+            m.toLowerCase().includes(searchQuery.toLowerCase())
+          )
       ).slice(0, 4)
     : [];
 
-  // Handle sticky header transition on scroll
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      setIsScrolled(window.scrollY > 20);
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Lock body scroll when mobile drawer is open
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
@@ -66,7 +70,6 @@ export function Header({
     };
   }, [isMobileMenuOpen]);
 
-  // Handle escape key to close drawer/search
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -99,7 +102,7 @@ export function Header({
         <div className="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center justify-between gap-4">
             
-            {/* Left: Mobile Hamburger Toggle (Visible only < 768px) */}
+            {/* Left: Mobile Hamburger Toggle */}
             <div className="flex items-center md:hidden">
               <button
                 type="button"
@@ -121,7 +124,7 @@ export function Header({
               </button>
             </div>
 
-            {/* Center-Left / Left: Wordmark Logo */}
+            {/* Logo */}
             <div className="flex items-center">
               <Link
                 to="/"
@@ -133,50 +136,77 @@ export function Header({
               </Link>
             </div>
 
-            {/* Desktop Horizontal Navigation (Hidden < 768px) */}
+            {/* Desktop Navigation — built from real categories */}
             <nav
               className="hidden md:flex items-center space-x-7 lg:space-x-9"
               aria-label="Primary Navigation"
             >
-              {NAV_CATEGORIES.map((cat) => {
+              {navCategories.map((cat) => {
                 const isActive = activeCategory === cat.name;
+                const hasSubs = cat.subs && cat.subs.length > 0;
                 return (
-                  <Link
-                    key={cat.name}
-                    to={cat.href}
-                    onClick={() => {
-                      if (onCategorySelect) {
-                        onCategorySelect(cat.name);
-                      }
-                    }}
-                    className={`
-                      relative py-1.5 text-body-sm font-medium tracking-wide transition-colors
-                      ${
-                        isActive
-                          ? 'text-neutral-900 font-semibold'
-                          : 'text-neutral-500 hover:text-neutral-900'
-                      }
-                    `}
+                  <div
+                    key={cat.id}
+                    className="relative"
+                    onMouseEnter={() => hasSubs && setHoveredCategory(cat.id)}
+                    onMouseLeave={() => setHoveredCategory(null)}
                   >
-                    <span>{cat.name}</span>
-                    {cat.badge && (
-                      <span className="ml-1.5 align-middle">
-                        <Badge variant="accent" size="sm">
-                          {cat.badge}
-                        </Badge>
-                      </span>
+                    <Link
+                      to={cat.href}
+                      onClick={() => {
+                        if (onCategorySelect) onCategorySelect(cat.name);
+                        setHoveredCategory(null);
+                      }}
+                      className={`
+                        relative py-1.5 text-body-sm font-medium tracking-wide transition-colors
+                        flex items-center gap-1
+                        ${
+                          isActive
+                            ? 'text-neutral-900 font-semibold'
+                            : 'text-neutral-500 hover:text-neutral-900'
+                        }
+                      `}
+                    >
+                      <span>{cat.name}</span>
+                      {cat.badge && (
+                        <span className="ml-1.5 align-middle">
+                          <Badge variant="accent" size="sm">
+                            {cat.badge}
+                          </Badge>
+                        </span>
+                      )}
+                      {hasSubs && <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />}
+                      {isActive && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent rounded-full animate-fade-in" />
+                      )}
+                    </Link>
+
+                    {/* Subcategory dropdown */}
+                    {hasSubs && hoveredCategory === cat.id && (
+                      <div className="absolute top-full left-0 mt-1 min-w-[180px] bg-base-offwhite border border-neutral-200 shadow-lg z-50 py-1 animate-fade-in">
+                        {cat.subs.map((sub) => (
+                          <Link
+                            key={sub.id}
+                            to={`/?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub.name)}`}
+                            onClick={() => {
+                              if (onCategorySelect) onCategorySelect(cat.name);
+                              setHoveredCategory(null);
+                            }}
+                            className="block px-4 py-2 text-body-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+                          >
+                            {sub.name}
+                          </Link>
+                        ))}
+                      </div>
                     )}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent rounded-full animate-fade-in" />
-                    )}
-                  </Link>
+                  </div>
                 );
               })}
             </nav>
 
-            {/* Right: Actions (Search & Account & Cart) */}
+            {/* Right: Actions */}
             <div className="flex items-center space-x-1.5 sm:space-x-3">
-              {/* Desktop Search Trigger */}
+              {/* Desktop Search */}
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(true)}
@@ -198,7 +228,7 @@ export function Header({
                 <User className="w-5 h-5" strokeWidth={1.8} />
               </button>
 
-              {/* Cart Button with Item Count Badge */}
+              {/* Cart Button */}
               <button
                 type="button"
                 onClick={onCartClick || openMiniCart}
@@ -224,7 +254,7 @@ export function Header({
         </div>
       </header>
 
-      {/* Slide-out Search Overlay */}
+      {/* Search Overlay */}
       {isSearchOpen && (
         <div
           className="fixed inset-0 z-50 bg-neutral-950/40 backdrop-blur-xs flex items-start justify-center pt-16 sm:pt-24 px-4 animate-fade-in"
@@ -260,7 +290,6 @@ export function Header({
               <Search className="w-5 h-5 text-neutral-500 absolute left-3.5 top-3.5" />
             </div>
 
-            {/* Dynamic Search Results */}
             {searchQuery.trim() && (
               <div className="mt-4 border-t border-neutral-200 pt-4 space-y-2 max-h-64 overflow-y-auto">
                 <span className="text-metadata uppercase text-neutral-400 font-semibold block">
@@ -281,11 +310,11 @@ export function Header({
                         />
                         <div>
                           <p className="text-body-sm font-medium text-neutral-900">{prod.name}</p>
-                          <p className="text-xs text-neutral-500">{prod.category} &bull; {prod.mobile_model}</p>
+                          <p className="text-xs text-neutral-500">{prod.category} &bull; {prod.mobile_brand}</p>
                         </div>
                       </div>
                       <span className="text-body-sm font-semibold text-neutral-900">
-                        ${prod.selling_price.toFixed(2)}
+                        ₹{prod.selling_price.toLocaleString()}
                       </span>
                     </button>
                   ))
@@ -319,22 +348,20 @@ export function Header({
         </div>
       )}
 
-      {/* Mobile Slide-out Drawer Navigation (< 768px) */}
+      {/* Mobile Slide-out Drawer */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-neutral-950/50 backdrop-blur-xs transition-opacity animate-fade-in"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
 
-          {/* Drawer Panel */}
           <div
             className="
               fixed inset-y-0 left-0 w-full max-w-xs sm:max-w-sm bg-base-offwhite
               shadow-2xl border-r border-neutral-200 flex flex-col justify-between
-              animate-drawer-in p-6 z-10
+              animate-drawer-in p-6 z-10 overflow-y-auto
             "
           >
             <div>
@@ -350,43 +377,83 @@ export function Header({
                 </button>
               </div>
 
-              {/* Drawer Categories */}
+              {/* Mobile Nav — real categories with subcategories */}
               <nav className="mt-6 flex flex-col space-y-1">
                 <span className="text-metadata uppercase text-neutral-400 mb-2 px-3">
                   Categories
                 </span>
-                {NAV_CATEGORIES.map((cat) => {
+
+                {/* New Arrivals */}
+                <Link
+                  to="/"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (onCategorySelect) onCategorySelect('New Arrivals');
+                  }}
+                  className={`
+                    flex items-center justify-between px-3 py-3.5 text-body font-medium transition-colors
+                    ${
+                      activeCategory === 'New Arrivals'
+                        ? 'bg-neutral-100 text-neutral-950 font-semibold border-l-2 border-accent pl-3.5'
+                        : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100/50'
+                    }
+                  `}
+                >
+                  <span className="tracking-wide">New Arrivals</span>
+                  <Badge variant="accent" size="sm">New</Badge>
+                </Link>
+
+                {/* Real categories */}
+                {liveCategories.map((cat) => {
                   const isActive = activeCategory === cat.name;
+                  const subs = liveSubcategories.filter((s) => s.category_id === cat.id);
                   return (
-                    <Link
-                      key={cat.name}
-                      to={cat.href}
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        if (onCategorySelect) {
-                          onCategorySelect(cat.name);
-                        }
-                      }}
-                      className={`
-                        flex items-center justify-between px-3 py-3.5 text-body font-medium transition-colors
-                        ${
-                          isActive
-                            ? 'bg-neutral-100 text-neutral-950 font-semibold border-l-2 border-accent pl-3.5'
-                            : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100/50'
-                        }
-                      `}
-                    >
-                      <span className="tracking-wide">{cat.name}</span>
-                      {cat.badge ? (
-                        <Badge variant="accent" size="sm">
-                          {cat.badge}
-                        </Badge>
-                      ) : (
+                    <div key={cat.id}>
+                      <Link
+                        to={`/?category=${encodeURIComponent(cat.name)}`}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onCategorySelect) onCategorySelect(cat.name);
+                        }}
+                        className={`
+                          flex items-center justify-between px-3 py-3.5 text-body font-medium transition-colors
+                          ${
+                            isActive
+                              ? 'bg-neutral-100 text-neutral-950 font-semibold border-l-2 border-accent pl-3.5'
+                              : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100/50'
+                          }
+                        `}
+                      >
+                        <span className="tracking-wide">{cat.name}</span>
                         <ArrowRight className="w-4 h-4 text-neutral-400" />
+                      </Link>
+                      {/* Nested subcategories */}
+                      {isActive && subs.length > 0 && (
+                        <div className="ml-4 border-l border-neutral-200 pl-3 pb-1 space-y-0.5">
+                          {subs.map((sub) => (
+                            <Link
+                              key={sub.id}
+                              to={`/?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub.name)}`}
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="block px-2 py-2 text-body-sm text-neutral-500 hover:text-neutral-900 transition-colors"
+                            >
+                              {sub.name}
+                            </Link>
+                          ))}
+                        </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
+
+                <Link
+                  to="/#brand-select"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-3 py-3.5 text-body font-medium text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100/50 transition-colors"
+                >
+                  <span className="tracking-wide">Shop by Brand</span>
+                  <ArrowRight className="w-4 h-4 text-neutral-400" />
+                </Link>
               </nav>
             </div>
 

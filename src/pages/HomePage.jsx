@@ -9,8 +9,10 @@ import { useProductsContext } from '../context/ProductsContext';
 import { RefreshCw, Smartphone, X, AlertTriangle } from 'lucide-react';
 
 const INITIAL_FILTERS = {
-  category: 'All Categories',
+  category: 'All Categories',     // category name string for display
+  category_id: null,              // real UUID for filtering
   subcategory: 'All Types',
+  subcategory_id: null,
   brand: 'All Brands',
   selectedModel: '',
   priceRange: 'All Prices',
@@ -24,11 +26,20 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   const productSectionRef = useRef(null);
 
   // ── Live data from Supabase ────────────────────────────────────────────────
-  const { products: liveProducts = [], isLoading = false, error = null, refetch = () => {} } = useProductsContext();
+  const {
+    products: liveProducts = [],
+    categories: liveCategories = [],
+    subcategories: liveSubcategories = [],
+    isLoading = false,
+    error = null,
+    refetch = () => {},
+  } = useProductsContext();
 
-
-  // Derive filter options from whatever products are returned by RLS
-  const filterOptions = useMemo(() => deriveFilterOptions(liveProducts), [liveProducts]);
+  // Derive filter options from live data
+  const filterOptions = useMemo(
+    () => deriveFilterOptions(liveProducts, liveCategories, liveSubcategories),
+    [liveProducts, liveCategories, liveSubcategories]
+  );
 
   // ── Filter state ───────────────────────────────────────────────────────────
   const [filters, setFilters] = useState(() => {
@@ -48,34 +59,66 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   const [sortBy, setSortBy] = useState('newest');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // React to URL category param changes or Header nav clicks
+  // React to URL category param changes
   useEffect(() => {
     const catQuery = searchParams.get('category');
     if (catQuery) {
-      setFilters((prev) => ({ ...prev, category: catQuery }));
+      // Try to resolve to a real category id
+      const matched = liveCategories.find((c) => c.name === catQuery);
+      setFilters((prev) => ({
+        ...prev,
+        category: catQuery,
+        category_id: matched?.id || null,
+      }));
     }
-  }, [searchParams]);
+  }, [searchParams, liveCategories]);
 
+  // React to Header nav clicks
   useEffect(() => {
     if (activeCategoryNav) {
       if (activeCategoryNav === 'New Arrivals' || activeCategoryNav === 'Archive') {
-        setFilters((prev) => ({ ...prev, category: 'All Categories' }));
+        setFilters((prev) => ({ ...prev, category: 'All Categories', category_id: null }));
       } else {
-        setFilters((prev) => ({ ...prev, category: activeCategoryNav }));
+        const matched = liveCategories.find((c) => c.name === activeCategoryNav);
+        setFilters((prev) => ({
+          ...prev,
+          category: activeCategoryNav,
+          category_id: matched?.id || null,
+        }));
       }
     }
-  }, [activeCategoryNav]);
+  }, [activeCategoryNav, liveCategories]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => {
-      const next = { ...prev, [key]: value };
+      let next = { ...prev, [key]: value };
+
+      // When category name changes, also resolve category_id and reset subcategory
       if (key === 'category') {
-        if (value !== 'All Categories') {
-          setSearchParams({ category: value });
-        } else {
+        if (value === 'All Categories') {
+          next.category_id = null;
+          next.subcategory = 'All Types';
+          next.subcategory_id = null;
           setSearchParams({});
+        } else {
+          const matched = liveCategories.find((c) => c.name === value);
+          next.category_id = matched?.id || null;
+          next.subcategory = 'All Types';
+          next.subcategory_id = null;
+          setSearchParams({ category: value });
         }
       }
+
+      // When subcategory changes, resolve subcategory_id
+      if (key === 'subcategory') {
+        if (value === 'All Types') {
+          next.subcategory_id = null;
+        } else {
+          const matched = liveSubcategories.find((s) => s.name === value);
+          next.subcategory_id = matched?.id || null;
+        }
+      }
+
       return next;
     });
   };
@@ -85,11 +128,29 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
     setSearchParams({});
   };
 
-  // ── Client-side filter + sort (data already RLS-filtered on server) ────────
+  // ── Client-side filter + sort ──────────────────────────────────────────────
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...liveProducts];
 
-    // 1. Phone model compatibility filter
+    // 1. Category filter — use category_id when available, else name-match
+    if (filters.category !== 'All Categories') {
+      if (filters.category_id) {
+        result = result.filter((p) => p.category_id === filters.category_id);
+      } else if (filters.category === 'Other') {
+        // Products with no category
+        result = result.filter((p) => !p.category_id);
+      } else {
+        // Fallback: name match (for URL-driven filters before categories load)
+        result = result.filter((p) => p.category === filters.category);
+      }
+    }
+
+    // 2. Subcategory filter — use subcategory_id
+    if (filters.subcategory_id) {
+      result = result.filter((p) => p.subcategory_id === filters.subcategory_id);
+    }
+
+    // 3. Phone model compatibility filter
     if (filters.selectedModel) {
       result = result.filter((p) => {
         if (p.compatible_models && p.compatible_models.length > 0) {
@@ -106,12 +167,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       });
     }
 
-    // 2. Category filter
-    if (filters.category !== 'All Categories') {
-      result = result.filter((p) => p.category === filters.category);
-    }
-
-    // 3. Color variants filter
+    // 4. Color variants filter
     if (filters.selectedColor) {
       result = result.filter((p) =>
         p.color_variants?.some(
@@ -120,7 +176,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       );
     }
 
-    // 4. Price range filter
+    // 5. Price range filter
     if (filters.priceRange !== 'All Prices') {
       const selectedRange = PRICE_RANGES.find((r) => r.label === filters.priceRange);
       if (selectedRange) {
@@ -132,7 +188,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       }
     }
 
-    // 5. In-stock filter — use stock_status from the view
+    // 6. In-stock filter
     if (filters.inStockOnly) {
       result = result.filter((p) => p.stock_status !== 'OUT_OF_STOCK');
     }
@@ -157,6 +213,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   const activeFilterCount = useMemo(() => {
     return [
       filters.category !== 'All Categories',
+      filters.subcategory_id !== null,
       filters.brand !== 'All Brands' && filters.brand !== '',
       Boolean(filters.selectedModel),
       filters.priceRange !== 'All Prices',
@@ -252,7 +309,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
               </div>
             </div>
 
-            {/* Quick-Pick chips — derived from live data */}
+            {/* Quick-Pick chips */}
             {quickPickModels.length > 0 && (
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <span className="text-[11px] text-neutral-400 uppercase tracking-editorial font-bold">
@@ -300,6 +357,12 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
               <span className="inline-flex items-center gap-1.5 text-xs bg-neutral-100 text-neutral-800 px-2.5 py-1 border border-neutral-300">
                 <span>Category: {filters.category}</span>
                 <button onClick={() => handleFilterChange('category', 'All Categories')} className="hover:text-accent font-bold">&times;</button>
+              </span>
+            )}
+            {filters.subcategory_id && (
+              <span className="inline-flex items-center gap-1.5 text-xs bg-neutral-100 text-neutral-800 px-2.5 py-1 border border-neutral-300">
+                <span>Sub: {filters.subcategory}</span>
+                <button onClick={() => handleFilterChange('subcategory', 'All Types')} className="hover:text-accent font-bold">&times;</button>
               </span>
             )}
             {filters.brand !== 'All Brands' && (
