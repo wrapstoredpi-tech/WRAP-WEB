@@ -189,10 +189,12 @@ export function useProducts() {
 
       if (prodErr) throw prodErr;
 
-      // 2. Fetch categories
+      // 2. Fetch active categories only (is_active column confirmed present)
       const { data: catData, error: catErr } = await supabase
         .from('categories')
-        .select('id, name')
+        .select('id, name, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
 
       if (catErr) {
@@ -200,10 +202,12 @@ export function useProducts() {
         console.warn('[useProducts] categories fetch error:', catErr.message);
       }
 
-      // 3. Fetch subcategories
+      // 3. Fetch active subcategories only (is_active column confirmed present)
       const { data: subData, error: subErr } = await supabase
         .from('subcategories')
-        .select('id, name, category_id')
+        .select('id, name, category_id, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
 
       if (subErr) {
@@ -362,10 +366,10 @@ export function useProduct(id) {
 
         if (err) throw err;
 
-        // Fetch categories & subcategories
+        // Fetch active categories & subcategories only
         const [catRes, subRes, imgRes] = await Promise.all([
-          supabase.from('categories').select('id, name'),
-          supabase.from('subcategories').select('id, name, category_id'),
+          supabase.from('categories').select('id, name, sort_order').eq('is_active', true).order('sort_order', { ascending: true }).order('name', { ascending: true }),
+          supabase.from('subcategories').select('id, name, category_id, sort_order').eq('is_active', true).order('sort_order', { ascending: true }).order('name', { ascending: true }),
           supabase
             .from('product_images')
             .select('product_id, public_url, sort_order, is_primary, storage_path')
