@@ -1,293 +1,142 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, Truck, Users, Sparkles, CheckCircle2 } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePhoneContext } from '../../context/PhoneContext';
 
 const HERO_SLIDES = [
   {
     id: 1,
-    tag: 'Autumn / Winter 2026',
-    headline: 'BUILT FOR YOUR PHONE',
-    subtext: 'Precision-molded phone cases in full-grain leather, aramid fiber & matte polymer. Form-fitted for Apple and Samsung flagships.',
-    ctaText: 'SHOP NOW',
-    categoryTarget: 'Mobile Cases',
-    imageUrl: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=1920&q=85',
-    colorTheme: 'Amber & Charcoal Edition',
+    category: 'All',
+    tag: 'Crafted Precision',
+    headline: 'Cases Designed for Precision & Protection',
+    subline: 'Lightweight, ultra-durable materials built specifically for your device.',
+    cta: 'Explore Collection',
+    image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 2,
-    tag: 'Signature Patina Collection',
-    headline: 'TACTILE SCANDINAVIAN LEATHER',
-    subtext: 'Vegetable-tanned full grain leather designed to age organically. Features machined anodized aluminum buttons and MagSafe alignment.',
-    ctaText: 'SHOP LEATHER CASES',
-    categoryTarget: 'Mobile Cases',
-    imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=1920&q=85',
-    colorTheme: 'Saddle Tan & Rust',
+    category: 'Phone Cases',
+    tag: 'Minimalist Carry',
+    headline: 'Protection Without the Bulk',
+    subline: 'Engineered with soft tactile feel, precise camera cutouts, and drop defense.',
+    cta: 'Shop Phone Cases',
+    image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 3,
-    tag: 'Engineered Drop Defense',
-    headline: 'MINIMAL ARMOR, 10FT PROTECTION',
-    subtext: 'Perimeter air-pocket dampeners with a scratch-defying matte obsidian backplate. Ultra-slim 1.4mm profile with zero pocket friction.',
-    ctaText: 'EXPLORE SLIM ARMOR',
-    categoryTarget: 'Mobile Cases',
-    imageUrl: 'https://images.unsplash.com/photo-1585336261026-7f09c62c3e10?auto=format&fit=crop&w=1920&q=85',
-    colorTheme: 'Matte Obsidian & Frost',
-  },
-  {
-    id: 4,
-    tag: 'Desk & Travel Carry',
-    headline: 'EVERYDAY MODULAR ACCESSORIES',
-    subtext: 'MagSafe origami snap stands, Bavarian Merino wool sleeves, and ballistic braided charging lines built for daily longevity.',
-    ctaText: 'SHOP ACCESSORIES',
-    categoryTarget: 'Accessories',
-    imageUrl: 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=1920&q=85',
-    colorTheme: 'Desk & Carry Essentials',
-  },
-];
-
-const TRUST_BADGES = [
-  {
-    icon: Users,
-    label: '500+ Happy Customers',
-    sub: 'Verified 4.9/5 Rating',
-  },
-  {
-    icon: Truck,
-    label: 'Same Day Dispatch',
-    sub: 'Orders before 2 PM',
-  },
-  {
-    icon: ShieldCheck,
-    label: '18-Month Warranty',
-    sub: 'Full Replacement Cover',
-  },
-  {
-    icon: CheckCircle2,
-    label: 'Precision Fit Guaranteed',
-    sub: 'Exact Port & Button Alignment',
+    category: 'Accessories',
+    tag: 'Daily Essentials',
+    headline: 'Minimal Accessories for Desk & Pocket',
+    subline: 'Elevate your daily carry setup with curated protective accessories.',
+    cta: 'View Accessories',
+    image: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=1200&q=80',
   },
 ];
 
 export function HeroSection({ onShopClick }) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const slideCount = HERO_SLIDES.length;
-  const timerRef = useRef(null);
+  const { savedPhone, openPhoneSheet } = usePhoneContext();
 
-  // Auto-advance every 5 seconds (5000ms), pauses when hovered
+  // Slow 5-second carousel auto-play
   useEffect(() => {
-    if (isPaused) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-
-    timerRef.current = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slideCount);
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 5000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isPaused, slideCount]);
-
-  const handleNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % slideCount);
-  };
-
-  const handlePrev = () => {
-    setCurrentSlide((prev) => (prev - 1 + slideCount) % slideCount);
-  };
+    return () => clearInterval(timer);
+  }, []);
 
   const activeSlide = HERO_SLIDES[currentSlide];
 
   return (
-    <section
-      className="relative w-full bg-neutral-950 overflow-hidden select-none border-b border-neutral-200"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      aria-label="Hero Highlights"
-    >
-      {/* Full-width Image Canvas & Slides */}
-      <div className="relative w-full h-[520px] sm:h-[580px] lg:h-[640px] xl:h-[700px] overflow-hidden">
-        {HERO_SLIDES.map((slide, idx) => {
-          const isActive = idx === currentSlide;
-          return (
-            <div
-              key={slide.id}
-              className={`
-                absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out
-                ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}
-              `}
-              aria-hidden={!isActive}
-            >
-              {/* Full-Width Background Photography Flat-Lay */}
-              <img
-                src={slide.imageUrl}
-                alt={slide.headline}
-                className="w-full h-full object-cover object-center transform scale-100 transition-transform duration-1000 ease-out"
-                loading={idx === 0 ? 'eager' : 'lazy'}
-              />
+    <section className="w-full bg-base-offwhite border-b border-neutral-200">
+      <div className="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+        <div className="relative rounded-2xl overflow-hidden bg-neutral-900 text-white min-h-[380px] sm:min-h-[440px] flex flex-col justify-end p-6 sm:p-12 shadow-sm">
+          
+          {/* Background Image with Fixed Aspect Ratio overlay */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src={activeSlide.image}
+              alt={activeSlide.headline}
+              className="w-full h-full object-cover opacity-45 transition-opacity duration-500"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/60 to-transparent" />
+          </div>
 
-              {/* Rich Layered Gradients for maximum contrast and legibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-neutral-950/45 to-neutral-950/20" />
-              <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/80 via-neutral-950/40 to-transparent" />
-            </div>
-          );
-        })}
-
-        {/* ========================================================================= */}
-        {/* Top-Right Trust Badge Strip (Desktop & Tablet)                           */}
-        {/* ========================================================================= */}
-        <div className="absolute top-6 right-4 sm:right-6 lg:right-10 z-20 hidden md:flex items-center gap-4 lg:gap-6 bg-neutral-950/70 backdrop-blur-md px-4 py-2.5 border border-white/10 shadow-lg">
-          {TRUST_BADGES.slice(0, 3).map((badge, bIdx) => {
-            const Icon = badge.icon;
-            return (
-              <div key={bIdx} className="flex items-center gap-2 text-white">
-                <div className="w-6 h-6 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent shrink-0">
-                  <Icon className="w-3.5 h-3.5" />
-                </div>
-                <div className="text-left">
-                  <p className="text-[11px] font-semibold text-white leading-tight font-sans tracking-tight">
-                    {badge.label}
-                  </p>
-                  <p className="text-[9px] text-neutral-300 uppercase tracking-wider font-mono">
-                    {badge.sub}
-                  </p>
-                </div>
-                {bIdx < 2 && <div className="h-6 w-px bg-white/15 ml-3" />}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ========================================================================= */}
-        {/* Bottom-Left Overlay Content Block                                        */}
-        {/* ========================================================================= */}
-        <div className="absolute inset-0 z-20 flex flex-col justify-end max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pb-12 sm:pb-16 lg:pb-20 pointer-events-none">
-          <div className="max-w-xl space-y-4 pointer-events-auto animate-fade-in">
-            {/* Tag / Season Badge */}
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest bg-accent text-white border border-accent-border">
-                <Sparkles className="w-3 h-3 text-white" />
+          {/* Hero Content */}
+          <div className="relative z-10 max-w-xl space-y-3 sm:space-y-4">
+            <div className="inline-flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wide font-semibold text-accent bg-neutral-900/80 px-2.5 py-1 rounded-md border border-accent/30">
                 {activeSlide.tag}
               </span>
-              <span className="text-[11px] text-neutral-300 uppercase tracking-editorial font-medium font-mono hidden sm:inline-block">
-                &bull; {activeSlide.colorTheme}
-              </span>
+              {savedPhone && (
+                <span className="text-xs text-neutral-300 bg-neutral-800/80 px-2.5 py-1 rounded-md">
+                  For {savedPhone.model}
+                </span>
+              )}
             </div>
 
-            {/* Campaign Headline */}
-            <h1 className="text-display sm:text-display lg:text-[4rem] font-bold text-white tracking-tight uppercase leading-[1.02] drop-shadow-md">
+            <h1 className="text-display font-semibold tracking-tight text-white leading-tight">
               {activeSlide.headline}
             </h1>
 
-            {/* Subtext */}
-            <p className="text-body sm:text-body-lg text-neutral-200 leading-relaxed font-sans max-w-lg drop-shadow-sm">
-              {activeSlide.subtext}
+            <p className="text-body-sm sm:text-body text-neutral-300 line-clamp-2 max-w-lg">
+              {activeSlide.subline}
             </p>
 
-            {/* Single Black "SHOP NOW" Action Button */}
-            <div className="pt-2 flex items-center gap-4">
+            <div className="pt-2 flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => onShopClick && onShopClick(activeSlide.categoryTarget)}
-                className="
-                  inline-flex items-center justify-center gap-2.5 px-8 py-3.5 sm:py-4
-                  bg-neutral-900 text-white font-sans text-sm sm:text-base font-semibold uppercase
-                  tracking-wider border border-white/30 hover:border-white hover:bg-black
-                  shadow-2xl transition-all duration-200 active:scale-[0.98] group
-                "
+                onClick={() => onShopClick && onShopClick(activeSlide.category)}
+                className="min-h-[44px] px-6 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-body-sm flex items-center gap-2 transition-colors shadow-xs"
               >
-                <span>{activeSlide.ctaText}</span>
-                <ArrowRight className="w-4 h-4 text-accent group-hover:translate-x-1 transition-transform" />
+                <span>{activeSlide.cta}</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
-          </div>
-        </div>
 
-        {/* ========================================================================= */}
-        {/* Navigation Arrow Controls (Left / Right)                                 */}
-        {/* ========================================================================= */}
-        <div className="absolute inset-y-0 inset-x-3 sm:inset-x-6 z-20 flex items-center justify-between pointer-events-none">
-          <button
-            type="button"
-            onClick={handlePrev}
-            className="
-              p-2.5 sm:p-3 bg-neutral-950/60 hover:bg-neutral-950/90 text-white
-              border border-white/20 hover:border-white/50 backdrop-blur-xs
-              pointer-events-auto transition-all active:scale-95 shadow-lg
-            "
-            aria-label="Previous Slide"
-          >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            className="
-              p-2.5 sm:p-3 bg-neutral-950/60 hover:bg-neutral-950/90 text-white
-              border border-white/20 hover:border-white/50 backdrop-blur-xs
-              pointer-events-auto transition-all active:scale-95 shadow-lg
-            "
-            aria-label="Next Slide"
-          >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* Dot Indicators & Slide Counter                                           */}
-        {/* ========================================================================= */}
-        <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 lg:right-10 z-20 flex items-center gap-3 bg-neutral-950/70 backdrop-blur-md px-3.5 py-1.5 border border-white/10">
-          <div className="flex items-center gap-1.5" role="tablist" aria-label="Slide Selection">
-            {HERO_SLIDES.map((_, idx) => {
-              const isActive = idx === currentSlide;
-              return (
+              {!savedPhone && (
                 <button
-                  key={idx}
                   type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-label={`Go to slide ${idx + 1}`}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`
-                    h-2 transition-all duration-300 rounded-full
-                    ${isActive ? 'w-6 bg-accent' : 'w-2 bg-white/40 hover:bg-white/80'}
-                  `}
-                />
-              );
-            })}
+                  onClick={openPhoneSheet}
+                  className="min-h-[44px] px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-body-sm backdrop-blur-xs transition-colors hidden sm:block"
+                >
+                  Find for my phone
+                </button>
+              )}
+            </div>
           </div>
 
-          <span className="text-[11px] font-mono text-neutral-300 pl-1 border-l border-white/20">
-            0{currentSlide + 1} / 0{slideCount}
-          </span>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* Mobile Trust Badges Bar (Visible on mobile < 768px below hero image)     */}
-      {/* ========================================================================= */}
-      <div className="md:hidden bg-neutral-900 border-t border-neutral-800 px-4 py-3 grid grid-cols-2 gap-3">
-        {TRUST_BADGES.slice(0, 2).map((badge, bIdx) => {
-          const Icon = badge.icon;
-          return (
-            <div key={bIdx} className="flex items-center gap-2 text-white">
-              <div className="w-5 h-5 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent shrink-0">
-                <Icon className="w-3 h-3" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-white truncate font-sans">
-                  {badge.label}
-                </p>
-                <p className="text-[9px] text-neutral-400 truncate font-mono">
-                  {badge.sub}
-                </p>
-              </div>
+          {/* Carousel Controls */}
+          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentSlide((prev) => (prev === 0 ? HERO_SLIDES.length - 1 : prev - 1))}
+              className="w-10 h-10 rounded-full bg-neutral-900/80 hover:bg-neutral-900 text-white flex items-center justify-center border border-neutral-700 transition-colors"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex gap-1.5 px-2">
+              {HERO_SLIDES.map((slide, idx) => (
+                <button
+                  key={slide.id}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    idx === currentSlide ? 'w-6 bg-accent' : 'w-1.5 bg-white/40'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
             </div>
-          );
-        })}
+            <button
+              type="button"
+              onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
+              className="w-10 h-10 rounded-full bg-neutral-900/80 hover:bg-neutral-900 text-white flex items-center justify-center border border-neutral-700 transition-colors"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

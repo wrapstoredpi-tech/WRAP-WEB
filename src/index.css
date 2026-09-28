@@ -5,41 +5,43 @@
 @layer base {
   :root {
     --color-bg-base: #FAFAF8;
-    --color-text-charcoal: #1A1A1A;
-    --color-text-muted: #6B6B6B;
-    --color-accent-amber: #C7622D;
+    --color-text-charcoal: #111111;
+    --color-text-muted: #737373;
+    --color-accent: #C7622D;
   }
 
   html {
     background-color: #FAFAF8;
-    color: #1A1A1A;
+    color: #111111;
     -webkit-tap-highlight-color: transparent;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
     min-height: 100vh;
     overflow-x: hidden;
+    background-color: #FAFAF8;
+    color: #111111;
   }
 
-  /* Accessible and subtle focus styles */
+  /* Accessible visible focus states */
   :focus-visible {
-    outline: 2px solid #C7622D;
+    outline: 2px solid #111111;
     outline-offset: 2px;
+  }
+
+  /* Reduced motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer utilities {
-  /* Editorial letter-spacing & metadata helpers */
-  .tracking-editorial {
-    letter-spacing: 0.08em;
-  }
-  
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* Hide scrollbar for clean horizontal scrolling */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }

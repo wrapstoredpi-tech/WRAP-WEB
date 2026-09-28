@@ -1,157 +1,134 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Check, Eye } from 'lucide-react';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { ColorSwatch } from '../ui/ColorSwatch';
+import { useNavigate } from 'react-router-dom';
+import { Smartphone, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { usePhoneContext } from '../../context/PhoneContext';
 
-export function ProductCard({ product, onAddToCart, onQuickView }) {
+export function ProductCard({ product, onAddToCart }) {
+  const navigate = useNavigate();
   const { addItem } = useCart();
-  const [isAdding, setIsAdding] = useState(false);
-  const [added, setAdded] = useState(false);
+  const { savedPhone } = usePhoneContext();
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Use the precomputed stock_status from products_with_availability view
+  if (!product) return null;
+
   const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0;
-  const isLowStock = product.stock_status === 'LOW_STOCK';
-  const hasDiscount = product.discount_percentage > 0;
-  const isFeatured = product.online_featured;
-  
-  // Calculate original price before discount
-  const originalPrice = hasDiscount
-    ? (product.mrp || (product.selling_price / (1 - product.discount_percentage / 100))).toFixed(2)
-    : null;
+  const isLowStock = !isOutOfStock && (product.available_stock <= 5 || product.stock_status === 'LOW_STOCK');
+  const hasDiscount = product.mrp > product.selling_price;
 
-  const handleAdd = (e) => {
+  // Compatibility check against saved phone
+  const isCompatible =
+    !savedPhone ||
+    !product.compatible_models ||
+    product.compatible_models.length === 0 ||
+    product.compatible_models.includes('Universal') ||
+    product.mobile_brand === 'Universal' ||
+    product.compatible_models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim());
+
+  const handleCardClick = () => {
+    navigate(`/product/${product.id}`);
+  };
+
+  const handleQuickAdd = (e) => {
     e.stopPropagation();
     if (isOutOfStock) return;
-    setIsAdding(true);
-    addItem(product, 1);
-    setTimeout(() => {
-      setIsAdding(false);
-      setAdded(true);
-      if (onAddToCart) onAddToCart(product);
-      setTimeout(() => setAdded(false), 1800);
-    }, 250);
+    const added = addItem(product, 1);
+    if (added && onAddToCart) {
+      onAddToCart(product, 1);
+    }
   };
 
   return (
-    <article
-      onClick={() => onQuickView && onQuickView(product)}
-      className={`
-        group relative flex flex-col cursor-pointer transition-all duration-300
-        ${isOutOfStock ? 'opacity-65 grayscale-[35%]' : ''}
-      `}
+    <div
+      onClick={handleCardClick}
+      className="group relative cursor-pointer bg-white rounded-2xl border border-neutral-200/80 hover:border-neutral-900 transition-all duration-200 flex flex-col overflow-hidden shadow-xs hover:shadow-md"
+      role="article"
+      aria-label={`${product.name}, Price ₹${product.selling_price}`}
     >
-      {/* 4:5 Aspect Ratio Editorial Image Frame */}
-      <div className="relative aspect-[4/5] w-full bg-neutral-200/90 overflow-hidden">
+      {/* Aspect Ratio Container for Image (No layout shift) */}
+      <div className="relative aspect-[4/5] w-full bg-neutral-100 overflow-hidden">
+        {/* Loading skeleton placeholder before image loads */}
+        {!imageLoaded && (
+          <div className="absolute inset-0 bg-neutral-200 animate-pulse" />
+        )}
+
         <img
-          src={product.image_url || (product.images && product.images[0])}
+          src={product.image_url}
           alt={product.name}
-          className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+          onLoad={() => setImageLoaded(true)}
+          className={`
+            w-full h-full object-cover transition-transform duration-300 group-hover:scale-105
+            ${isOutOfStock ? 'grayscale opacity-60' : ''}
+            ${imageLoaded ? 'opacity-100' : 'opacity-0'}
+          `}
           loading="lazy"
         />
 
-        {/* Badges Overlay */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
-          {isOutOfStock ? (
-            <Badge variant="outofstock" size="sm">
-              Out of Stock
-            </Badge>
-          ) : isLowStock ? (
-            <Badge variant="lowstock" size="sm">
-              Only {product.available_stock} left
-            </Badge>
-          ) : hasDiscount ? (
-            <Badge variant="discount" size="sm">
-              Save {product.discount_percentage}%
-            </Badge>
-          ) : isFeatured ? (
-            <Badge variant="new" size="sm">
-              Featured
-            </Badge>
-          ) : null}
+        {/* Top Badges */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-1 pointer-events-none z-10">
+          <div className="flex flex-col gap-1 items-start">
+            {isOutOfStock ? (
+              <span className="text-[11px] font-semibold bg-neutral-900 text-white px-2 py-0.5 rounded-md">
+                Out of Stock
+              </span>
+            ) : isLowStock ? (
+              <span className="text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md">
+                Only {product.available_stock} left
+              </span>
+            ) : null}
+
+            {hasDiscount && (
+              <span className="text-[11px] font-semibold bg-accent text-white px-2 py-0.5 rounded-md">
+                {product.discount_percentage}% OFF
+              </span>
+            )}
+          </div>
+
+          {savedPhone && isCompatible && (
+            <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+              <Smartphone className="w-3 h-3" />
+              Fits your phone
+            </span>
+          )}
         </div>
 
-        {/* Hover Quick Add / Action Bar for Desktop */}
+        {/* Quick Add Button overlay */}
         {!isOutOfStock && (
-          <div
-            className="
-              absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-neutral-950/60 via-neutral-950/20 to-transparent
-              translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100
-              transition-all duration-300 flex items-center justify-between gap-2 z-20
-            "
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            className="absolute bottom-3 right-3 min-h-[44px] min-w-[44px] rounded-xl bg-neutral-900 hover:bg-accent text-white flex items-center justify-center shadow-md transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+            aria-label={`Add ${product.name} to bag`}
           >
-            <Button
-              variant={added ? 'primary' : 'secondary'}
-              size="sm"
-              isFullWidth
-              isLoading={isAdding}
-              disabled={isAdding}
-              onClick={handleAdd}
-              className="bg-base-offwhite text-neutral-900 border-none hover:bg-white text-xs font-semibold py-2 shadow-md"
-              leftIcon={
-                added ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                ) : (
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                )
-              }
-            >
-              {added ? 'Added to Bag' : 'Quick Add'}
-            </Button>
-          </div>
+            <ShoppingBag className="w-4 h-4" />
+          </button>
         )}
       </div>
 
-      {/* Product Content & Typography */}
-      <div className="space-y-1.5 pt-3">
-        {/* Metadata: Category & Subcategory / Brand */}
-        <div className="flex items-center justify-between text-[11px] text-neutral-500 uppercase tracking-editorial font-medium">
-          <span className="truncate">
+      {/* Card Info Details */}
+      <div className="p-3.5 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
+        <div>
+          <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">
             {product.category}
           </span>
-          <span className="shrink-0 text-neutral-400 pl-1 font-mono text-[10px]">
-            {product.product_id}
-          </span>
+          <h3 className="text-body-sm font-semibold text-neutral-900 line-clamp-1 group-hover:text-accent transition-colors">
+            {product.name}
+          </h3>
         </div>
 
-        {/* Product Name */}
-        <h3 className="text-body font-medium text-neutral-900 group-hover:text-accent transition-colors line-clamp-1 leading-snug">
-          {product.name}
-        </h3>
-
-        {/* Price Hierarchy with MRP Strikethrough + Discount % */}
-        <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-          <span className="text-body font-semibold text-neutral-900 font-sans">
+        <div className="flex items-baseline gap-2 pt-1">
+          <span className="text-body-sm font-semibold text-neutral-900">
             ₹{product.selling_price.toLocaleString()}
           </span>
-          {hasDiscount && originalPrice && (
-            <span className="text-body-sm text-neutral-400 line-through font-normal">
-              ₹{originalPrice}
-            </span>
-          )}
-          {hasDiscount && (
-            <span className="text-[10px] font-bold text-accent bg-accent-light px-1.5 py-0.5 border border-accent-border leading-none">
-              -{product.discount_percentage}%
-            </span>
-          )}
-          <span className="text-metadata text-neutral-400 uppercase ml-auto">
-            {isOutOfStock ? 'Out of stock' : isLowStock ? `${product.available_stock} left` : ''}
-          </span>
-        </div>
 
-        {/* Color variants preview */}
-        {product.color_variants && product.color_variants.length > 0 && (
-          <div className="pt-1">
-            <ColorSwatch
-              colors={product.color_variants}
-              size="sm"
-              interactive={false}
-            />
-          </div>
-        )}
+          {hasDiscount && (
+            <span className="text-xs text-neutral-400 line-through">
+              ₹{product.mrp.toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
-    </article>
+    </div>
   );
 }
 

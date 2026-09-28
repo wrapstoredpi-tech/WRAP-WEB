@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { PhoneSelectionModal } from './components/layout/PhoneSelectionModal';
 import { HomePage } from './pages/HomePage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
@@ -11,10 +12,11 @@ import { TrackOrderPage } from './pages/TrackOrderPage';
 import { MiniCartDrawer } from './components/cart/MiniCartDrawer';
 import { CartProvider, useCart } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
+import { PhoneProvider } from './context/PhoneContext';
 import { Check, X } from 'lucide-react';
 
 function AppContent() {
-  const [activeCategoryNav, setActiveCategoryNav] = useState('New Arrivals');
+  const [activeCategoryNav, setActiveCategoryNav] = useState('All');
   const [toastMessage, setToastMessage] = useState(null);
   const { openMiniCart } = useCart();
   const navigate = useNavigate();
@@ -30,7 +32,7 @@ function AppContent() {
   const handleCategoryNavSelect = (categoryName) => {
     setActiveCategoryNav(categoryName);
     if (location.pathname !== '/') {
-      navigate(`/?category=${encodeURIComponent(categoryName)}`);
+      navigate(categoryName === 'All' ? '/' : `/?category=${encodeURIComponent(categoryName)}`);
     }
   };
 
@@ -38,7 +40,7 @@ function AppContent() {
     <div className="min-h-screen flex flex-col bg-base-offwhite text-neutral-900 font-sans selection:bg-accent-light selection:text-accent">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 text-base-offwhite px-4 py-3 shadow-2xl border border-neutral-700 flex items-center gap-3 animate-slide-down">
+        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 text-base-offwhite px-4 py-3 shadow-2xl border border-neutral-700 flex items-center gap-3 animate-slide-down rounded-xl">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="text-body-sm font-medium">{toastMessage}</span>
           <button
@@ -60,6 +62,9 @@ function AppContent() {
 
       {/* Global Slide-out Mini-Cart Drawer */}
       <MiniCartDrawer />
+
+      {/* Global Phone Selection Modal */}
+      <PhoneSelectionModal />
 
       {/* Page Routes */}
       <Routes>
@@ -141,7 +146,9 @@ export function App() {
       <BrowserRouter>
         <CartProvider>
           <ProductsProvider>
-            <AppContent />
+            <PhoneProvider>
+              <AppContent />
+            </PhoneProvider>
           </ProductsProvider>
         </CartProvider>
       </BrowserRouter>
@@ -150,4 +157,3 @@ export function App() {
 }
 
 export default App;
-
