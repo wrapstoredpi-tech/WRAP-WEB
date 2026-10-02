@@ -1,9 +1,3 @@
-/**
- * src/components/layout/PhoneSelectionModal.jsx
- * ──────────────────────────────────────────────
- * Phone Selection Modal / Sheet ("Which phone do you have?")
- * Built from compatible models present in live Supabase products.
- */
 import React, { useState, useMemo } from 'react';
 import { X, Search, Check, Smartphone } from 'lucide-react';
 import { usePhoneContext } from '../../context/PhoneContext';
@@ -14,7 +8,7 @@ export function PhoneSelectionModal() {
     usePhoneContext();
   const { products } = useProductsContext();
 
-  const [selectedBrand, setSelectedBrand] = useState('Apple'); // 'Apple' | 'Samsung' | 'All'
+  const [selectedBrand, setSelectedBrand] = useState('Apple');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Build searchable model dictionary from live catalog
@@ -39,7 +33,6 @@ export function PhoneSelectionModal() {
       }
     }
 
-    // Default curated fallback lists if live catalog is small
     if (appleSet.size === 0) {
       ['iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16', 'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15', 'iPhone 14 Pro', 'iPhone 13'].forEach(m => appleSet.add(m));
     }
@@ -67,39 +60,34 @@ export function PhoneSelectionModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-neutral-950/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#141414]/35 backdrop-blur-xs animate-fade-in"
       onClick={closePhoneSheet}
       role="dialog"
       aria-modal="true"
       aria-labelledby="phone-sheet-title"
     >
       <div
-        className="w-full max-w-lg bg-base-offwhite rounded-t-2xl sm:rounded-2xl border border-neutral-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-down"
+        className="w-full max-w-md bg-white rounded-t-lg sm:rounded-lg border border-[#E7E5E4] shadow-modal overflow-hidden flex flex-col max-h-[85vh] animate-slide-down"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 pb-4 border-b border-neutral-200 flex items-start justify-between gap-4 bg-white">
+        <div className="p-6 pb-4 border-b border-[#E7E5E4] flex items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase tracking-editorial font-bold text-accent">
-                Tailored Shopping
-              </span>
-            </div>
-            <h2 id="phone-sheet-title" className="text-xl font-semibold text-neutral-900 tracking-tight">
-              Which phone do you have?
+            <h2 id="phone-sheet-title" className="text-[18px] font-semibold text-[#141414] tracking-tight">
+              Select Device
             </h2>
-            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-              We&apos;ll highlight designs guaranteed to fit your exact model.
+            <p className="text-[13px] text-[#666664] mt-1 leading-normal">
+              Filter cases engineered for your exact model.
             </p>
           </div>
 
           <button
             type="button"
             onClick={closePhoneSheet}
-            className="p-2 -mr-2 text-neutral-400 hover:text-neutral-900 rounded-full focus-visible:outline-accent transition-colors"
-            aria-label="Close phone selection sheet"
+            className="w-8 h-8 flex items-center justify-center text-[#666664] hover:text-[#141414] rounded-md transition-colors"
+            aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -107,48 +95,48 @@ export function PhoneSelectionModal() {
         <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Brand Buttons */}
           <div>
-            <label className="block text-xs uppercase tracking-editorial font-semibold text-neutral-400 mb-2">
-              1. Select Brand
+            <label className="block text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight mb-2">
+              Brand
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedBrand('Apple')}
                 className={`
-                  min-h-[48px] p-4 rounded-xl border-2 text-left flex items-center justify-between font-semibold text-body transition-all
+                  h-11 px-4 rounded-lg border text-left flex items-center justify-between text-[13px] transition-colors
                   ${
                     selectedBrand === 'Apple'
-                      ? 'border-neutral-900 bg-neutral-900 text-white shadow-xs'
-                      : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400'
+                      ? 'border-[#141414] bg-[#141414] text-white font-semibold'
+                      : 'border-[#E7E5E4] bg-[#FAFAF9] text-[#141414] hover:border-[#D6D3D1] font-normal'
                   }
                 `}
               >
                 <span>Apple iPhone</span>
-                {selectedBrand === 'Apple' && <Check className="w-4 h-4 text-accent" />}
+                {selectedBrand === 'Apple' && <Check className="w-3.5 h-3.5 text-white" />}
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedBrand('Samsung')}
                 className={`
-                  min-h-[48px] p-4 rounded-xl border-2 text-left flex items-center justify-between font-semibold text-body transition-all
+                  h-11 px-4 rounded-lg border text-left flex items-center justify-between text-[13px] transition-colors
                   ${
                     selectedBrand === 'Samsung'
-                      ? 'border-neutral-900 bg-neutral-900 text-white shadow-xs'
-                      : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400'
+                      ? 'border-[#141414] bg-[#141414] text-white font-semibold'
+                      : 'border-[#E7E5E4] bg-[#FAFAF9] text-[#141414] hover:border-[#D6D3D1] font-normal'
                   }
                 `}
               >
                 <span>Samsung Galaxy</span>
-                {selectedBrand === 'Samsung' && <Check className="w-4 h-4 text-accent" />}
+                {selectedBrand === 'Samsung' && <Check className="w-3.5 h-3.5 text-white" />}
               </button>
             </div>
           </div>
 
           {/* Search Model */}
           <div>
-            <label className="block text-xs uppercase tracking-editorial font-semibold text-neutral-400 mb-2">
-              2. Choose Model
+            <label className="block text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight mb-2">
+              Model
             </label>
             <div className="relative">
               <input
@@ -156,14 +144,14 @@ export function PhoneSelectionModal() {
                 placeholder={`Search ${selectedBrand} models...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-neutral-300 rounded-xl px-4 py-3 pl-10 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-colors"
+                className="w-full bg-[#FAFAF9] border border-[#E7E5E4] rounded-lg px-3.5 py-2.5 pl-9 text-[13px] text-[#141414] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#141414] transition-colors"
               />
-              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3.5" />
+              <Search className="w-3.5 h-3.5 text-[#A8A29E] absolute left-3 top-3 pointer-events-none" />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-3 text-xs text-neutral-400 hover:text-neutral-900"
+                  className="absolute right-3 top-2.5 text-[12px] text-[#666664] hover:text-[#141414]"
                 >
                   Clear
                 </button>
@@ -172,7 +160,7 @@ export function PhoneSelectionModal() {
           </div>
 
           {/* Model List */}
-          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+          <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
             {filteredModels.length > 0 ? (
               filteredModels.map((modelName) => {
                 const isSelected = savedPhone?.model === modelName;
@@ -182,47 +170,43 @@ export function PhoneSelectionModal() {
                     type="button"
                     onClick={() => selectPhone(selectedBrand, modelName)}
                     className={`
-                      w-full min-h-[44px] px-4 py-3 rounded-xl border text-left flex items-center justify-between transition-all text-body-sm font-medium
+                      w-full h-10 px-3.5 rounded-lg border text-left flex items-center justify-between transition-colors text-[13px]
                       ${
                         isSelected
-                          ? 'border-accent bg-accent-light text-neutral-950 font-semibold shadow-2xs'
-                          : 'border-neutral-200/80 bg-white text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50'
+                          ? 'border-[#141414] bg-[#141414] text-white font-semibold'
+                          : 'border-transparent bg-transparent text-[#141414] hover:bg-[#FAFAF9]'
                       }
                     `}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Smartphone className={`w-4 h-4 ${isSelected ? 'text-accent' : 'text-neutral-400'}`} />
+                      <Smartphone className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#A8A29E]'}`} />
                       <span>{modelName}</span>
                     </div>
-                    {isSelected && (
-                      <span className="text-xs text-accent font-semibold flex items-center gap-1">
-                        Active <Check className="w-3.5 h-3.5" />
-                      </span>
-                    )}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                   </button>
                 );
               })
             ) : (
-              <p className="text-xs text-neutral-500 py-4 text-center">
-                No matching models found for &quot;{searchQuery}&quot;.
+              <p className="text-[13px] text-[#666664] py-4 text-center font-normal">
+                No matching models found.
               </p>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 px-6 border-t border-neutral-200 bg-neutral-50 flex items-center justify-between">
+        <div className="p-4 px-6 border-t border-[#E7E5E4] bg-[#FAFAF9] flex items-center justify-between">
           <button
             type="button"
             onClick={skipPhoneSelection}
-            className="text-body-sm text-neutral-500 hover:text-neutral-900 font-medium underline transition-colors min-h-[44px] flex items-center"
+            className="text-[13px] text-[#666664] hover:text-[#141414] transition-colors"
           >
-            Skip for now
+            Skip selection
           </button>
 
-          <p className="text-[11px] text-neutral-400">
-            You can change this anytime from the top bar.
-          </p>
+          <span className="text-[11px] text-[#A8A29E]">
+            Editable anytime
+          </span>
         </div>
       </div>
     </div>

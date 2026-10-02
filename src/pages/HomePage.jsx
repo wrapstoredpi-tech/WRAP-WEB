@@ -3,17 +3,19 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { HeroSection } from '../components/home/HeroSection';
 import { ProductGrid } from '../components/home/ProductGrid';
 import { FilterBottomSheet } from '../components/home/FilterBottomSheet';
-import { PhoneBar } from '../components/layout/PhoneBar';
 import { useProductsContext } from '../context/ProductsContext';
 import { usePhoneContext } from '../context/PhoneContext';
 import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
-import { Smartphone, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { formatINR } from '../../src/lib/currency';
+import { Smartphone, ArrowRight } from 'lucide-react';
 
 const INITIAL_FILTERS = {
   category: 'All',
   category_id: null,
   subcategory: 'All Types',
   subcategory_id: null,
+  brand: 'All Brands',
+  selectedModel: '',
   priceRange: 'All Prices',
   selectedColor: '',
   inStockOnly: false,
@@ -33,7 +35,6 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
 
   const { savedPhone, openPhoneSheet } = usePhoneContext();
 
-  // Filter options
   const filterOptions = useMemo(
     () => deriveFilterOptions(liveProducts, liveCategories, liveSubcategories),
     [liveProducts, liveCategories, liveSubcategories]
@@ -48,19 +49,23 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   useEffect(() => {
     const catQuery = searchParams.get('category');
     const targetCat = catQuery || (activeCategoryNav !== 'New Arrivals' ? activeCategoryNav : 'All');
-    
+
     if (targetCat && targetCat !== 'All') {
       const matched = liveCategories.find((c) => c.name === targetCat);
       setFilters((prev) => ({
         ...prev,
         category: targetCat,
         category_id: matched?.id || null,
+        subcategory: 'All Types',
+        subcategory_id: null,
       }));
     } else {
       setFilters((prev) => ({
         ...prev,
         category: 'All',
         category_id: null,
+        subcategory: 'All Types',
+        subcategory_id: null,
       }));
     }
   }, [searchParams, activeCategoryNav, liveCategories]);
@@ -68,16 +73,35 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   const handleFilterChange = (key, value) => {
     setFilters((prev) => {
       const next = { ...prev, [key]: value };
+
       if (key === 'category') {
-        if (value === 'All') {
+        if (value === 'All' || value === 'All Categories') {
+          next.category = 'All';
           next.category_id = null;
+          next.subcategory = 'All Types';
+          next.subcategory_id = null;
           setSearchParams({});
         } else {
           const matched = liveCategories.find((c) => c.name === value);
+          next.category = value;
           next.category_id = matched?.id || null;
+          next.subcategory = 'All Types';
+          next.subcategory_id = null;
           setSearchParams({ category: value });
         }
       }
+
+      if (key === 'subcategory') {
+        if (value === 'All Types' || value === 'All') {
+          next.subcategory = 'All Types';
+          next.subcategory_id = null;
+        } else {
+          const subObj = liveSubcategories.find((s) => s.name === value);
+          next.subcategory = value;
+          next.subcategory_id = subObj?.id || null;
+        }
+      }
+
       return next;
     });
   };
@@ -88,38 +112,53 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
     setSearchParams({});
   };
 
-  // Helper check for phone compatibility
   const isCompatibleWithPhone = (product, phone) => {
     if (!phone || !phone.model) return true;
     const models = product.compatible_models || [];
     if (models.length === 0 || models.includes('Universal') || product.mobile_brand === 'Universal') {
-      return true; // Accessories & Gadgets with no models always show!
+      return true;
     }
     const target = phone.model.toLowerCase().trim();
     return models.some((m) => m.toLowerCase().trim() === target);
   };
 
-  // Products filtered for "Made for your phone" row
   const madeForYourPhoneProducts = useMemo(() => {
     if (!savedPhone) return [];
-    return liveProducts.filter((p) => {
-      const models = p.compatible_models || [];
-      if (models.length === 0 || models.includes('Universal')) return false; // Show cases only
-      return models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim());
-    }).slice(0, 4);
+    return liveProducts
+      .filter((p) => {
+        const models = p.compatible_models || [];
+        if (models.length === 0 || models.includes('Universal')) return false;
+        return models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim());
+      })
+      .slice(0, 4);
   }, [liveProducts, savedPhone]);
 
-  // Main listing filtered products
   const filteredProducts = useMemo(() => {
     let result = [...liveProducts];
 
-    // Phone compatibility default filter
     if (savedPhone && !showAllDesigns) {
       result = result.filter((p) => isCompatibleWithPhone(p, savedPhone));
     }
 
-    // Category filter
-    if (filters.category !== 'All') {
+    if (filters.brand && filters.brand !== 'All Brands') {
+      result = result.filter(
+        (p) =>
+          p.mobile_brand === filters.brand ||
+          p.mobile_brand === 'Universal' ||
+          (p.compatible_models || []).includes('Universal')
+      );
+    }
+
+    if (filters.selectedModel) {
+      const targetM = filters.selectedModel.toLowerCase().trim();
+      result = result.filter((p) => {
+        const models = p.compatible_models || [];
+        if (models.includes('Universal') || p.mobile_brand === 'Universal') return true;
+        return models.some((m) => m.toLowerCase().trim() === targetM);
+      });
+    }
+
+    if (filters.category !== 'All' && filters.category !== 'All Categories') {
       if (filters.category_id) {
         result = result.filter((p) => p.category_id === filters.category_id);
       } else {
@@ -127,8 +166,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       }
     }
 
-    // Subcategory filter
-    if (filters.subcategory_id || (filters.subcategory && filters.subcategory !== 'All Types')) {
+    if (filters.subcategory_id || (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All')) {
       result = result.filter((p) =>
         filters.subcategory_id
           ? p.subcategory_id === filters.subcategory_id
@@ -136,27 +174,27 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       );
     }
 
-    // Price range
-    if (filters.priceRange !== 'All Prices') {
+    if (filters.priceRange && filters.priceRange !== 'All Prices') {
       const range = PRICE_RANGES.find((r) => r.label === filters.priceRange);
       if (range) {
         result = result.filter((p) => p.selling_price >= range.min && p.selling_price <= range.max);
       }
     }
 
-    // Color tag
     if (filters.selectedColor) {
+      const targetColor = filters.selectedColor.toLowerCase().trim();
       result = result.filter((p) =>
-        p.color_variants?.some((c) => c.toLowerCase() === filters.selectedColor.toLowerCase())
+        p.color_variants?.some((c) => {
+          const name = typeof c === 'string' ? c.trim() : (c?.name || c?.color || String(c)).trim();
+          return name.toLowerCase() === targetColor;
+        })
       );
     }
 
-    // In stock only
     if (filters.inStockOnly) {
       result = result.filter((p) => p.stock_status !== 'OUT_OF_STOCK' && p.available_stock > 0);
     }
 
-    // Sorting
     result.sort((a, b) => {
       if (sortBy === 'price_asc') return a.selling_price - b.selling_price;
       if (sortBy === 'price_desc') return b.selling_price - a.selling_price;
@@ -174,20 +212,30 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
 
   const activeFilterCount = useMemo(() => {
     return [
-      filters.category !== 'All',
-      filters.subcategory_id !== null || filters.subcategory !== 'All Types',
+      filters.category !== 'All' && filters.category !== 'All Categories',
+      Boolean(filters.subcategory_id) || (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All'),
+      filters.brand && filters.brand !== 'All Brands',
+      Boolean(filters.selectedModel),
       filters.priceRange !== 'All Prices',
       Boolean(filters.selectedColor),
       filters.inStockOnly,
     ].filter(Boolean).length;
   }, [filters]);
 
-  return (
-    <div className="flex flex-col min-h-screen bg-base-offwhite">
-      {/* Slim Persistent Phone Bar under Header */}
-      <PhoneBar />
+  const activeSubcategories = useMemo(() => {
+    if (!filters.category_id && filters.category !== 'All') {
+      const found = liveCategories.find((c) => c.name === filters.category);
+      if (found) return filterOptions.subcategoryMap?.[found.id] || [];
+    }
+    if (filters.category_id) {
+      return filterOptions.subcategoryMap?.[filters.category_id] || [];
+    }
+    return [];
+  }, [filters.category_id, filters.category, liveCategories, filterOptions.subcategoryMap]);
 
-      {/* Hero Banner Section */}
+  return (
+    <div className="flex flex-col min-h-screen bg-[#FAFAF9]">
+      {/* Full-bleed Hero Banner Section */}
       <HeroSection
         onShopClick={(cat) => {
           handleFilterChange('category', cat || 'All');
@@ -197,72 +245,140 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
         }}
       />
 
-      <div className="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 w-full">
+      <div className="max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12 py-10 sm:py-16 space-y-16 w-full">
         
-        {/* Category Tiles (Real categories from Supabase) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-body font-semibold text-neutral-900">Explore Categories</h2>
+        {/* ── Section 1: Explore Collections (Quiet, Photography-forward) ──── */}
+        <section className="space-y-6">
+          <div className="flex items-baseline justify-between border-b border-[#E7E5E4] pb-4">
+            <div>
+              <h2 className="text-[22px] sm:text-[24px] font-semibold text-[#141414] tracking-tight">
+                Collections
+              </h2>
+              <p className="text-[13px] text-[#666664] font-normal mt-0.5">
+                Thoughtful protection &amp; objects for daily carry
+              </p>
+            </div>
+            <span className="text-[12px] text-[#A8A29E] font-normal">
+              {liveCategories.length} categories
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {liveCategories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => handleFilterChange('category', cat.name)}
-                className={`p-4 sm:p-5 rounded-2xl border text-left flex flex-col justify-between min-h-[110px] transition-all ${
-                  filters.category === cat.name
-                    ? 'border-neutral-900 bg-neutral-900 text-white shadow-sm'
-                    : 'border-neutral-200/90 bg-white text-neutral-900 hover:border-neutral-400'
-                }`}
-              >
-                <span className="text-xs uppercase tracking-wide font-semibold text-neutral-400">Category</span>
-                <div className="flex items-center justify-between w-full pt-2">
-                  <span className="text-body font-semibold">{cat.name}</span>
-                  <ArrowRight className="w-4 h-4 opacity-60" />
-                </div>
-              </button>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {/* All Products Tile */}
+            <button
+              type="button"
+              onClick={() => {
+                handleFilterChange('category', 'All');
+                if (productSectionRef.current) {
+                  productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className={`group p-5 rounded-lg border text-left flex flex-col justify-between min-h-[110px] transition-colors ${
+                filters.category === 'All'
+                  ? 'border-[#141414] bg-[#141414] text-white shadow-sm'
+                  : 'border-[#E7E5E4] bg-white text-[#141414] hover:border-[#141414]'
+              }`}
+            >
+              <div className="flex items-start justify-between w-full">
+                <span className={`text-[11px] font-semibold uppercase tracking-tight ${filters.category === 'All' ? 'text-[#D6D3D1]' : 'text-[#666664]'}`}>
+                  Catalog
+                </span>
+                <span className={`text-[12px] ${filters.category === 'All' ? 'text-[#A8A29E]' : 'text-[#A8A29E]'}`}>
+                  {liveProducts.length}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between w-full pt-4">
+                <span className="text-[15px] font-semibold">All Objects</span>
+                <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </button>
+
+            {/* Individual Category Tiles */}
+            {liveCategories.map((cat) => {
+              const isSelected = filters.category === cat.name;
+              const count = liveProducts.filter((p) => p.category === cat.name).length;
+
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    handleFilterChange('category', cat.name);
+                    if (productSectionRef.current) {
+                      productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className={`group p-5 rounded-lg border text-left flex flex-col justify-between min-h-[110px] transition-colors ${
+                    isSelected
+                      ? 'border-[#141414] bg-[#141414] text-white shadow-sm'
+                      : 'border-[#E7E5E4] bg-white text-[#141414] hover:border-[#141414]'
+                  }`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <span className={`text-[11px] font-semibold uppercase tracking-tight ${isSelected ? 'text-[#D6D3D1]' : 'text-[#666664]'}`}>
+                      Category
+                    </span>
+                    {count > 0 && (
+                      <span className={`text-[12px] ${isSelected ? 'text-[#A8A29E]' : 'text-[#A8A29E]'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between w-full pt-4">
+                    <span className="text-[15px] font-semibold">{cat.name}</span>
+                    <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        {/* "Made for your phone" row (Only if phone is saved) */}
+        {/* ── Section 2: "Made for your phone" row (If phone is saved) ────── */}
         {savedPhone && madeForYourPhoneProducts.length > 0 && (
-          <section className="p-6 bg-neutral-900 text-white rounded-2xl space-y-4 shadow-sm">
+          <section className="p-6 sm:p-8 bg-[#141414] text-white rounded-lg space-y-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-md bg-white/10 flex items-center justify-center text-white">
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-body font-semibold text-white">Made for your {savedPhone.model}</h3>
-                  <p className="text-xs text-neutral-400">Guaranteed precise fit &amp; cutouts</p>
+                  <h3 className="text-[16px] font-semibold text-white">Fitted for your {savedPhone.model}</h3>
+                  <p className="text-[12px] text-[#A8A29E] font-normal">Precision cutouts and verified geometry</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={openPhoneSheet}
-                className="text-xs text-accent hover:text-white font-semibold underline"
+                className="text-[13px] text-[#D6D3D1] hover:text-white font-normal underline transition-colors"
               >
-                Change Phone
+                Change
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
               {madeForYourPhoneProducts.map((p) => (
                 <div
                   key={p.id}
                   onClick={() => navigate(`/product/${p.id}`)}
-                  className="bg-neutral-800 rounded-xl p-3 cursor-pointer hover:bg-neutral-750 transition-colors flex flex-col justify-between space-y-2 border border-neutral-700"
+                  className="bg-[#262624] rounded-lg p-3 cursor-pointer hover:bg-[#383836] transition-colors flex flex-col justify-between space-y-2 border border-[#383836]"
                 >
-                  <div className="aspect-[4/5] rounded-lg overflow-hidden bg-neutral-900">
-                    <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                  <div className="aspect-[4/5] rounded-md overflow-hidden bg-[#141414]">
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
                   <div>
-                    <h4 className="text-body-sm font-semibold text-white line-clamp-1">{p.name}</h4>
-                    <p className="text-xs text-neutral-300 font-medium pt-0.5">₹{p.selling_price.toLocaleString()}</p>
+                    <h4 className="text-[13px] font-semibold text-white line-clamp-1">{p.name}</h4>
+                    <p className="text-[13px] text-[#D6D3D1] font-normal pt-0.5">
+                      {formatINR(p.selling_price)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -270,49 +386,88 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
           </section>
         )}
 
-        {/* Main Product Listing Section */}
-        <section ref={productSectionRef} className="space-y-6 pt-4">
-          {/* Horizontal Category Tab Row */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 border-b border-neutral-200">
-            <button
-              type="button"
-              onClick={() => handleFilterChange('category', 'All')}
-              className={`min-h-[44px] px-5 py-2.5 rounded-xl font-semibold text-body-sm shrink-0 transition-colors ${
-                filters.category === 'All'
-                  ? 'bg-neutral-900 text-white'
-                  : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400'
-              }`}
-            >
-              All Designs
-            </button>
+        {/* ── Section 3: Main Product Listing ─────────────────────────────── */}
+        <section ref={productSectionRef} className="space-y-6 pt-2">
+          {/* Horizontal Category Navigation Tabs Bar */}
+          <div className="space-y-3 pb-2">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+              <button
+                type="button"
+                onClick={() => handleFilterChange('category', 'All')}
+                className={`h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
+                  filters.category === 'All'
+                    ? 'bg-[#141414] text-white'
+                    : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
+                }`}
+              >
+                All Objects
+              </button>
 
-            {liveCategories.map((cat) => {
-              const isSelected = filters.category === cat.name;
-              return (
+              {liveCategories.map((cat) => {
+                const isSelected = filters.category === cat.name;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleFilterChange('category', cat.name)}
+                    className={`h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
+                      isSelected
+                        ? 'bg-[#141414] text-white'
+                        : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Subcategory Chips Row */}
+            {activeSubcategories.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
                 <button
-                  key={cat.id}
                   type="button"
-                  onClick={() => handleFilterChange('category', cat.name)}
-                  className={`min-h-[44px] px-5 py-2.5 rounded-xl font-semibold text-body-sm shrink-0 transition-colors ${
-                    isSelected
-                      ? 'bg-neutral-900 text-white'
-                      : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400'
+                  onClick={() => handleFilterChange('subcategory', 'All Types')}
+                  className={`h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
+                    !filters.subcategory_id || filters.subcategory === 'All Types'
+                      ? 'bg-[#141414] text-white font-semibold'
+                      : 'bg-white text-[#666664] border border-[#E7E5E4] hover:border-[#D6D3D1]'
                   }`}
                 >
-                  {cat.name}
+                  All Sub-types
                 </button>
-              );
-            })}
+                {activeSubcategories.map((sub) => {
+                  const isSubSelected = filters.subcategory_id === sub.id || filters.subcategory === sub.name;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => handleFilterChange('subcategory', sub.name)}
+                      className={`h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
+                        isSubSelected
+                          ? 'bg-[#141414] text-white font-semibold'
+                          : 'bg-white text-[#666664] border border-[#E7E5E4] hover:border-[#D6D3D1]'
+                      }`}
+                    >
+                      {sub.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Product Grid Component */}
+          {/* Product Grid */}
           <ProductGrid
             products={filteredProducts}
+            totalAllProducts={liveProducts.length}
             isLoading={isLoading}
             sortBy={sortBy}
             onSortChange={setSortBy}
             onOpenMobileFilters={() => setIsFilterSheetOpen(true)}
             activeFilterCount={activeFilterCount}
+            filters={filters}
+            onFilterChange={handleFilterChange}
             onResetFilters={handleResetFilters}
             onAddToCart={onAddToCart}
             showAllToggle={Boolean(savedPhone)}
@@ -322,7 +477,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
         </section>
       </div>
 
-      {/* Filter Bottom Sheet Modal */}
+      {/* Filter Bottom Sheet / Modal */}
       <FilterBottomSheet
         isOpen={isFilterSheetOpen}
         onClose={() => setIsFilterSheetOpen(false)}
@@ -330,6 +485,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
         onFilterChange={handleFilterChange}
         onResetFilters={handleResetFilters}
         filterOptions={filterOptions}
+        products={liveProducts}
         totalResultsCount={filteredProducts.length}
       />
     </div>

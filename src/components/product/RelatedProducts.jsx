@@ -13,7 +13,6 @@ export function RelatedProducts({ currentProductId, category, currentProduct, on
 
     const candidates = products.filter((p) => p.id !== currentProductId && p.product_id !== currentProductId);
 
-    // Sort: same subcategory first, then same category
     candidates.sort((a, b) => {
       const aSub = a.subcategory === currentSubcategory ? 2 : a.category === currentCategory ? 1 : 0;
       const bSub = b.subcategory === currentSubcategory ? 2 : b.category === currentCategory ? 1 : 0;
@@ -26,14 +25,14 @@ export function RelatedProducts({ currentProductId, category, currentProduct, on
   if (related.length === 0) return null;
 
   return (
-    <section className="pt-12 sm:pt-16 border-t border-neutral-200">
+    <section className="pt-12 sm:pt-16 border-t border-[#E7E5E4]">
       <div className="space-y-6">
         <div>
-          <span className="text-xs uppercase font-semibold text-neutral-500 tracking-wide">
-            Curated Recommendations
+          <span className="text-[12px] uppercase font-semibold text-[#A8A29E] tracking-tight block mb-1">
+            Related
           </span>
-          <h2 className="text-display font-semibold text-neutral-900 tracking-tight">
-            You May Also Like
+          <h2 className="text-[22px] sm:text-[24px] font-semibold text-[#141414] tracking-tight">
+            Complementary Objects
           </h2>
         </div>
 

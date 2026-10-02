@@ -1,15 +1,12 @@
 import React from 'react';
 
 /**
- * Official WrapStore Logo Component
- * Renders the two-tone bordered box logo:
+ * WrapStore Official Identity Logo
+ * 
+ * Exact vector rendition of the WrapStore logo:
  * - Outer rectangular border
- * - Solid black left half with white "WRAP"
- * - White right half with black "STORE"
- *
- * @param {'default' | 'inverted' | 'monochrome'} variant
- * @param {'sm' | 'md' | 'lg' | 'xl'} size
- * @param {string} className
+ * - Solid inverted "WRAP" block on the left
+ * - Crisp "STORE" typography on the right
  */
 export function Logo({
   variant = 'default',
@@ -17,76 +14,82 @@ export function Logo({
   className = '',
   ...props
 }) {
-  const sizeStyles = {
+  const isLight = variant === 'inverted';
+
+  // Sizing maps for height classes
+  const sizeClasses = {
     sm: 'h-6',
     md: 'h-7 sm:h-8',
     lg: 'h-9 sm:h-10',
-    xl: 'h-12',
+    xl: 'h-11 sm:h-12',
   };
 
-  const isLight = variant === 'inverted';
+  const currentHeight = sizeClasses[size] || sizeClasses.md;
+
+  const primaryColor = isLight ? '#FFFFFF' : '#141414';
+  const contrastTextColor = isLight ? '#141414' : '#FFFFFF';
 
   return (
-    <svg
-      viewBox="0 0 260 74"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`
-        inline-block shrink-0 w-auto select-none transition-transform duration-200
-        ${sizeStyles[size] || sizeStyles.md}
-        ${className}
-      `}
+    <div
+      className={`inline-flex items-center select-none ${className}`}
       aria-label="WRAPSTORE"
       {...props}
     >
-      {/* Outer Border Frame */}
-      <rect
-        x="3"
-        y="3"
-        width="254"
-        height="68"
-        fill={isLight ? '#111111' : '#FFFFFF'}
-        stroke={isLight ? '#FFFFFF' : '#000000'}
-        strokeWidth="4.5"
-      />
-
-      {/* Left Solid Box */}
-      <rect
-        x="8.5"
-        y="8.5"
-        width="118"
-        height="57"
-        fill={isLight ? '#FFFFFF' : '#000000'}
-      />
-
-      {/* "WRAP" Text */}
-      <text
-        x="67.5"
-        y="47.5"
-        fill={isLight ? '#000000' : '#FFFFFF'}
-        fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        fontSize="27"
-        fontWeight="600"
-        letterSpacing="2.5"
-        textAnchor="middle"
+      <svg
+        viewBox="0 0 250 68"
+        className={`${currentHeight} w-auto transition-transform duration-150`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        WRAP
-      </text>
+        {/* Outer Rectangular Border */}
+        <rect
+          x="2"
+          y="2"
+          width="246"
+          height="64"
+          stroke={primaryColor}
+          strokeWidth="3.5"
+          fill="none"
+        />
 
-      {/* "STORE" Text */}
-      <text
-        x="187"
-        y="47.5"
-        fill={isLight ? '#FFFFFF' : '#000000'}
-        fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        fontSize="27"
-        fontWeight="800"
-        letterSpacing="2.5"
-        textAnchor="middle"
-      >
-        STORE
-      </text>
-    </svg>
+        {/* Left Solid Block for "WRAP" */}
+        <rect
+          x="9"
+          y="9"
+          width="114"
+          height="50"
+          fill={primaryColor}
+        />
+
+        {/* "WRAP" Inverted Text */}
+        <text
+          x="66"
+          y="43"
+          fill={contrastTextColor}
+          fontFamily="Poppins, sans-serif"
+          fontSize="24"
+          fontWeight="600"
+          letterSpacing="0.1em"
+          textAnchor="middle"
+        >
+          WRAP
+        </text>
+
+        {/* "STORE" Text on the right */}
+        <text
+          x="184"
+          y="43"
+          fill={primaryColor}
+          fontFamily="Poppins, sans-serif"
+          fontSize="24"
+          fontWeight="600"
+          letterSpacing="0.12em"
+          textAnchor="middle"
+        >
+          STORE
+        </text>
+      </svg>
+    </div>
   );
 }
 

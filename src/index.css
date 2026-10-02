@@ -4,30 +4,46 @@
 
 @layer base {
   :root {
-    --color-bg-base: #FAFAF8;
-    --color-text-charcoal: #111111;
-    --color-text-muted: #737373;
-    --color-accent: #C7622D;
+    --color-bg-base: #FAFAF9;
+    --color-bg-surface: #FFFFFF;
+    --color-text-primary: #141414;
+    --color-text-muted: #666664;
+    --color-border: #E7E5E4;
+    --color-accent: #9E381A;
+    --color-accent-hover: #832C13;
+    --color-accent-tint: #F8EBE7;
+    --color-accent-border: #ECCEC5;
+  }
+
+  * {
+    border-color: #E7E5E4;
   }
 
   html {
-    background-color: #FAFAF8;
-    color: #111111;
+    background-color: #FAFAF9;
+    color: #141414;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 400;
   }
 
   body {
     min-height: 100vh;
     overflow-x: hidden;
-    background-color: #FAFAF8;
-    color: #111111;
+    background-color: #FAFAF9;
+    color: #141414;
+    font-family: 'Poppins', sans-serif;
   }
 
   /* Accessible visible focus states */
   :focus-visible {
-    outline: 2px solid #111111;
+    outline: 2px solid #141414;
     outline-offset: 2px;
+  }
+
+  /* Strict typography weight enforcement (400 and 600 only) */
+  h1, h2, h3, h4, h5, h6, strong, b, th {
+    font-weight: 600;
   }
 
   /* Reduced motion for accessibility */

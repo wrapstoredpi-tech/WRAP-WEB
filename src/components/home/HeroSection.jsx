@@ -1,141 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import React from 'react';
+import { ArrowRight, Smartphone } from 'lucide-react';
 import { usePhoneContext } from '../../context/PhoneContext';
 
-const HERO_SLIDES = [
-  {
-    id: 1,
-    category: 'All',
-    tag: 'Crafted Precision',
-    headline: 'Cases Designed for Precision & Protection',
-    subline: 'Lightweight, ultra-durable materials built specifically for your device.',
-    cta: 'Explore Collection',
-    image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 2,
-    category: 'Phone Cases',
-    tag: 'Minimalist Carry',
-    headline: 'Protection Without the Bulk',
-    subline: 'Engineered with soft tactile feel, precise camera cutouts, and drop defense.',
-    cta: 'Shop Phone Cases',
-    image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 3,
-    category: 'Accessories',
-    tag: 'Daily Essentials',
-    headline: 'Minimal Accessories for Desk & Pocket',
-    subline: 'Elevate your daily carry setup with curated protective accessories.',
-    cta: 'View Accessories',
-    image: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=1200&q=80',
-  },
-];
-
 export function HeroSection({ onShopClick }) {
-  const [currentSlide, setCurrentSlide] = useState(0);
   const { savedPhone, openPhoneSheet } = usePhoneContext();
 
-  // Slow 5-second carousel auto-play
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const activeSlide = HERO_SLIDES[currentSlide];
-
   return (
-    <section className="w-full bg-base-offwhite border-b border-neutral-200">
-      <div className="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-        <div className="relative rounded-2xl overflow-hidden bg-neutral-900 text-white min-h-[380px] sm:min-h-[440px] flex flex-col justify-end p-6 sm:p-12 shadow-sm">
+    <section className="relative w-full bg-[#141414] text-white overflow-hidden border-b border-[#262624]">
+      {/* Background: Quiet, ultra-premium directional dark gradient with subtle ambient lighting */}
+      <div 
+        className="absolute inset-0 z-0 bg-gradient-to-br from-[#1E1E1C] via-[#141414] to-[#0D0D0D]"
+        aria-hidden="true"
+      >
+        {/* Soft directional ambient light pool from top-right */}
+        <div 
+          className="absolute -top-24 -right-24 w-96 h-96 sm:w-[500px] sm:h-[500px] rounded-full bg-white/[0.03] blur-3xl pointer-events-none"
+        />
+        {/* Subtle subtle linear grid/glow */}
+        <div 
+          className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(255,255,255,0.05),transparent)] pointer-events-none"
+        />
+      </div>
+
+      {/* Hero Content: Constrained reading column inside full-bleed canvas */}
+      <div className="relative z-10 w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 md:py-28 flex flex-col justify-center">
+        <div className="max-w-[600px] space-y-4 sm:space-y-5">
           
-          {/* Background Image with Fixed Aspect Ratio overlay */}
-          <div className="absolute inset-0 z-0">
-            <img
-              src={activeSlide.image}
-              alt={activeSlide.headline}
-              className="w-full h-full object-cover opacity-45 transition-opacity duration-500"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/60 to-transparent" />
+          {/* Small-caps, letter-spaced, muted kicker */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-[12px] uppercase font-semibold text-[#A8A29E] tracking-[0.12em]">
+              EVERYDAY CARRY
+            </span>
+            {savedPhone && (
+              <>
+                <span className="text-white/20 text-[12px]">•</span>
+                <span className="text-[12px] text-[#D6D3D1] bg-white/10 px-2.5 py-0.5 rounded-lg font-normal border border-white/10">
+                  Fitted for {savedPhone.model}
+                </span>
+              </>
+            )}
           </div>
 
-          {/* Hero Content */}
-          <div className="relative z-10 max-w-xl space-y-3 sm:space-y-4">
-            <div className="inline-flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wide font-semibold text-accent bg-neutral-900/80 px-2.5 py-1 rounded-md border border-accent/30">
-                {activeSlide.tag}
-              </span>
-              {savedPhone && (
-                <span className="text-xs text-neutral-300 bg-neutral-800/80 px-2.5 py-1 rounded-md">
-                  For {savedPhone.model}
-                </span>
-              )}
-            </div>
+          {/* Poppins Semibold Display Headline (36-44px desktop / 28-32px mobile) */}
+          <h1 className="text-[28px] sm:text-[36px] md:text-[42px] font-semibold text-white tracking-[-0.03em] leading-[1.15]">
+            Cases Engineered for Precision &amp; Defense
+          </h1>
 
-            <h1 className="text-display font-semibold tracking-tight text-white leading-tight">
-              {activeSlide.headline}
-            </h1>
+          {/* Regular weight, body size, muted subtext */}
+          <p className="text-[14px] sm:text-[15px] font-normal text-[#A8A29E] leading-relaxed max-w-[540px]">
+            Low-profile protective structures crafted from tactile materials. Precision cutouts and verified geometry for seamless daily carry.
+          </p>
 
-            <p className="text-body-sm sm:text-body text-neutral-300 line-clamp-2 max-w-lg">
-              {activeSlide.subline}
-            </p>
+          {/* Action Buttons: 10px radius, 46px height, 1.5x padding rhythm */}
+          <div className="pt-2 sm:pt-3 flex flex-col min-[480px]:flex-row items-stretch min-[480px]:items-center gap-3">
+            <button
+              type="button"
+              onClick={() => onShopClick && onShopClick('All')}
+              className="group h-[46px] px-6 py-3 rounded-lg bg-[#9E381A] hover:bg-[#882F15] text-white font-semibold text-[14px] flex items-center justify-center gap-2 transition-colors duration-200 focus-visible:outline-white"
+            >
+              <span>Explore Catalog</span>
+              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </button>
 
-            <div className="pt-2 flex items-center gap-3">
+            {!savedPhone ? (
               <button
                 type="button"
-                onClick={() => onShopClick && onShopClick(activeSlide.category)}
-                className="min-h-[44px] px-6 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-body-sm flex items-center gap-2 transition-colors shadow-xs"
+                onClick={openPhoneSheet}
+                className="h-[46px] px-6 py-3 rounded-lg bg-white/10 hover:bg-white/15 text-white font-normal text-[14px] border border-white/10 transition-colors duration-200 flex items-center justify-center gap-2 focus-visible:outline-white"
               >
-                <span>{activeSlide.cta}</span>
-                <ArrowRight className="w-4 h-4" />
+                <Smartphone className="w-4 h-4 text-[#A8A29E]" />
+                <span>Select Your Phone</span>
               </button>
-
-              {!savedPhone && (
-                <button
-                  type="button"
-                  onClick={openPhoneSheet}
-                  className="min-h-[44px] px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-body-sm backdrop-blur-xs transition-colors hidden sm:block"
-                >
-                  Find for my phone
-                </button>
-              )}
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={openPhoneSheet}
+                className="h-[46px] px-5 py-3 rounded-lg bg-transparent hover:bg-white/5 text-[#A8A29E] hover:text-white font-normal text-[13px] transition-colors duration-200 flex items-center justify-center gap-1.5 focus-visible:outline-white"
+              >
+                <span>Change ({savedPhone.model})</span>
+              </button>
+            )}
           </div>
 
-          {/* Carousel Controls */}
-          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentSlide((prev) => (prev === 0 ? HERO_SLIDES.length - 1 : prev - 1))}
-              className="w-10 h-10 rounded-full bg-neutral-900/80 hover:bg-neutral-900 text-white flex items-center justify-center border border-neutral-700 transition-colors"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex gap-1.5 px-2">
-              {HERO_SLIDES.map((slide, idx) => (
-                <button
-                  key={slide.id}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    idx === currentSlide ? 'w-6 bg-accent' : 'w-1.5 bg-white/40'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
-              className="w-10 h-10 rounded-full bg-neutral-900/80 hover:bg-neutral-900 text-white flex items-center justify-center border border-neutral-700 transition-colors"
-              aria-label="Next slide"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
     </section>

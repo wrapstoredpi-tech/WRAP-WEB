@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Smartphone, ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
+import { formatINR } from '../../lib/currency';
+import { ColorSwatch } from '../ui/ColorSwatch';
+import { useProductColors } from '../../lib/colorExtraction';
 
 export function ProductCard({ product, onAddToCart }) {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { savedPhone } = usePhoneContext();
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Auto-fetch priority: 1) DB color_variants, 2) Auto-detect from primary image, 3) None
+  const colors = useProductColors(product);
 
   if (!product) return null;
 
@@ -41,15 +47,14 @@ export function ProductCard({ product, onAddToCart }) {
   return (
     <div
       onClick={handleCardClick}
-      className="group relative cursor-pointer bg-white rounded-2xl border border-neutral-200/80 hover:border-neutral-900 transition-all duration-200 flex flex-col overflow-hidden shadow-xs hover:shadow-md"
+      className="group relative cursor-pointer bg-white rounded-lg border border-[#E7E5E4] hover:border-[#141414] transition-colors duration-150 flex flex-col overflow-hidden shadow-sm"
       role="article"
       aria-label={`${product.name}, Price ₹${product.selling_price}`}
     >
-      {/* Aspect Ratio Container for Image (No layout shift) */}
-      <div className="relative aspect-[4/5] w-full bg-neutral-100 overflow-hidden">
-        {/* Loading skeleton placeholder before image loads */}
+      {/* 4:5 Aspect Ratio Locked Container (No Layout Shift) */}
+      <div className="relative aspect-[4/5] w-full bg-[#F5F5F4] overflow-hidden">
         {!imageLoaded && (
-          <div className="absolute inset-0 bg-neutral-200 animate-pulse" />
+          <div className="absolute inset-0 bg-[#E7E5E4]/50 animate-pulse" />
         )}
 
         <img
@@ -57,74 +62,90 @@ export function ProductCard({ product, onAddToCart }) {
           alt={product.name}
           onLoad={() => setImageLoaded(true)}
           className={`
-            w-full h-full object-cover transition-transform duration-300 group-hover:scale-105
-            ${isOutOfStock ? 'grayscale opacity-60' : ''}
+            w-full h-full object-cover transition-opacity duration-200
+            ${isOutOfStock ? 'grayscale opacity-50' : ''}
             ${imageLoaded ? 'opacity-100' : 'opacity-0'}
           `}
           loading="lazy"
         />
 
-        {/* Top Badges */}
+        {/* Quiet Top Badges */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-1 pointer-events-none z-10">
           <div className="flex flex-col gap-1 items-start">
             {isOutOfStock ? (
-              <span className="text-[11px] font-semibold bg-neutral-900 text-white px-2 py-0.5 rounded-md">
-                Out of Stock
+              <span className="text-[11px] font-semibold bg-[#141414]/90 text-white px-2 py-0.5 rounded-md">
+                Sold out
               </span>
             ) : isLowStock ? (
-              <span className="text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md">
-                Only {product.available_stock} left
+              <span className="text-[11px] font-semibold bg-[#F8EBE7] text-[#9E381A] border border-[#ECCEC5] px-2 py-0.5 rounded-md">
+                {product.available_stock} remaining
               </span>
             ) : null}
 
             {hasDiscount && (
-              <span className="text-[11px] font-semibold bg-accent text-white px-2 py-0.5 rounded-md">
-                {product.discount_percentage}% OFF
+              <span className="text-[11px] font-semibold bg-[#F5F5F4] text-[#141414] border border-[#E7E5E4] px-1.5 py-0.5 rounded-md">
+                -{product.discount_percentage}%
               </span>
             )}
           </div>
 
           {savedPhone && isCompatible && (
-            <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
-              <Smartphone className="w-3 h-3" />
-              Fits your phone
+            <span className="text-[11px] font-normal bg-white/90 text-[#141414] border border-[#E7E5E4] px-2 py-0.5 rounded-md backdrop-blur-xs">
+              Fits {savedPhone.model.replace(/^iPhone\s+/i, '')}
             </span>
           )}
         </div>
 
-        {/* Quick Add Button overlay */}
+        {/* Quiet Quick Add Action */}
         {!isOutOfStock && (
           <button
             type="button"
             onClick={handleQuickAdd}
-            className="absolute bottom-3 right-3 min-h-[44px] min-w-[44px] rounded-xl bg-neutral-900 hover:bg-accent text-white flex items-center justify-center shadow-md transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+            className="absolute bottom-2.5 right-2.5 w-9 h-9 rounded-lg bg-[#141414] hover:bg-[#262624] text-white flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shadow-sm"
             aria-label={`Add ${product.name} to bag`}
           >
-            <ShoppingBag className="w-4 h-4" />
+            <ShoppingBag className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
       {/* Card Info Details */}
       <div className="p-3.5 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
-        <div>
-          <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">
+        <div className="space-y-0.5">
+          <span className="text-[12px] font-normal text-[#666664]">
             {product.category}
           </span>
-          <h3 className="text-body-sm font-semibold text-neutral-900 line-clamp-1 group-hover:text-accent transition-colors">
+          <h3 className="text-[14px] font-semibold text-[#141414] line-clamp-1">
             {product.name}
           </h3>
         </div>
 
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-body-sm font-semibold text-neutral-900">
-            ₹{product.selling_price.toLocaleString()}
-          </span>
-
-          {hasDiscount && (
-            <span className="text-xs text-neutral-400 line-through">
-              ₹{product.mrp.toLocaleString()}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[14px] font-semibold text-[#141414]">
+              {formatINR(product.selling_price)}
             </span>
+
+            {hasDiscount && (
+              <span className="text-[12px] text-[#A8A29E] font-normal line-through">
+                {formatINR(product.mrp)}
+              </span>
+            )}
+          </div>
+
+          {/* Informational Color Swatches (Non-interactive) */}
+          {colors && colors.length > 0 && (
+            <div className="flex items-center gap-1 shrink-0" title={`Colours: ${colors.join(', ')}`}>
+              <ColorSwatch
+                colors={colors.slice(0, 3)}
+                size="xs"
+              />
+              {colors.length > 3 && (
+                <span className="text-[11px] text-[#666664] font-normal">
+                  +{colors.length - 3}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>

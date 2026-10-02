@@ -9,8 +9,7 @@ import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
-import { MiniCartDrawer } from './components/cart/MiniCartDrawer';
-import { CartProvider, useCart } from './context/CartContext';
+import { CartProvider } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { PhoneProvider } from './context/PhoneContext';
 import { Check, X } from 'lucide-react';
@@ -18,15 +17,12 @@ import { Check, X } from 'lucide-react';
 function AppContent() {
   const [activeCategoryNav, setActiveCategoryNav] = useState('All');
   const [toastMessage, setToastMessage] = useState(null);
-  const { openMiniCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleAddToCartFeedback = (product, quantity = 1) => {
-    setToastMessage(`Added ${quantity > 1 ? `(${quantity}) ` : ''}"${product.name}" to your bag.`);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3200);
+  const handleAddToCart = (product, quantity = 1) => {
+    // Navigate directly to the full /cart page on add to bag
+    navigate('/cart');
   };
 
   const handleCategoryNavSelect = (categoryName) => {
@@ -37,15 +33,15 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-base-offwhite text-neutral-900 font-sans selection:bg-accent-light selection:text-accent">
+    <div className="min-h-screen flex flex-col bg-base text-neutral-900 font-sans selection:bg-neutral-200 selection:text-neutral-900">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 text-base-offwhite px-4 py-3 shadow-2xl border border-neutral-700 flex items-center gap-3 animate-slide-down rounded-xl">
+        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 text-white px-4 py-3 shadow-modal border border-neutral-800 flex items-center gap-3 animate-fade-in rounded-lg">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-body-sm font-medium">{toastMessage}</span>
+          <span className="text-body font-medium">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            className="ml-2 text-neutral-400 hover:text-white"
+            className="ml-2 text-neutral-400 hover:text-white transition-colors"
             aria-label="Dismiss message"
           >
             <X className="w-3.5 h-3.5" />
@@ -53,15 +49,11 @@ function AppContent() {
         </div>
       )}
 
-      {/* Sticky Header with Context Cart Badge & Drawer Trigger */}
+      {/* Sticky Header with Bag Counter Link to /cart */}
       <Header
         activeCategory={activeCategoryNav}
         onCategorySelect={handleCategoryNavSelect}
-        onCartClick={openMiniCart}
       />
-
-      {/* Global Slide-out Mini-Cart Drawer */}
-      <MiniCartDrawer />
 
       {/* Global Phone Selection Modal */}
       <PhoneSelectionModal />
@@ -72,7 +64,7 @@ function AppContent() {
           path="/"
           element={
             <HomePage
-              onAddToCart={handleAddToCartFeedback}
+              onAddToCart={handleAddToCart}
               activeCategoryNav={activeCategoryNav}
             />
           }
@@ -81,7 +73,7 @@ function AppContent() {
           path="/product/:id"
           element={
             <ProductDetailPage
-              onAddToCart={handleAddToCartFeedback}
+              onAddToCart={handleAddToCart}
             />
           }
         />
@@ -127,10 +119,10 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '40px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#111111' }}>
-          <h1 style={{ color: '#dc2626', fontSize: '24px', fontWeight: 'bold' }}>Application Render Error</h1>
+        <div style={{ padding: '40px', fontFamily: 'Poppins, sans-serif', backgroundColor: '#FAFAF9', color: '#141414' }}>
+          <h1 style={{ color: '#9E381A', fontSize: '24px', fontWeight: 600 }}>Application Render Error</h1>
           <p style={{ marginTop: '12px' }}><strong>Error:</strong> {this.state.error && this.state.error.toString()}</p>
-          <pre style={{ marginTop: '16px', backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '6px', overflow: 'auto', border: '1px solid #d1d5db', fontSize: '13px' }}>
+          <pre style={{ marginTop: '16px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '10px', overflow: 'auto', border: '1px solid #E7E5E4', fontSize: '13px' }}>
             {this.state.errorInfo && this.state.errorInfo.componentStack}
           </pre>
         </div>

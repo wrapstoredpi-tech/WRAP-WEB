@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Logo } from '../ui/Logo';
+import { useProductsContext } from '../../context/ProductsContext';
 
 export function Footer() {
+  const { categories = [] } = useProductsContext();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -18,34 +21,32 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-neutral-100 border-t border-neutral-200 mt-24 text-neutral-900">
-      <div className="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-16 pb-12">
-        {/* Top Section: Editorial Newsletter & Brand Premise */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pb-16 border-b border-neutral-200">
-          <div className="lg:col-span-6 space-y-4">
-            <span className="text-metadata uppercase text-neutral-500 font-semibold tracking-editorial">
-              Newsletter & Releases
-            </span>
-            <h3 className="font-sans font-medium text-h2 text-neutral-900 tracking-tight">
-              Quiet design. Intentional craft.
-            </h3>
-            <p className="text-body text-neutral-500 max-w-md">
-              Receive limited run notifications, material field notes, and private archive sales directly to your inbox.
+    <footer className="bg-white border-t border-[#E7E5E4] mt-24 text-[#141414]">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
+        {/* Main Footer Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 pb-14 border-b border-[#E7E5E4]">
+          
+          {/* Brand Premise & Newsletter (5 Cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            <Logo size="md" />
+            
+            <p className="text-body text-[#666664] max-w-sm pt-1 leading-relaxed">
+              Quiet design and intentional craft. Low-profile protective structures and daily carry essentials.
             </p>
 
-            {/* Newsletter Form */}
-            <form onSubmit={handleSubscribe} className="pt-2 max-w-md">
-              <div className="flex flex-col sm:flex-row gap-2.5">
+            {/* Newsletter Subscription */}
+            <div className="pt-2 max-w-sm space-y-2">
+              <span className="text-[12px] uppercase font-semibold text-[#666664] tracking-wider block">
+                Stay in the loop
+              </span>
+              <form onSubmit={handleSubscribe} className="flex gap-2">
                 <input
                   type="email"
                   required
-                  placeholder="Enter your email address"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="
-                    flex-1 bg-base-offwhite border border-neutral-300 px-4 py-3 text-body-sm
-                    text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-accent
-                  "
+                  className="flex-1 bg-[#FAFAF9] border border-[#E7E5E4] rounded-lg px-3.5 py-2.5 text-body text-[#141414] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#141414] transition-colors"
                 />
                 <Button
                   type="submit"
@@ -53,75 +54,119 @@ export function Footer() {
                   size="md"
                   rightIcon={subscribed ? <Check className="w-4 h-4 text-emerald-400" /> : <ArrowRight className="w-4 h-4" />}
                 >
-                  {subscribed ? 'Subscribed' : 'Join'}
+                  {subscribed ? 'Joined' : 'Subscribe'}
                 </Button>
-              </div>
+              </form>
               {subscribed && (
-                <p className="text-body-sm text-accent mt-2 animate-fade-in font-medium">
-                  Welcome to the WrapStore index.
+                <p className="text-caption text-emerald-700 mt-1 animate-fade-in font-semibold">
+                  Thank you for subscribing to WrapStore updates.
                 </p>
               )}
-            </form>
+            </div>
           </div>
 
-          {/* Navigation Links Grid */}
-          <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-3 gap-8">
-            {/* Column 1: Shop */}
-            <div className="space-y-4">
-              <p className="text-metadata uppercase font-semibold text-neutral-900 tracking-editorial">
+          {/* Navigation Links Grid (7 Cols: 3 Sub-columns) */}
+          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8">
+            
+            {/* Column 1: Collection */}
+            <div className="space-y-3">
+              <p className="text-caption uppercase font-semibold text-[#141414] tracking-wider">
                 Collection
               </p>
-              <ul className="space-y-2.5 text-body-sm text-neutral-500">
-                <li><a href="#new" className="hover:text-neutral-900 transition-colors">New Arrivals</a></li>
-                <li><a href="#cases" className="hover:text-neutral-900 transition-colors">Phone Cases</a></li>
-                <li><a href="#sleeves" className="hover:text-neutral-900 transition-colors">Laptop Sleeves</a></li>
-                <li><a href="#desk" className="hover:text-neutral-900 transition-colors">Desk Mats</a></li>
-                <li><a href="#leather" className="hover:text-neutral-900 transition-colors">Small Leather Goods</a></li>
-                <li><a href="#archive" className="hover:text-neutral-900 transition-colors">Archive</a></li>
+              <ul className="space-y-2.5 text-body text-[#666664]">
+                <li>
+                  <Link to="/" className="hover:text-[#141414] transition-colors">
+                    All Products
+                  </Link>
+                </li>
+                {categories.map((cat) => (
+                  <li key={cat.id}>
+                    <Link
+                      to={`/?category=${encodeURIComponent(cat.name)}`}
+                      className="hover:text-[#141414] transition-colors"
+                    >
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
             {/* Column 2: Assistance */}
-            <div className="space-y-4">
-              <p className="text-metadata uppercase font-semibold text-neutral-900 tracking-editorial">
+            <div className="space-y-3">
+              <p className="text-caption uppercase font-semibold text-[#141414] tracking-wider">
                 Assistance
               </p>
-              <ul className="space-y-2.5 text-body-sm text-neutral-500">
-                <li><a href="#shipping" className="hover:text-neutral-900 transition-colors">Shipping & Returns</a></li>
-                <li><a href="#care" className="hover:text-neutral-900 transition-colors">Material Care Guide</a></li>
-                <li><a href="#warranty" className="hover:text-neutral-900 transition-colors">Lifetime Guarantee</a></li>
-                <li><a href="#orders" className="hover:text-neutral-900 transition-colors">Order Tracking</a></li>
-                <li><a href="#contact" className="hover:text-neutral-900 transition-colors">Contact Concierge</a></li>
+              <ul className="space-y-2.5 text-body text-[#666664]">
+                <li>
+                  <Link to="/track-order" className="hover:text-[#141414] transition-colors">
+                    Track Order
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/cart" className="hover:text-[#141414] transition-colors">
+                    Shopping Bag
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/checkout" className="hover:text-[#141414] transition-colors">
+                    Checkout
+                  </Link>
+                </li>
+                <li>
+                  <span className="text-[#666664] cursor-default">
+                    Lifetime Guarantee
+                  </span>
+                </li>
+                <li>
+                  <span className="text-[#666664] cursor-default">
+                    30-Day Returns
+                  </span>
+                </li>
               </ul>
             </div>
 
-            {/* Column 3: Philosophy */}
-            <div className="space-y-4">
-              <p className="text-metadata uppercase font-semibold text-neutral-900 tracking-editorial">
+            {/* Column 3: Studio */}
+            <div className="space-y-3">
+              <p className="text-caption uppercase font-semibold text-[#141414] tracking-wider">
                 Studio
               </p>
-              <ul className="space-y-2.5 text-body-sm text-neutral-500">
-                <li><a href="#about" className="hover:text-neutral-900 transition-colors">Our Approach</a></li>
-                <li><a href="#sustainability" className="hover:text-neutral-900 transition-colors">Tannery Provenance</a></li>
-                <li><a href="#press" className="hover:text-neutral-900 transition-colors">Journal & Stories</a></li>
-                <li><a href="#careers" className="hover:text-neutral-900 transition-colors">Careers</a></li>
+              <ul className="space-y-2.5 text-body text-[#666664]">
+                <li>
+                  <span className="text-[#666664] cursor-default">
+                    Precision Fit
+                  </span>
+                </li>
+                <li>
+                  <span className="text-[#666664] cursor-default">
+                    Tactile Materials
+                  </span>
+                </li>
+                <li>
+                  <span className="text-[#666664] cursor-default">
+                    Everyday Carry
+                  </span>
+                </li>
+                <li>
+                  <span className="text-[#666664] cursor-default">
+                    Support: contact@wrapstore.in
+                  </span>
+                </li>
               </ul>
             </div>
+
           </div>
         </div>
 
-        {/* Bottom Bar: Wordmark, Copyright, Currency & Policies */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-body-sm text-neutral-500">
-          <div className="flex items-center space-x-3.5">
-            <Logo size="sm" className="h-5 opacity-90" />
-            <span>&copy; {new Date().getFullYear()} WrapStore Studio Inc. All rights reserved.</span>
-          </div>
+        {/* Bottom Bar: Copyright and Legal Links (No INR) */}
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-caption text-[#666664]">
+          <p className="font-normal">
+            &copy; {new Date().getFullYear()} WrapStore. All rights reserved.
+          </p>
 
-          <div className="flex items-center space-x-6 text-xs text-neutral-500">
-            <a href="#privacy" className="hover:text-neutral-900 transition-colors">Privacy Policy</a>
-            <a href="#terms" className="hover:text-neutral-900 transition-colors">Terms of Service</a>
-            <span className="text-neutral-300">|</span>
-            <span className="text-neutral-700 font-medium">USD ($)</span>
+          <div className="flex items-center space-x-6 text-caption text-[#666664]">
+            <span className="cursor-default hover:text-[#141414] transition-colors">Privacy Policy</span>
+            <span className="cursor-default hover:text-[#141414] transition-colors">Terms of Service</span>
           </div>
         </div>
       </div>

@@ -4,19 +4,19 @@ import { ChevronRight } from 'lucide-react';
 
 export function Breadcrumbs({ category, productName, onCategoryClick }) {
   return (
-    <nav aria-label="Breadcrumb" className="py-4 text-xs font-medium text-neutral-500">
-      <ol className="flex items-center space-x-2 truncate">
+    <nav aria-label="Breadcrumb" className="py-4 text-[12px] text-[#666664]">
+      <ol className="flex items-center space-x-2 truncate font-normal">
         <li>
           <Link
             to="/"
-            className="hover:text-neutral-900 transition-colors uppercase tracking-editorial"
+            className="hover:text-[#141414] transition-colors"
           >
-            Home
+            Catalog
           </Link>
         </li>
 
         <li>
-          <ChevronRight className="w-3 h-3 text-neutral-400" />
+          <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
         </li>
 
         {category && (
@@ -25,18 +25,18 @@ export function Breadcrumbs({ category, productName, onCategoryClick }) {
               <Link
                 to={`/?category=${encodeURIComponent(category)}`}
                 onClick={onCategoryClick}
-                className="hover:text-neutral-900 transition-colors uppercase tracking-editorial truncate"
+                className="hover:text-[#141414] transition-colors truncate"
               >
                 {category}
               </Link>
             </li>
             <li>
-              <ChevronRight className="w-3 h-3 text-neutral-400" />
+              <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
             </li>
           </>
         )}
 
-        <li className="text-neutral-900 font-semibold truncate" aria-current="page">
+        <li className="text-[#141414] font-semibold truncate" aria-current="page">
           {productName}
         </li>
       </ol>

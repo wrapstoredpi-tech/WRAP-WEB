@@ -68,17 +68,50 @@ export function parseModels(modelStr) {
  */
 export function parseColors(colorVariants) {
   if (!colorVariants) return [];
-  if (Array.isArray(colorVariants)) return colorVariants.map(String).filter(Boolean);
-  if (typeof colorVariants === 'string') {
-    try {
-      const parsed = JSON.parse(colorVariants);
-      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
-    } catch {
-      // fall through to comma-split
+
+  const extractString = (item) => {
+    if (!item) return '';
+    if (typeof item === 'string') return item.trim();
+    if (typeof item === 'object') {
+      return (item.name || item.color || item.label || item.value || item.title || '').trim();
     }
-    return colorVariants.split(',').map((c) => c.trim()).filter(Boolean);
+    return String(item).trim();
+  };
+
+  let rawList = [];
+
+  if (Array.isArray(colorVariants)) {
+    rawList = colorVariants;
+  } else if (typeof colorVariants === 'string') {
+    const trimmed = colorVariants.trim();
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        rawList = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        rawList = trimmed.split(/[,;/|]+/).map((s) => s.trim());
+      }
+    } else {
+      rawList = trimmed.split(/[,;/|]+/).map((s) => s.trim());
+    }
+  } else if (typeof colorVariants === 'object') {
+    rawList = [colorVariants];
   }
-  return [];
+
+  const seen = new Set();
+  const result = [];
+
+  rawList.forEach((item) => {
+    const str = extractString(item);
+    if (!str || str.toLowerCase() === '[object object]' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return;
+    const lower = str.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      result.push(str);
+    }
+  });
+
+  return result;
 }
 
 /**
@@ -478,10 +511,19 @@ export function deriveFilterOptions(products, categories = [], subcategories = [
     subcategoryMap[sub.category_id].push(sub);
   });
 
-  // Unique color variants across all visible products
-  const allColors = Array.from(
-    new Set(products.flatMap((p) => p.color_variants || []))
-  ).filter(Boolean);
+  // Unique color variants across all visible products, cleanly deduplicated case-insensitively
+  const colorMap = new Map();
+  products.forEach((p) => {
+    (p.color_variants || []).forEach((c) => {
+      const name = typeof c === 'string' ? c.trim() : (c?.name || c?.color || String(c)).trim();
+      if (!name || name.toLowerCase() === '[object object]' || name.toLowerCase() === 'null') return;
+      const lower = name.toLowerCase();
+      if (!colorMap.has(lower)) {
+        colorMap.set(lower, name);
+      }
+    });
+  });
+  const allColors = Array.from(colorMap.values()).sort((a, b) => a.localeCompare(b));
 
   // Brand → models map (for phone-model filter)
   const brandModelsMap = {};

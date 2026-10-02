@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Reusable Button component adhering to WrapStore design tokens.
+ * Reusable Button component adhering to WrapStore minimal design tokens.
  * 
  * @param {'primary' | 'secondary' | 'ghost' | 'accent'} variant - Visual variant
  * @param {'sm' | 'md' | 'lg'} size - Sizing scale with touch-friendly targets
@@ -25,43 +25,41 @@ export function Button({
   ...props
 }) {
   const baseStyles = `
-    inline-flex items-center justify-center font-sans font-medium transition-all duration-200
-    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+    inline-flex items-center justify-center font-sans font-semibold rounded-lg transition-colors duration-150
+    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#141414]
     disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
-    select-none active:scale-[0.99] rounded-none
+    select-none active:scale-[0.99]
   `;
 
   const sizeStyles = {
-    sm: 'text-body-sm h-9 px-3.5 gap-1.5 min-h-[38px] tracking-wide',
-    md: 'text-body h-11 px-5 gap-2 min-h-[44px]',
-    lg: 'text-body-lg h-13 px-7 gap-2.5 min-h-[52px]',
+    sm: 'text-[13px] h-9 px-3.5 gap-1.5 min-h-[36px]',
+    md: 'text-[14px] h-11 px-5 gap-2 min-h-[44px]',
+    lg: 'text-[15px] h-12 px-6 gap-2.5 min-h-[48px]',
   };
 
   const variantStyles = {
-    // Primary: Solid charcoal editorial action
+    // Primary: Solid near-black
     primary: `
-      bg-neutral-900 text-base-offwhite
-      hover:bg-neutral-800 active:bg-neutral-950
-      shadow-sm hover:shadow
+      bg-[#141414] text-white
+      hover:bg-[#262624] active:bg-[#0C0C0C]
     `,
-    // Secondary: Minimalist bordered action with subtle hover background
+    // Secondary: Calm bordered white surface
     secondary: `
-      bg-transparent text-neutral-900
-      border border-neutral-300
-      hover:border-neutral-900 hover:bg-neutral-100/80
-      active:bg-neutral-200/70
+      bg-white text-[#141414]
+      border border-[#E7E5E4]
+      hover:bg-[#F5F5F4] hover:border-[#D6D3D1]
+      active:bg-[#E7E5E4]
     `,
-    // Ghost: Seamless text action with soft background wash on hover
+    // Ghost: Transparent with subtle background wash
     ghost: `
-      bg-transparent text-neutral-900
-      hover:text-accent hover:bg-neutral-100/70
-      active:bg-neutral-200/60
+      bg-transparent text-[#141414]
+      hover:bg-[#F5F5F4] hover:text-[#141414]
+      active:bg-[#E7E5E4]
     `,
-    // Accent: Deep Amber conversion action (used sparingly)
+    // Accent: Reserved for key conversion actions
     accent: `
-      bg-accent text-white
-      hover:bg-accent-hover active:bg-accent-dark
-      shadow-sm hover:shadow
+      bg-[#9E381A] text-white
+      hover:bg-[#832C13] active:bg-[#6E230E]
     `,
   };
 

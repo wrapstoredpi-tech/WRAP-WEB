@@ -1,30 +1,24 @@
-/**
- * src/context/CartContext.jsx
- * ──────────────────────────
- * Cart state management. Stores cart item stubs { productId, quantity, selectedColor }.
- * Product hydration (name, price, stock) is done by consuming components
- * via useProductsContext(), so CartContext has NO dependency on product data.
- */
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const CartContext = createContext(undefined);
-const LOCAL_STORAGE_KEY = 'wrapstore_cart_items_v2';
+const LOCAL_STORAGE_KEY = 'wrapstore_cart_items_v3';
 
 export function CartProvider({ children }) {
-  // Raw cart stubs — only IDs + quantities, no product data
+  // Raw cart stubs — only IDs + quantities
   const [cartItems, setCartItems] = useState(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       console.warn('Could not load cart from localStorage', e);
     }
     return [];
   });
 
-  const [isMiniCartOpen, setIsMiniCartOpen] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
-  const autoCloseTimerRef = useRef(null);
 
   // Sync to localStorage
   useEffect(() => {
@@ -35,105 +29,70 @@ export function CartProvider({ children }) {
     }
   }, [cartItems]);
 
-  // Item count (sum of quantities) — no product lookup needed
+  // Item count (sum of quantities)
   const itemCount = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    return cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   }, [cartItems]);
 
-  // Auto-dismiss mini cart
-  const triggerAutoClose = () => {
-    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    autoCloseTimerRef.current = setTimeout(() => {
-      setIsMiniCartOpen(false);
-    }, 4500);
-  };
-
   // ── Cart Actions ────────────────────────────────────────────────────────────
-  const addItem = (product, quantityToAdd = 1, options = {}) => {
-    if (!product) return false;
-    // Out-of-stock guard using view's stock_status
+  const addItem = (product, quantityToAdd = 1) => {
+    if (!product || !product.id) return false;
+    // Out-of-stock guard
     if (product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0) return false;
 
-    const selectedColor =
-      options.selected_color ||
-      options.selectedColor ||
-      (product.color_variants && product.color_variants[0]) ||
-      null;
-
     const maxStock = product.available_stock ?? product.current_stock ?? 99;
+    const addQty = Math.max(1, Number(quantityToAdd) || 1);
 
     setCartItems((prevItems) => {
-      const existingIndex = prevItems.findIndex(
-        (i) => i.productId === product.id && i.selectedColor === selectedColor
-      );
+      const existingIndex = prevItems.findIndex((i) => i.productId === product.id);
 
       if (existingIndex > -1) {
-        const newQty = Math.min(prevItems[existingIndex].quantity + quantityToAdd, maxStock);
+        const currentQty = prevItems[existingIndex].quantity || 0;
+        const newQty = Math.min(currentQty + addQty, maxStock);
         const updated = [...prevItems];
-        updated[existingIndex] = { ...updated[existingIndex], quantity: newQty, selectedColor };
+        updated[existingIndex] = { ...updated[existingIndex], quantity: newQty };
         return updated;
       } else {
-        const finalQty = Math.min(quantityToAdd, maxStock);
-        return [...prevItems, { productId: product.id, quantity: finalQty, selectedColor }];
+        const finalQty = Math.min(addQty, maxStock);
+        return [...prevItems, { productId: product.id, quantity: finalQty }];
       }
     });
 
-    setLastAddedItem({ product, quantity: quantityToAdd, selectedColor });
-    setIsMiniCartOpen(true);
-    triggerAutoClose();
+    setLastAddedItem({ product, quantity: addQty });
     return true;
   };
 
-  const removeItem = (productId, selectedColor = null) => {
-    setCartItems((prev) =>
-      prev.filter(
-        (i) => !(i.productId === productId && (selectedColor === null || i.selectedColor === selectedColor))
-      )
-    );
+  const removeItem = (productId) => {
+    if (!productId) return;
+    setCartItems((prev) => prev.filter((i) => i.productId !== productId));
   };
 
-  const updateQuantity = (productId, newQuantity, selectedColor = null, maxStock = 99) => {
-    if (newQuantity <= 0) {
-      removeItem(productId, selectedColor);
+  const updateQuantity = (productId, newQuantity, maxStock = 99) => {
+    if (!productId) return;
+    const targetQty = Number(newQuantity);
+    if (isNaN(targetQty) || targetQty <= 0) {
+      removeItem(productId);
       return;
     }
-    const capped = Math.min(newQuantity, maxStock);
+
+    const capped = Math.min(targetQty, maxStock || 99);
     setCartItems((prev) =>
       prev.map((item) =>
-        item.productId === productId && (selectedColor === null || item.selectedColor === selectedColor)
-          ? { ...item, quantity: capped }
-          : item
+        item.productId === productId ? { ...item, quantity: capped } : item
       )
     );
   };
 
   const clearCart = () => setCartItems([]);
 
-  const openMiniCart = () => {
-    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    setIsMiniCartOpen(true);
-  };
-
-  const closeMiniCart = () => {
-    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    setIsMiniCartOpen(false);
-  };
-
   const value = {
-    // Raw stubs for components that need to hydrate themselves
     cartItems,
-    // Aggregate counts
     itemCount,
-    // UI state
-    isMiniCartOpen,
     lastAddedItem,
-    // Actions
     addItem,
     removeItem,
     updateQuantity,
     clearCart,
-    openMiniCart,
-    closeMiniCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -149,44 +108,40 @@ export function useCart() {
 
 /**
  * useHydratedCart(products)
- * Call from any component that has access to the live products array.
- * Returns { items, subtotal, shippingFee, isFreeShipping, estimatedTotal,
- *           amountToFreeShipping, freeShippingThreshold }
- * Each item also gets a .stockWarning flag when its stock dropped to 0 while in cart.
+ * Hydrates cart stubs with live product prices, stock levels, and names.
  */
 export function useHydratedCart(products = []) {
   const { cartItems } = useCart();
+
   const productMap = useMemo(() => {
     const map = {};
     for (const p of products) {
-      map[p.id] = p;
+      if (p && p.id) {
+        map[p.id] = p;
+      }
     }
     return map;
   }, [products]);
 
   const items = useMemo(() => {
     return cartItems
-      .map((item, index) => {
+      .map((item) => {
         const product = productMap[item.productId];
         if (!product) return null;
         const stockWarning = product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0;
         return {
-          id: `${item.productId}-${item.selectedColor || 'default'}-${index}`,
+          id: item.productId,
           productId: item.productId,
           product,
-          selectedColor:
-            item.selectedColor ||
-            (product.color_variants && product.color_variants[0]) ||
-            null,
-          quantity: Math.min(item.quantity, product.available_stock || 1),
-          stockWarning, // true when POS sold out this item while it was in cart
+          quantity: item.quantity,
+          stockWarning,
         };
       })
       .filter(Boolean);
   }, [cartItems, productMap]);
 
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.product.selling_price * item.quantity, 0),
+    () => items.reduce((sum, item) => sum + (item.product.selling_price || 0) * (item.quantity || 1), 0),
     [items]
   );
 

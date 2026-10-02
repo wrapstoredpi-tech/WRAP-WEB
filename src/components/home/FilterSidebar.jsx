@@ -1,25 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { X, RotateCcw, Check, Search, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from '../ui/Button';
+import {
+  X,
+  RotateCcw,
+  Check,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { ColorSwatch } from '../ui/ColorSwatch';
 import { PRICE_RANGES } from '../../lib/useProducts';
 
 /**
  * FilterSidebar
- * Props:
- *   filters        — current filter state (includes category, category_id, subcategory, subcategory_id)
- *   onFilterChange — (key, value) => void
- *   onResetFilters — () => void
- *   totalResultsCount — number
- *   filterOptions  — {
- *     categories,        // string[] starting with 'All Categories'
- *     categoryObjects,   // [{ id, name }]
- *     subcategoryMap,    // { [categoryId]: [{ id, name }] }
- *     brands, allColors, brandModelsMap
- *   }
- *   isMobileDrawer — boolean
- *   onClose        — () => void (only in drawer mode)
+ * Quiet, architectural filter panel for desktop sidebar or drawer.
  */
 export function FilterSidebar({
   filters,
@@ -27,11 +22,23 @@ export function FilterSidebar({
   onResetFilters,
   totalResultsCount,
   filterOptions = {},
+  products = [],
   isOpen = false,
   onClose,
   isMobileDrawer = false,
 }) {
-  const { category, category_id, subcategory, subcategory_id, brand, selectedModel, priceRange, selectedColor, inStockOnly } = filters;
+  const {
+    category = 'All Categories',
+    category_id = null,
+    subcategory = 'All Types',
+    subcategory_id = null,
+    brand = 'All Brands',
+    selectedModel = '',
+    priceRange = 'All Prices',
+    selectedColor = '',
+    inStockOnly = false,
+  } = filters;
+
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
 
@@ -44,13 +51,27 @@ export function FilterSidebar({
     brandModelsMap = {},
   } = filterOptions;
 
-  // Subcategories for the currently selected category
-  const currentSubcategories = useMemo(() => {
-    if (!category_id) return [];
-    return subcategoryMap[category_id] || [];
-  }, [category_id, subcategoryMap]);
+  const activeFilterCount = useMemo(() => {
+    return [
+      category !== 'All Categories' && category !== 'All',
+      Boolean(subcategory_id) || (subcategory !== 'All Types' && subcategory !== 'All'),
+      brand !== 'All Brands' && brand !== '',
+      Boolean(selectedModel),
+      priceRange !== 'All Prices',
+      Boolean(selectedColor),
+      inStockOnly,
+    ].filter(Boolean).length;
+  }, [category, subcategory_id, subcategory, brand, selectedModel, priceRange, selectedColor, inStockOnly]);
 
-  // Available models for the currently selected brand
+  const currentSubcategories = useMemo(() => {
+    if (!category_id) {
+      const found = categoryObjects.find((c) => c.name === category);
+      if (found) return subcategoryMap[found.id] || [];
+      return [];
+    }
+    return subcategoryMap[category_id] || [];
+  }, [category_id, category, categoryObjects, subcategoryMap]);
+
   const availableModels = useMemo(() => {
     if (!brand || brand === 'All Brands') {
       return Array.from(new Set(Object.values(brandModelsMap).flat()));
@@ -65,335 +86,143 @@ export function FilterSidebar({
     );
   }, [availableModels, modelSearchQuery]);
 
-  const activeFilterCount = [
-    category !== 'All Categories',
-    Boolean(subcategory_id),
-    brand !== 'All Brands' && brand !== '',
-    Boolean(selectedModel),
-    priceRange !== 'All Prices',
-    Boolean(selectedColor),
-    inStockOnly,
-  ].filter(Boolean).length;
-
-  const handleBrandSelect = (b) => {
-    if (brand === b) {
-      onFilterChange('brand', 'All Brands');
-      onFilterChange('selectedModel', '');
-    } else {
-      onFilterChange('brand', b);
-      onFilterChange('selectedModel', '');
-    }
-    setModelSearchQuery('');
-  };
-
-  const handleModelSelect = (m) => {
-    onFilterChange('selectedModel', selectedModel === m ? '' : m);
-  };
-
-  const handleColorSelect = (c) => {
-    onFilterChange('selectedColor', selectedColor === c ? '' : c);
-  };
-
   const brandOptions = useMemo(() => {
     return brands.filter((b) => b !== 'All Brands');
   }, [brands]);
 
   const content = (
-    <div className="space-y-7">
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-neutral-200">
+    <div className="space-y-6">
+      {/* ── Top Header / Reset ────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#E7E5E4]">
         <div className="flex items-center gap-2">
-          <span className="text-metadata uppercase font-semibold text-neutral-900 tracking-editorial">
-            Filters
-          </span>
+          <span className="text-[14px] font-semibold text-[#141414]">Filters</span>
           {activeFilterCount > 0 && (
-            <Badge variant="accent" size="sm">
-              {activeFilterCount} Active
-            </Badge>
+            <span className="px-2 py-0.5 rounded-full bg-[#141414] text-white text-[10px] font-semibold">
+              {activeFilterCount}
+            </span>
           )}
         </div>
+
         {activeFilterCount > 0 && (
           <button
             type="button"
             onClick={onResetFilters}
-            className="text-xs text-neutral-500 hover:text-accent flex items-center gap-1 transition-colors font-medium"
+            className="text-[12px] text-[#666664] hover:text-[#141414] flex items-center gap-1 transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Clear All</span>
+            <span>Reset</span>
           </button>
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* PRIMARY FILTER: "Find cases for your phone"                        */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-neutral-100/90 border border-neutral-200 p-4 space-y-4 shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-neutral-900 font-semibold text-body-sm tracking-tight">
-              <Smartphone className="w-4 h-4 text-accent" />
-              <span>Find cases for your phone</span>
-            </div>
-            {selectedModel && (
-              <Badge variant="accent" size="sm">
-                Matched
-              </Badge>
-            )}
-          </div>
-          <p className="text-[11px] text-neutral-500">
-            Pick your device to filter by exact compatibility.
-          </p>
-        </div>
-
-        {/* STEP 1: Pick Brand */}
-        <div className="space-y-1.5 pt-1">
-          <span className="text-[10px] uppercase tracking-editorial font-bold text-neutral-500 block">
-            Step 1 &bull; Pick Brand
-          </span>
-          <div className={`grid gap-1.5 ${brandOptions.length <= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {brandOptions.map((b) => {
-              const isSelected = brand === b;
-              return (
-                <button
-                  key={b}
-                  type="button"
-                  onClick={() => handleBrandSelect(b)}
-                  className={`
-                    py-2 px-1.5 text-xs text-center font-medium border transition-all duration-150
-                    ${
-                      isSelected
-                        ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
-                        : 'bg-base-offwhite text-neutral-700 border-neutral-300 hover:border-neutral-900'
-                    }
-                  `}
-                >
-                  {b}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* STEP 2: Pick Model */}
-        <div className="space-y-2 pt-1 border-t border-neutral-200/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-editorial font-bold text-neutral-500">
-              Step 2 &bull; Pick Model
-            </span>
-            {selectedModel && (
-              <button
-                type="button"
-                onClick={() => onFilterChange('selectedModel', '')}
-                className="text-[11px] text-accent hover:underline font-medium"
-              >
-                Clear model
-              </button>
-            )}
-          </div>
-
-          {availableModels.length > 4 && (
-            <div className="relative">
-              <input
-                type="text"
-                value={modelSearchQuery}
-                onChange={(e) => setModelSearchQuery(e.target.value)}
-                placeholder="Search phone model..."
-                className="w-full text-xs bg-base-offwhite border border-neutral-300 py-1.5 pl-7 pr-2.5 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-accent"
-              />
-              <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2 top-2 pointer-events-none" />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
-            {filteredModels.length > 0 ? (
-              filteredModels.map((model) => {
-                const isSelected = selectedModel === model;
-                return (
-                  <button
-                    key={model}
-                    type="button"
-                    onClick={() => handleModelSelect(model)}
-                    className={`
-                      w-full text-left px-2.5 py-1.5 text-xs transition-colors flex items-center justify-between border
-                      ${
-                        isSelected
-                          ? 'bg-neutral-900 text-white font-medium border-neutral-900'
-                          : 'bg-base-offwhite text-neutral-700 border-neutral-200/80 hover:bg-neutral-200/60 hover:text-neutral-900'
-                      }
-                    `}
-                  >
-                    <span className="truncate">{model}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-accent shrink-0 ml-1.5" />}
-                  </button>
-                );
-              })
-            ) : (
-              <p className="text-xs text-neutral-400 py-2 text-center">
-                {availableModels.length === 0 ? 'Select a brand to see models.' : 'No matching models found.'}
-              </p>
-            )}
-          </div>
-
-          {selectedModel && (
-            <div className="pt-1.5 flex items-center justify-between text-xs bg-accent-light text-accent p-2 border border-accent-border">
-              <span className="font-medium truncate">Active: {selectedModel}</span>
-              <button
-                type="button"
-                onClick={() => onFilterChange('selectedModel', '')}
-                className="text-neutral-500 hover:text-neutral-900 font-bold ml-2"
-                aria-label="Remove model filter"
-              >
-                &times;
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SECONDARY FILTERS                                                  */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-
-      {/* 1. Category Filter (from real categories table) */}
+      {/* ── 1. Device Fit ─────────────────────────────────────────────────── */}
       <div className="space-y-3">
-        <label className="text-metadata uppercase font-semibold text-neutral-500 tracking-editorial block">
-          Category
+        <label className="text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight block">
+          Device Compatibility
         </label>
-        <div className="space-y-1">
-          {categories.map((cat) => {
-            const isSelected = category === cat;
+
+        <div className="grid grid-cols-2 gap-1.5">
+          {brandOptions.map((b) => {
+            const isSelected = brand === b;
             return (
               <button
-                key={cat}
+                key={b}
                 type="button"
-                onClick={() => onFilterChange('category', cat)}
+                onClick={() => {
+                  onFilterChange('brand', isSelected ? 'All Brands' : b);
+                  onFilterChange('selectedModel', '');
+                }}
                 className={`
-                  w-full text-left px-2.5 py-2 text-body-sm transition-colors flex items-center justify-between border
+                  h-9 px-3 text-[13px] rounded-lg border transition-colors flex items-center justify-between
                   ${
                     isSelected
-                      ? 'bg-neutral-900 text-white font-medium border-neutral-900'
-                      : 'bg-transparent text-neutral-700 border-transparent hover:bg-neutral-100 hover:text-neutral-900'
+                      ? 'bg-[#141414] text-white border-[#141414] font-semibold'
+                      : 'bg-white text-[#141414] border-[#E7E5E4] hover:border-[#D6D3D1] font-normal'
                   }
                 `}
               >
-                <span>{cat}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-accent" />}
+                <span>{b}</span>
+                {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
               </button>
             );
           })}
         </div>
 
-        {/* Nested subcategories when a category is selected */}
-        {currentSubcategories.length > 0 && (
-          <div className="ml-3 border-l border-neutral-200 pl-3 space-y-0.5 pt-1">
-            <span className="text-[10px] uppercase tracking-editorial font-bold text-neutral-400 block mb-1">
-              Sub-type
-            </span>
-            {/* All sub-types */}
-            <button
-              type="button"
-              onClick={() => onFilterChange('subcategory', 'All Types')}
-              className={`
-                w-full text-left px-2 py-1.5 text-xs transition-colors flex items-center justify-between border
-                ${
-                  !subcategory_id
-                    ? 'bg-neutral-800 text-white font-medium border-neutral-800'
-                    : 'bg-transparent text-neutral-600 border-transparent hover:bg-neutral-100 hover:text-neutral-900'
-                }
-              `}
-            >
-              <span>All Types</span>
-              {!subcategory_id && <Check className="w-3 h-3 text-accent" />}
-            </button>
-            {currentSubcategories.map((sub) => {
-              const isSubSelected = subcategory_id === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onClick={() => onFilterChange('subcategory', sub.name)}
-                  className={`
-                    w-full text-left px-2 py-1.5 text-xs transition-colors flex items-center justify-between border
-                    ${
-                      isSubSelected
-                        ? 'bg-neutral-800 text-white font-medium border-neutral-800'
-                        : 'bg-transparent text-neutral-600 border-transparent hover:bg-neutral-100 hover:text-neutral-900'
-                    }
-                  `}
-                >
-                  <span>{sub.name}</span>
-                  {isSubSelected && <Check className="w-3 h-3 text-accent" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 2. Color Filter */}
-      {allColors.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-metadata uppercase font-semibold text-neutral-500 tracking-editorial">
-              Color Variant
-            </label>
-            {selectedColor && (
-              <button
-                type="button"
-                onClick={() => onFilterChange('selectedColor', '')}
-                className="text-[11px] text-accent hover:underline font-medium"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          {selectedColor && (
-            <div className="flex items-center gap-2 text-xs text-neutral-700 bg-neutral-100 px-2.5 py-1.5 border border-neutral-200">
-              <span className="text-neutral-400">Filtering:</span>
-              <strong className="font-semibold text-neutral-900">{selectedColor}</strong>
+        {availableModels.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <div className="relative">
+              <input
+                type="text"
+                value={modelSearchQuery}
+                onChange={(e) => setModelSearchQuery(e.target.value)}
+                placeholder="Search models..."
+                className="w-full text-[12px] bg-white border border-[#E7E5E4] rounded-lg py-1.5 pl-7 pr-2.5 text-[#141414] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#141414]"
+              />
+              <Search className="w-3.5 h-3.5 text-[#A8A29E] absolute left-2 top-2 pointer-events-none" />
             </div>
-          )}
-          <div className="pt-1">
-            <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
-              {(isColorsExpanded ? allColors : allColors.slice(0, 8)).map((c) => {
-                const isSelected = selectedColor === c;
+
+            <div className="flex flex-col gap-0.5 max-h-36 overflow-y-auto pr-1">
+              {filteredModels.map((m) => {
+                const isSelected = selectedModel === m;
                 return (
                   <button
-                    key={c}
+                    key={m}
                     type="button"
-                    onClick={() => handleColorSelect(c)}
+                    onClick={() => onFilterChange('selectedModel', isSelected ? '' : m)}
                     className={`
-                      flex items-center gap-2 px-2 py-1.5 text-xs border text-left transition-colors
+                      w-full text-left px-2.5 py-1.5 text-[12px] rounded-md transition-colors flex items-center justify-between
                       ${
                         isSelected
-                          ? 'border-neutral-900 bg-neutral-900 text-white font-medium'
-                          : 'border-neutral-200/80 bg-base-offwhite text-neutral-700 hover:border-neutral-400'
+                          ? 'bg-[#141414] text-white font-semibold'
+                          : 'text-[#141414] hover:bg-[#F5F5F4]'
                       }
                     `}
                   >
-                    <ColorSwatch colors={[c]} size="sm" interactive={false} />
-                    <span className="truncate">{c}</span>
+                    <span className="truncate">{m}</span>
+                    {isSelected && <Check className="w-3 h-3 text-white shrink-0 ml-1" />}
                   </button>
                 );
               })}
             </div>
-            {allColors.length > 8 && (
-              <button
-                type="button"
-                onClick={() => setIsColorsExpanded(!isColorsExpanded)}
-                className="mt-2 text-xs text-neutral-500 hover:text-neutral-900 flex items-center gap-1 font-medium transition-colors"
-              >
-                <span>{isColorsExpanded ? 'Show less colors' : `+${allColors.length - 8} more colors`}</span>
-                {isColorsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 3. Price Range Filter */}
-      <div className="space-y-3">
-        <label className="text-metadata uppercase font-semibold text-neutral-500 tracking-editorial block">
+      {/* ── 2. Category ───────────────────────────────────────────────────── */}
+      <div className="space-y-2 pt-2 border-t border-[#E7E5E4]">
+        <label className="text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight block">
+          Category
+        </label>
+        <div className="space-y-1">
+          {categories.map((cat) => {
+            const isSelected =
+              category === cat || (cat === 'All Categories' && (category === 'All' || category === 'All Categories'));
+
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => onFilterChange('category', cat === 'All Categories' ? 'All' : cat)}
+                className={`
+                  w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors flex items-center justify-between
+                  ${
+                    isSelected
+                      ? 'bg-[#141414] text-white font-semibold'
+                      : 'text-[#666664] hover:text-[#141414] hover:bg-[#F5F5F4]'
+                  }
+                `}
+              >
+                <span>{cat}</span>
+                {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── 3. Price Range ────────────────────────────────────────────────── */}
+      <div className="space-y-2 pt-2 border-t border-[#E7E5E4]">
+        <label className="text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight block">
           Price Range
         </label>
         <div className="space-y-1">
@@ -405,81 +234,97 @@ export function FilterSidebar({
                 type="button"
                 onClick={() => onFilterChange('priceRange', range.label)}
                 className={`
-                  w-full text-left px-2.5 py-1.5 text-xs transition-colors flex items-center justify-between border
+                  w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors flex items-center justify-between
                   ${
                     isSelected
-                      ? 'bg-neutral-900 text-white font-medium border-neutral-900'
-                      : 'bg-transparent text-neutral-700 border-transparent hover:bg-neutral-100 hover:text-neutral-900'
+                      ? 'bg-[#141414] text-white font-semibold'
+                      : 'text-[#666664] hover:text-[#141414] hover:bg-[#F5F5F4]'
                   }
                 `}
               >
                 <span>{range.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-accent" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* 4. Stock Availability Toggle */}
-      <div className="pt-2 border-t border-neutral-200">
-        <label className="flex items-center justify-between cursor-pointer select-none py-1">
-          <span className="text-body-sm font-medium text-neutral-800">
-            In-Stock Only
-          </span>
-          <input
-            type="checkbox"
-            checked={inStockOnly}
-            onChange={(e) => onFilterChange('inStockOnly', e.target.checked)}
-            className="w-4 h-4 accent-accent rounded-none cursor-pointer"
+      {/* ── 4. Color ──────────────────────────────────────────────────────── */}
+      {allColors.length > 0 && (
+        <div className="space-y-2 pt-2 border-t border-[#E7E5E4]">
+          <label className="text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight block">
+            Colour
+          </label>
+          <div className="grid grid-cols-2 gap-1 max-h-36 overflow-y-auto pr-1">
+            {(isColorsExpanded ? allColors : allColors.slice(0, 6)).map((c) => {
+              const isSelected = selectedColor.toLowerCase().trim() === c.toLowerCase().trim();
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onFilterChange('selectedColor', isSelected ? '' : c)}
+                  className={`
+                    px-2.5 py-1.5 rounded-md text-[12px] flex items-center gap-1.5 transition-colors text-left truncate
+                    ${
+                      isSelected
+                        ? 'bg-[#141414] text-white font-semibold'
+                        : 'text-[#666664] hover:text-[#141414] hover:bg-[#F5F5F4]'
+                    }
+                  `}
+                >
+                  <ColorSwatch colors={[c]} size="xs" interactive={false} />
+                  <span className="truncate">{c}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. In-Stock ───────────────────────────────────────────────────── */}
+      <div className="pt-2 border-t border-[#E7E5E4] flex items-center justify-between">
+        <span className="text-[13px] font-normal text-[#141414]">In-Stock Only</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={inStockOnly}
+          onClick={() => onFilterChange('inStockOnly', !inStockOnly)}
+          className={`w-10 h-5 rounded-full transition-colors relative p-0.5 ${
+            inStockOnly ? 'bg-[#141414]' : 'bg-[#D6D3D1]'
+          }`}
+        >
+          <span
+            className={`block w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
+              inStockOnly ? 'translate-x-5' : 'translate-x-0'
+            }`}
           />
-        </label>
+        </button>
       </div>
     </div>
   );
 
-  // Mobile drawer mode
   if (isMobileDrawer) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-neutral-200">
-          <div className="flex items-center gap-2">
-            <h3 className="font-sans font-semibold text-h3 text-neutral-900">
-              Filter Products
-            </h3>
-            {totalResultsCount !== undefined && (
-              <span className="text-xs text-neutral-500">
-                ({totalResultsCount} results)
-              </span>
-            )}
-          </div>
+        <div className="flex items-center justify-between pb-4 border-b border-[#E7E5E4]">
+          <h3 className="text-[17px] font-semibold text-[#141414]">Filters</h3>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-neutral-500 hover:text-neutral-900"
-            aria-label="Close filters"
+            className="w-8 h-8 flex items-center justify-center text-[#666664] hover:text-[#141414] rounded-md"
+            aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
-
         {content}
-
-        <div className="pt-4 border-t border-neutral-200 sticky bottom-0 bg-base-offwhite flex gap-3">
-          <Button variant="secondary" size="md" isFullWidth onClick={onResetFilters}>
-            Reset
-          </Button>
-          <Button variant="primary" size="md" isFullWidth onClick={onClose}>
-            View Results ({totalResultsCount})
-          </Button>
-        </div>
       </div>
     );
   }
 
-  // Standard Desktop Sticky Sidebar
   return (
-    <aside className="w-64 xl:w-72 shrink-0 hidden lg:block sticky top-28 self-start max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+    <aside className="w-64 shrink-0 hidden lg:block sticky top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 no-scrollbar">
       {content}
     </aside>
   );

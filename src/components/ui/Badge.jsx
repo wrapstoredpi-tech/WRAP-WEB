@@ -1,11 +1,8 @@
 import React from 'react';
 
 /**
- * Reusable Badge component for product states (New, Out of Stock, Discount %, etc.)
- * 
- * @param {'new' | 'outofstock' | 'discount' | 'accent' | 'neutral' | 'outline'} variant
- * @param {'sm' | 'md'} size
- * @param {boolean} hasDot - Optional visual indicator dot
+ * Quiet Badge component for product states (Out of stock, Low stock, Discount, etc.)
+ * Restrained, quiet visual treatment using subtle background tints.
  */
 export function Badge({
   children,
@@ -16,54 +13,54 @@ export function Badge({
   ...props
 }) {
   const baseStyles = `
-    inline-flex items-center justify-center font-sans uppercase font-medium
-    tracking-editorial transition-colors select-none leading-none
+    inline-flex items-center justify-center font-sans font-semibold rounded-md
+    transition-colors select-none leading-none tracking-tight
   `;
 
   const sizeStyles = {
-    sm: 'text-[10px] px-2 py-1 gap-1',
-    md: 'text-[11px] px-2.5 py-1.5 gap-1.5',
+    sm: 'text-[11px] px-2 py-0.5 gap-1',
+    md: 'text-[12px] px-2.5 py-1 gap-1.5',
   };
 
   const variantStyles = {
-    // "New" - Crisp high-contrast charcoal
+    // "New" - Quiet subtle dark tint
     new: `
-      bg-neutral-900 text-base-offwhite
+      bg-[#141414] text-white
     `,
-    // "Out of Stock" - Muted mid-gray with subtle strike or border
+    // "Out of Stock" - Quiet muted grey tint
     outofstock: `
-      bg-neutral-200/70 text-neutral-500 border border-neutral-300/80
+      bg-[#F5F5F4] text-[#666664] border border-[#E7E5E4]
     `,
-    // "Low Stock" - Amber warning state
+    // "Low Stock" - Quiet amber-terracotta tint
     lowstock: `
-      bg-amber-100 text-amber-900 border border-amber-300 font-semibold
+      bg-[#F8EBE7] text-[#9E381A] border border-[#ECCEC5]
     `,
-    // "Discount %" / "Sale" - Deep Amber Accent solid
+    // "Discount" - Subtle accent tint with high contrast
     discount: `
-      bg-accent text-white
+      bg-[#F8EBE7] text-[#9E381A] border border-[#ECCEC5]
     `,
-    // Amber Accent tinted background with deep amber text
+    // Accent text with soft background
     accent: `
-      bg-accent-light text-accent border border-accent-border font-semibold
+      bg-[#F8EBE7] text-[#9E381A] border border-[#ECCEC5]
     `,
     // Neutral soft tag
     neutral: `
-      bg-neutral-100 text-neutral-700 border border-neutral-200
+      bg-[#F5F5F4] text-[#141414] border border-[#E7E5E4]
     `,
-    // Editorial fine outline
+    // Clean outline
     outline: `
-      bg-transparent text-neutral-800 border border-neutral-400
+      bg-transparent text-[#141414] border border-[#E7E5E4]
     `,
   };
 
   const dotStyles = {
     new: 'bg-white',
-    outofstock: 'bg-neutral-400',
-    lowstock: 'bg-amber-600',
-    discount: 'bg-white',
-    accent: 'bg-accent',
-    neutral: 'bg-neutral-500',
-    outline: 'bg-neutral-700',
+    outofstock: 'bg-[#A8A29E]',
+    lowstock: 'bg-[#9E381A]',
+    discount: 'bg-[#9E381A]',
+    accent: 'bg-[#9E381A]',
+    neutral: 'bg-[#666664]',
+    outline: 'bg-[#141414]',
   };
 
   return (

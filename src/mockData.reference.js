@@ -397,9 +397,10 @@ export const FILTER_OPTIONS = {
   brandModels: BRAND_MODELS_MAP,
   priceRanges: [
     { label: 'All Prices', min: 0, max: Infinity },
-    { label: 'Under $20 / Under ₹1,000', min: 0, max: 1000 },
-    { label: '$20 - $50 / ₹1,000 - ₹2,000', min: 1000, max: 2000 },
-    { label: 'Over $50 / Over ₹2,000', min: 2000, max: Infinity },
+    { label: 'Under ₹500', min: 0, max: 500 },
+    { label: '₹500 – ₹1,000', min: 500, max: 1000 },
+    { label: '₹1,000 – ₹2,000', min: 1000, max: 2000 },
+    { label: 'Over ₹2,000', min: 2000, max: Infinity },
   ],
   sortOptions: [
     { label: 'Newest Arrivals', value: 'newest' },

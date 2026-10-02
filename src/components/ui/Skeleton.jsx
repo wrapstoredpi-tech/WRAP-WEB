@@ -1,12 +1,7 @@
 import React from 'react';
 
 /**
- * Base Skeleton placeholder with subtle shimmer animation tuned to the offwhite/charcoal palette.
- * 
- * @param {'rect' | 'circle' | 'text'} variant
- * @param {string} width
- * @param {string} height
- * @param {string} aspectRatio - e.g. 'aspect-[4/5]' or 'aspect-square'
+ * Base Skeleton placeholder with subtle fade tuned to #FAFAF9 / #E7E5E4 palette.
  */
 export function Skeleton({
   variant = 'rect',
@@ -16,12 +11,12 @@ export function Skeleton({
   className = '',
   ...props
 }) {
-  const baseStyles = 'relative overflow-hidden bg-neutral-200/60 dark:bg-neutral-800/40';
+  const baseStyles = 'relative overflow-hidden bg-[#E7E5E4]/60 animate-pulse';
 
   const variantStyles = {
-    rect: 'rounded-none',
+    rect: 'rounded-lg',
     circle: 'rounded-full',
-    text: 'h-4 w-full rounded-sm',
+    text: 'h-3.5 w-full rounded-md',
   };
 
   const style = {
@@ -40,10 +35,7 @@ export function Skeleton({
       style={style}
       aria-hidden="true"
       {...props}
-    >
-      {/* Shimmer sweep overlay */}
-      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-neutral-100/50 to-transparent" />
-    </div>
+    />
   );
 }
 
@@ -52,7 +44,7 @@ export function Skeleton({
  */
 export function SkeletonText({
   lines = 3,
-  gap = 'gap-2.5',
+  gap = 'gap-2',
   className = '',
 }) {
   const widths = ['w-full', 'w-[88%]', 'w-[65%]', 'w-[75%]', 'w-[50%]'];
@@ -71,27 +63,21 @@ export function SkeletonText({
 }
 
 /**
- * Product Card Skeleton conforming to the editorial photography-forward grid layout
+ * Product Card Skeleton conforming to the 4:5 image ratio
  */
 export function SkeletonCard({ className = '' }) {
   return (
-    <div className={`flex flex-col space-y-3.5 ${className}`} aria-hidden="true">
-      {/* 4:5 Editorial Image Frame */}
-      <div className="relative aspect-[4/5] w-full bg-neutral-200/70 overflow-hidden">
+    <div className={`flex flex-col space-y-3 bg-white p-3 sm:p-4 rounded-lg border border-[#E7E5E4] ${className}`} aria-hidden="true">
+      {/* 4:5 Aspect Ratio Locked Container */}
+      <div className="relative aspect-[4/5] w-full bg-[#F5F5F4] rounded-lg overflow-hidden">
         <Skeleton className="w-full h-full" />
-        <div className="absolute top-3 left-3">
-          <Skeleton width="48px" height="20px" />
-        </div>
       </div>
 
-      {/* Product Metadata & Title */}
-      <div className="space-y-2 pt-0.5">
-        <div className="flex items-center justify-between">
-          <Skeleton width="60px" height="12px" />
-          <Skeleton width="40px" height="12px" />
-        </div>
-        <Skeleton width="85%" height="18px" />
-        <Skeleton width="30%" height="16px" />
+      {/* Metadata & Title */}
+      <div className="space-y-1.5 pt-1">
+        <Skeleton width="40%" height="11px" />
+        <Skeleton width="85%" height="15px" />
+        <Skeleton width="35%" height="15px" />
       </div>
     </div>
   );
