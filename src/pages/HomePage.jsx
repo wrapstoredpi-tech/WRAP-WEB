@@ -7,7 +7,7 @@ import { useProductsContext } from '../context/ProductsContext';
 import { usePhoneContext } from '../context/PhoneContext';
 import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
 import { formatINR } from '../../src/lib/currency';
-import { Smartphone, ArrowRight } from 'lucide-react';
+import { Smartphone } from 'lucide-react';
 
 const INITIAL_FILTERS = {
   category: 'All',
@@ -212,7 +212,6 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
 
   const activeFilterCount = useMemo(() => {
     return [
-      filters.category !== 'All' && filters.category !== 'All Categories',
       Boolean(filters.subcategory_id) || (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All'),
       filters.brand && filters.brand !== 'All Brands',
       Boolean(filters.selectedModel),
@@ -245,107 +244,18 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
         }}
       />
 
-      <div className="max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12 py-10 sm:py-16 space-y-16 w-full">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 w-full">
         
-        {/* ── Section 1: Explore Collections (Quiet, Photography-forward) ──── */}
-        <section className="space-y-6">
-          <div className="flex items-baseline justify-between border-b border-[#E7E5E4] pb-4">
-            <div>
-              <h2 className="text-[22px] sm:text-[24px] font-semibold text-[#141414] tracking-tight">
-                Collections
-              </h2>
-              <p className="text-[13px] text-[#666664] font-normal mt-0.5">
-                Thoughtful protection &amp; objects for daily carry
-              </p>
-            </div>
-            <span className="text-[12px] text-[#A8A29E] font-normal">
-              {liveCategories.length} categories
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {/* All Products Tile */}
-            <button
-              type="button"
-              onClick={() => {
-                handleFilterChange('category', 'All');
-                if (productSectionRef.current) {
-                  productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
-              className={`group p-5 rounded-lg border text-left flex flex-col justify-between min-h-[110px] transition-colors ${
-                filters.category === 'All'
-                  ? 'border-[#141414] bg-[#141414] text-white shadow-sm'
-                  : 'border-[#E7E5E4] bg-white text-[#141414] hover:border-[#141414]'
-              }`}
-            >
-              <div className="flex items-start justify-between w-full">
-                <span className={`text-[11px] font-semibold uppercase tracking-tight ${filters.category === 'All' ? 'text-[#D6D3D1]' : 'text-[#666664]'}`}>
-                  Catalog
-                </span>
-                <span className={`text-[12px] ${filters.category === 'All' ? 'text-[#A8A29E]' : 'text-[#A8A29E]'}`}>
-                  {liveProducts.length}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between w-full pt-4">
-                <span className="text-[15px] font-semibold">All Objects</span>
-                <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </button>
-
-            {/* Individual Category Tiles */}
-            {liveCategories.map((cat) => {
-              const isSelected = filters.category === cat.name;
-              const count = liveProducts.filter((p) => p.category === cat.name).length;
-
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    handleFilterChange('category', cat.name);
-                    if (productSectionRef.current) {
-                      productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }}
-                  className={`group p-5 rounded-lg border text-left flex flex-col justify-between min-h-[110px] transition-colors ${
-                    isSelected
-                      ? 'border-[#141414] bg-[#141414] text-white shadow-sm'
-                      : 'border-[#E7E5E4] bg-white text-[#141414] hover:border-[#141414]'
-                  }`}
-                >
-                  <div className="flex items-start justify-between w-full">
-                    <span className={`text-[11px] font-semibold uppercase tracking-tight ${isSelected ? 'text-[#D6D3D1]' : 'text-[#666664]'}`}>
-                      Category
-                    </span>
-                    {count > 0 && (
-                      <span className={`text-[12px] ${isSelected ? 'text-[#A8A29E]' : 'text-[#A8A29E]'}`}>
-                        {count}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between w-full pt-4">
-                    <span className="text-[15px] font-semibold">{cat.name}</span>
-                    <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Section 2: "Made for your phone" row (If phone is saved) ────── */}
+        {/* ── Section 1: "Made for your phone" row (If phone is saved) ────── */}
         {savedPhone && madeForYourPhoneProducts.length > 0 && (
-          <section className="p-6 sm:p-8 bg-[#141414] text-white rounded-lg space-y-6">
+          <section className="p-4 sm:p-6 bg-[#141414] text-white rounded-lg space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-md bg-white/10 flex items-center justify-center text-white">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-white/10 flex items-center justify-center text-white">
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-[16px] font-semibold text-white">Fitted for your {savedPhone.model}</h3>
+                  <h3 className="text-[15px] sm:text-[16px] font-semibold text-white">Fitted for your {savedPhone.model}</h3>
                   <p className="text-[12px] text-[#A8A29E] font-normal">Precision cutouts and verified geometry</p>
                 </div>
               </div>
@@ -359,7 +269,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
               {madeForYourPhoneProducts.map((p) => (
                 <div
                   key={p.id}
@@ -386,15 +296,15 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
           </section>
         )}
 
-        {/* ── Section 3: Main Product Listing ─────────────────────────────── */}
-        <section ref={productSectionRef} className="space-y-6 pt-2">
+        {/* ── Section 2: Main Product Listing ─────────────────────────────── */}
+        <section ref={productSectionRef} className="space-y-4 sm:space-y-5">
           {/* Horizontal Category Navigation Tabs Bar */}
-          <div className="space-y-3 pb-2">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <div className="space-y-2 sm:space-y-2.5 pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
               <button
                 type="button"
                 onClick={() => handleFilterChange('category', 'All')}
-                className={`h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
+                className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
                   filters.category === 'All'
                     ? 'bg-[#141414] text-white'
                     : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
@@ -410,7 +320,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
                     key={cat.id}
                     type="button"
                     onClick={() => handleFilterChange('category', cat.name)}
-                    className={`h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
+                    className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
                       isSelected
                         ? 'bg-[#141414] text-white'
                         : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
@@ -424,11 +334,11 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
 
             {/* Subcategory Chips Row */}
             {activeSubcategories.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
                 <button
                   type="button"
                   onClick={() => handleFilterChange('subcategory', 'All Types')}
-                  className={`h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
+                  className={`h-7 sm:h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
                     !filters.subcategory_id || filters.subcategory === 'All Types'
                       ? 'bg-[#141414] text-white font-semibold'
                       : 'bg-white text-[#666664] border border-[#E7E5E4] hover:border-[#D6D3D1]'
@@ -443,7 +353,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
                       key={sub.id}
                       type="button"
                       onClick={() => handleFilterChange('subcategory', sub.name)}
-                      className={`h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
+                      className={`h-7 sm:h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
                         isSubSelected
                           ? 'bg-[#141414] text-white font-semibold'
                           : 'bg-white text-[#666664] border border-[#E7E5E4] hover:border-[#D6D3D1]'
