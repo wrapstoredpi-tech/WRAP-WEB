@@ -1,13 +1,15 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { HeroSection } from '../components/home/HeroSection';
+import { ShopByCategory } from '../components/home/ShopByCategory';
 import { ProductGrid } from '../components/home/ProductGrid';
 import { FilterBottomSheet } from '../components/home/FilterBottomSheet';
+import { CategoryHub } from '../components/category/CategoryHub';
 import { useProductsContext } from '../context/ProductsContext';
 import { usePhoneContext } from '../context/PhoneContext';
-import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
-import { formatINR } from '../../src/lib/currency';
-import { Smartphone } from 'lucide-react';
+import { deriveFilterOptions, PRICE_RANGES, isProductCompatibleWithPhone } from '../lib/useProducts';
+import { formatINR } from '../lib/currency';
+import { Smartphone, ChevronRight, ArrowLeft } from 'lucide-react';
 
 const INITIAL_FILTERS = {
   category: 'All',
@@ -21,7 +23,7 @@ const INITIAL_FILTERS = {
   inStockOnly: false,
 };
 
-export function HomePage({ onAddToCart, activeCategoryNav }) {
+export function HomePage({ onAddToCart }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const productSectionRef = useRef(null);
@@ -45,19 +47,53 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [showAllDesigns, setShowAllDesigns] = useState(false);
 
-  // Sync category from URL or nav selection
-  useEffect(() => {
-    const catQuery = searchParams.get('category');
-    const targetCat = catQuery || (activeCategoryNav !== 'New Arrivals' ? activeCategoryNav : 'All');
+  // Read URL query parameters
+  const catQuery = searchParams.get('category');
+  const subQuery = searchParams.get('subcategory');
 
-    if (targetCat && targetCat !== 'All') {
-      const matched = liveCategories.find((c) => c.name === targetCat);
+  const activeCategory = catQuery && catQuery !== 'All' ? catQuery : 'All';
+  const matchedCategory = useMemo(() => {
+    if (activeCategory === 'All') return null;
+    return liveCategories.find((c) => c.name.toLowerCase() === activeCategory.toLowerCase()) || null;
+  }, [activeCategory, liveCategories]);
+
+  // Check if current category has subcategories in DB
+  const categorySubcategories = useMemo(() => {
+    if (!matchedCategory) return [];
+    return liveSubcategories.filter((s) => s.category_id === matchedCategory.id);
+  }, [matchedCategory, liveSubcategories]);
+
+  // Determine whether to display Step 1 Hub Screen vs Step 2 Product Grid Screen
+  const isHubView = Boolean(
+    matchedCategory &&
+    categorySubcategories.length > 0 &&
+    !subQuery
+  );
+
+  // Sync category and subcategory from URL searchParams
+  useEffect(() => {
+    if (activeCategory !== 'All' && matchedCategory) {
+      let resolvedSub = 'All Types';
+      let resolvedSubId = null;
+
+      if (subQuery && subQuery !== 'all' && subQuery !== 'All Types') {
+        const matchedSub = liveSubcategories.find(
+          (s) => s.category_id === matchedCategory.id && s.name.toLowerCase() === subQuery.toLowerCase()
+        );
+        if (matchedSub) {
+          resolvedSub = matchedSub.name;
+          resolvedSubId = matchedSub.id;
+        } else {
+          resolvedSub = subQuery;
+        }
+      }
+
       setFilters((prev) => ({
         ...prev,
-        category: targetCat,
-        category_id: matched?.id || null,
-        subcategory: 'All Types',
-        subcategory_id: null,
+        category: matchedCategory.name,
+        category_id: matchedCategory.id,
+        subcategory: resolvedSub,
+        subcategory_id: resolvedSubId,
       }));
     } else {
       setFilters((prev) => ({
@@ -68,7 +104,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
         subcategory_id: null,
       }));
     }
-  }, [searchParams, activeCategoryNav, liveCategories]);
+  }, [activeCategory, subQuery, matchedCategory, liveSubcategories]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => {
@@ -87,18 +123,25 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
           next.category_id = matched?.id || null;
           next.subcategory = 'All Types';
           next.subcategory_id = null;
+          // Navigating to category hub (Step 1)
           setSearchParams({ category: value });
         }
       }
 
       if (key === 'subcategory') {
-        if (value === 'All Types' || value === 'All') {
+        if (value === 'All Types' || value === 'All' || value === 'all') {
           next.subcategory = 'All Types';
           next.subcategory_id = null;
+          if (next.category !== 'All') {
+            setSearchParams({ category: next.category, subcategory: 'all' });
+          }
         } else {
           const subObj = liveSubcategories.find((s) => s.name === value);
           next.subcategory = value;
           next.subcategory_id = subObj?.id || null;
+          if (next.category !== 'All') {
+            setSearchParams({ category: next.category, subcategory: value });
+          }
         }
       }
 
@@ -107,57 +150,81 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
   };
 
   const handleResetFilters = () => {
-    setFilters(INITIAL_FILTERS);
+    setFilters((prev) => ({
+      ...INITIAL_FILTERS,
+      category: prev.category,
+      category_id: prev.category_id,
+      subcategory: prev.subcategory,
+      subcategory_id: prev.subcategory_id,
+    }));
     setShowAllDesigns(true);
-    setSearchParams({});
   };
 
-  const isCompatibleWithPhone = (product, phone) => {
-    if (!phone || !phone.model) return true;
-    const models = product.compatible_models || [];
-    if (models.length === 0 || models.includes('Universal') || product.mobile_brand === 'Universal') {
-      return true;
+  const handleSelectCategoryTile = (tile) => {
+    if (tile.category === 'All' || !tile.category) {
+      handleFilterChange('category', 'All');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-    const target = phone.model.toLowerCase().trim();
-    return models.some((m) => m.toLowerCase().trim() === target);
+
+    if (tile.category && tile.subcategory) {
+      setSearchParams({ category: tile.category, subcategory: tile.subcategory });
+    } else if (tile.category) {
+      setSearchParams({ category: tile.category });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // "Made for your phone" products (shown on home page when phone model is selected)
   const madeForYourPhoneProducts = useMemo(() => {
     if (!savedPhone) return [];
     return liveProducts
       .filter((p) => {
+        const isCase = (p.category || '').toLowerCase() === 'mobile cases';
         const models = p.compatible_models || [];
-        if (models.length === 0 || models.includes('Universal')) return false;
+        if (!isCase || models.length === 0 || models.includes('Universal')) return false;
         return models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim());
       })
       .slice(0, 4);
   }, [liveProducts, savedPhone]);
 
+  // Main filtered products for the Step 2 grid
   const filteredProducts = useMemo(() => {
     let result = [...liveProducts];
 
+    // Phone compatibility filter (keeps all universal accessories and matching cases)
     if (savedPhone && !showAllDesigns) {
-      result = result.filter((p) => isCompatibleWithPhone(p, savedPhone));
+      result = result.filter((p) => isProductCompatibleWithPhone(p, savedPhone));
     }
 
+    // Manual brand filter from bottom sheet
     if (filters.brand && filters.brand !== 'All Brands') {
       result = result.filter(
         (p) =>
           p.mobile_brand === filters.brand ||
           p.mobile_brand === 'Universal' ||
-          (p.compatible_models || []).includes('Universal')
+          (p.compatible_models || []).includes('Universal') ||
+          (p.category && p.category.toLowerCase() !== 'mobile cases')
       );
     }
 
+    // Manual model filter from bottom sheet
     if (filters.selectedModel) {
       const targetM = filters.selectedModel.toLowerCase().trim();
       result = result.filter((p) => {
         const models = p.compatible_models || [];
-        if (models.includes('Universal') || p.mobile_brand === 'Universal') return true;
+        if (
+          models.includes('Universal') ||
+          p.mobile_brand === 'Universal' ||
+          (p.category && p.category.toLowerCase() !== 'mobile cases')
+        ) {
+          return true;
+        }
         return models.some((m) => m.toLowerCase().trim() === targetM);
       });
     }
 
+    // Category filter
     if (filters.category !== 'All' && filters.category !== 'All Categories') {
       if (filters.category_id) {
         result = result.filter((p) => p.category_id === filters.category_id);
@@ -166,7 +233,14 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       }
     }
 
-    if (filters.subcategory_id || (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All')) {
+    // Subcategory filter (if specific subcategory is selected)
+    if (
+      filters.subcategory_id ||
+      (filters.subcategory &&
+        filters.subcategory !== 'All Types' &&
+        filters.subcategory !== 'All' &&
+        filters.subcategory !== 'all')
+    ) {
       result = result.filter((p) =>
         filters.subcategory_id
           ? p.subcategory_id === filters.subcategory_id
@@ -174,6 +248,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       );
     }
 
+    // Price range filter
     if (filters.priceRange && filters.priceRange !== 'All Prices') {
       const range = PRICE_RANGES.find((r) => r.label === filters.priceRange);
       if (range) {
@@ -181,6 +256,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       }
     }
 
+    // Color filter
     if (filters.selectedColor) {
       const targetColor = filters.selectedColor.toLowerCase().trim();
       result = result.filter((p) =>
@@ -191,10 +267,12 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
       );
     }
 
+    // In-stock only filter
     if (filters.inStockOnly) {
       result = result.filter((p) => p.stock_status !== 'OUT_OF_STOCK' && p.available_stock > 0);
     }
 
+    // Sort
     result.sort((a, b) => {
       if (sortBy === 'price_asc') return a.selling_price - b.selling_price;
       if (sortBy === 'price_desc') return b.selling_price - a.selling_price;
@@ -212,7 +290,11 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
 
   const activeFilterCount = useMemo(() => {
     return [
-      Boolean(filters.subcategory_id) || (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All'),
+      Boolean(filters.subcategory_id) ||
+        (filters.subcategory &&
+          filters.subcategory !== 'All Types' &&
+          filters.subcategory !== 'All' &&
+          filters.subcategory !== 'all'),
       filters.brand && filters.brand !== 'All Brands',
       Boolean(filters.selectedModel),
       filters.priceRange !== 'All Prices',
@@ -221,33 +303,51 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
     ].filter(Boolean).length;
   }, [filters]);
 
-  const activeSubcategories = useMemo(() => {
-    if (!filters.category_id && filters.category !== 'All') {
-      const found = liveCategories.find((c) => c.name === filters.category);
-      if (found) return filterOptions.subcategoryMap?.[found.id] || [];
-    }
-    if (filters.category_id) {
-      return filterOptions.subcategoryMap?.[filters.category_id] || [];
-    }
-    return [];
-  }, [filters.category_id, filters.category, liveCategories, filterOptions.subcategoryMap]);
+  // ── 1. STEP 1: HUB SCREEN ──────────────────────────────────────────────────
+  if (isHubView && matchedCategory) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#FAFAF9]">
+        <CategoryHub
+          category={matchedCategory}
+          subcategories={liveSubcategories}
+          products={liveProducts}
+          onSelectSubcategory={(sub) => {
+            setSearchParams({ category: matchedCategory.name, subcategory: sub.name });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onBackToAllProducts={() => {
+            setSearchParams({});
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      </div>
+    );
+  }
 
+  // ── 2. STEP 2: PRODUCT GRID SCREEN ─────────────────────────────────────────
   return (
     <div className="flex flex-col min-h-screen bg-[#FAFAF9]">
-      {/* Full-bleed Hero Banner Section */}
-      <HeroSection
-        onShopClick={(cat) => {
-          handleFilterChange('category', cat || 'All');
-          if (productSectionRef.current) {
-            productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }}
-      />
+      {/* Full-bleed Hero Banner Section (Only on All Products / Full Catalog) */}
+      {activeCategory === 'All' && (
+        <HeroSection
+          onShopClick={() => {
+            setSearchParams({});
+            if (productSectionRef.current) {
+              productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        />
+      )}
 
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 w-full">
         
-        {/* ── Section 1: "Made for your phone" row (If phone is saved) ────── */}
-        {savedPhone && madeForYourPhoneProducts.length > 0 && (
+        {/* ── SHOP BY CATEGORY (Placed between Banner & Fitted For Your Model) ── */}
+        {activeCategory === 'All' && (
+          <ShopByCategory onSelectTile={handleSelectCategoryTile} />
+        )}
+
+        {/* ── Optional: "Made for your phone" quick carousel on All Products ── */}
+        {activeCategory === 'All' && savedPhone && madeForYourPhoneProducts.length > 0 && (
           <section className="p-4 sm:p-6 bg-[#141414] text-white rounded-lg space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -255,15 +355,19 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] sm:text-[16px] font-semibold text-white">Fitted for your {savedPhone.model}</h3>
-                  <p className="text-[12px] text-[#A8A29E] font-normal">Precision cutouts and verified geometry</p>
+                  <h3 className="text-[15px] sm:text-[16px] font-semibold text-white">
+                    Fitted for your {savedPhone.model}
+                  </h3>
+                  <p className="text-[12px] text-[#A8A29E] font-normal">
+                    Precision cutouts and verified geometry
+                  </p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={openPhoneSheet}
-                className="text-[13px] text-[#D6D3D1] hover:text-white font-normal underline transition-colors"
+                className="text-[13px] text-[#D6D3D1] hover:text-white font-normal underline transition-colors cursor-pointer"
               >
                 Change
               </button>
@@ -296,15 +400,76 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
           </section>
         )}
 
-        {/* ── Section 2: Main Product Listing ─────────────────────────────── */}
+        {/* ── Main Product Listing Section ─────────────────────────────────── */}
         <section ref={productSectionRef} className="space-y-4 sm:space-y-5">
-          {/* Horizontal Category Navigation Tabs Bar */}
-          <div className="space-y-2 sm:space-y-2.5 pb-1">
+          
+          {/* Breadcrumb & Return to Hub Back-link (When in Category Drill-down) */}
+          {matchedCategory && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E7E5E4] animate-fade-in">
+              <nav aria-label="Breadcrumb" className="text-[13px] text-[#666664]">
+                <ol className="flex items-center space-x-2 truncate font-normal">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setSearchParams({})}
+                      className="hover:text-[#141414] transition-colors cursor-pointer"
+                    >
+                      All Products
+                    </button>
+                  </li>
+                  <li>
+                    <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setSearchParams({ category: matchedCategory.name })}
+                      className="hover:text-[#141414] transition-colors font-semibold text-[#141414] underline underline-offset-4 decoration-[#D6D3D1] hover:decoration-[#141414] cursor-pointer"
+                    >
+                      {matchedCategory.name}
+                    </button>
+                  </li>
+                  {subQuery && subQuery !== 'all' && (
+                    <>
+                      <li>
+                        <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
+                      </li>
+                      <li className="text-[#141414] font-semibold truncate" aria-current="page">
+                        {filters.subcategory}
+                      </li>
+                    </>
+                  )}
+                  {subQuery === 'all' && (
+                    <>
+                      <li>
+                        <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
+                      </li>
+                      <li className="text-[#141414] font-semibold truncate" aria-current="page">
+                        All Designs
+                      </li>
+                    </>
+                  )}
+                </ol>
+              </nav>
+
+              <button
+                type="button"
+                onClick={() => setSearchParams({ category: matchedCategory.name })}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#141414] hover:text-[#9E381A] bg-white border border-[#E7E5E4] hover:border-[#141414] px-3.5 py-1.5 rounded-lg transition-colors shadow-xs self-start sm:self-auto cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to {matchedCategory.name} Hub</span>
+              </button>
+            </div>
+          )}
+
+          {/* Horizontal Category Tabs Bar (for All Products or category hopping) */}
+          <div className="pb-1">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
               <button
                 type="button"
                 onClick={() => handleFilterChange('category', 'All')}
-                className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
+                className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors cursor-pointer ${
                   filters.category === 'All'
                     ? 'bg-[#141414] text-white'
                     : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
@@ -320,7 +485,7 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
                     key={cat.id}
                     type="button"
                     onClick={() => handleFilterChange('category', cat.name)}
-                    className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors ${
+                    className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-[#141414] text-white'
                         : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
@@ -331,40 +496,6 @@ export function HomePage({ onAddToCart, activeCategoryNav }) {
                 );
               })}
             </div>
-
-            {/* Subcategory Chips Row */}
-            {activeSubcategories.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange('subcategory', 'All Types')}
-                  className={`h-7 sm:h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
-                    !filters.subcategory_id || filters.subcategory === 'All Types'
-                      ? 'bg-[#141414] text-white font-semibold'
-                      : 'bg-white text-[#666664] border border-[#E7E5E4] hover:border-[#D6D3D1]'
-                  }`}
-                >
-                  All Sub-types
-                </button>
-                {activeSubcategories.map((sub) => {
-                  const isSubSelected = filters.subcategory_id === sub.id || filters.subcategory === sub.name;
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      onClick={() => handleFilterChange('subcategory', sub.name)}
-                      className={`h-7 sm:h-8 px-3 rounded-md text-[12px] shrink-0 transition-colors ${
-                        isSubSelected
-                          ? 'bg-[#141414] text-white font-semibold'
-                          : 'bg-white text-[#666664] border border-[#E7E5E4] hover:border-[#D6D3D1]'
-                      }`}
-                    >
-                      {sub.name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
           {/* Product Grid */}

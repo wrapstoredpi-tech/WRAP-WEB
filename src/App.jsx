@@ -15,10 +15,12 @@ import { PhoneProvider } from './context/PhoneContext';
 import { Check, X } from 'lucide-react';
 
 function AppContent() {
-  const [activeCategoryNav, setActiveCategoryNav] = useState('All');
   const [toastMessage, setToastMessage] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const activeCategoryNav = location.pathname === '/' ? (searchParams.get('category') || 'All') : 'All';
 
   const handleAddToCart = (product, quantity = 1) => {
     // Navigate directly to the full /cart page on add to bag
@@ -26,9 +28,10 @@ function AppContent() {
   };
 
   const handleCategoryNavSelect = (categoryName) => {
-    setActiveCategoryNav(categoryName);
-    if (location.pathname !== '/') {
-      navigate(categoryName === 'All' ? '/' : `/?category=${encodeURIComponent(categoryName)}`);
+    if (categoryName === 'All') {
+      navigate('/');
+    } else {
+      navigate(`/?category=${encodeURIComponent(categoryName)}`);
     }
   };
 

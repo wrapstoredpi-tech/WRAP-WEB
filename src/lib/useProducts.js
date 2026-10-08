@@ -63,6 +63,44 @@ export function parseModels(modelStr) {
 }
 
 /**
+ * Check if a product is compatible with a user's saved phone model.
+ * 
+ * Rules:
+ * 1. If no phone model is saved, all products are compatible.
+ * 2. Products in non-case categories (e.g. Accessories, Gadgets, Cables) are universal
+ *    and must NEVER be hidden by a phone-model filter.
+ * 3. Products with no mobile_model set, or marked "Universal", are universal.
+ * 4. Only Mobile Cases (or products with specific compatible models defined)
+ *    are narrowed by the phone model filter.
+ */
+export function isProductCompatibleWithPhone(product, savedPhone) {
+  if (!savedPhone || !savedPhone.model) return true;
+  if (!product) return true;
+
+  // Non-case categories are universal accessories
+  const cat = (product.category || '').toLowerCase().trim();
+  if (cat && cat !== 'mobile cases' && cat !== 'cases') {
+    return true;
+  }
+
+  // Universal products or products without specific models
+  const models = product.compatible_models || [];
+  if (
+    models.length === 0 ||
+    models.includes('Universal') ||
+    product.mobile_brand === 'Universal' ||
+    !product.mobile_model ||
+    product.mobile_model === 'Universal'
+  ) {
+    return true;
+  }
+
+  // Model-specific check
+  const target = savedPhone.model.toLowerCase().trim();
+  return models.some((m) => m.toLowerCase().trim() === target);
+}
+
+/**
  * Parse color_variants — may be a JSONB array, a comma-string, or null.
  * Always returns a plain JS string[].
  */
@@ -273,7 +311,7 @@ export function useProducts() {
       // ── 3. Active subcategories — same ordering rules ────────────────────────
       const { data: subData, error: subErr } = await supabase
         .from('subcategories')
-        .select('id, name, category_id, sort_order')
+        .select('*')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
@@ -436,7 +474,7 @@ export function useProduct(id) {
             .order('name', { ascending: true }),
           supabase
             .from('subcategories')
-            .select('id, name, category_id, sort_order')
+            .select('*')
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
             .order('name', { ascending: true }),

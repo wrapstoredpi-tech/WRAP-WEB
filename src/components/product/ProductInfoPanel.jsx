@@ -13,6 +13,7 @@ import { ColorSwatch } from '../ui/ColorSwatch';
 import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
+import { isProductCompatibleWithPhone } from '../../lib/useProducts';
 import { useProductColors } from '../../lib/colorExtraction';
 
 export function ProductInfoPanel({
@@ -36,15 +37,8 @@ export function ProductInfoPanel({
   const availableQty = product.available_stock || 0;
   const hasDiscount = product.mrp > product.selling_price;
 
-  const isCompatibleWithSavedPhone =
-    savedPhone &&
-    (
-      !product.compatible_models ||
-      product.compatible_models.length === 0 ||
-      product.compatible_models.includes('Universal') ||
-      product.mobile_brand === 'Universal' ||
-      product.compatible_models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim())
-    );
+  const isMobileCase = (product.category || '').toLowerCase() === 'mobile cases';
+  const isCompatibleWithSavedPhone = isProductCompatibleWithPhone(product, savedPhone);
 
   const handleDecrement = () => {
     if (quantity > 1) {
@@ -109,7 +103,7 @@ export function ProductInfoPanel({
 
       {/* Compatibility Line */}
       <div className="py-0.5">
-        {savedPhone && isCompatibleWithSavedPhone ? (
+        {savedPhone && isMobileCase && isCompatibleWithSavedPhone && compatibleList.length > 0 ? (
           <div className="flex items-center gap-2 text-[13px] text-[#141414] bg-white border border-[#E7E5E4] p-3 rounded-lg font-normal">
             <Smartphone className="w-4 h-4 text-[#666664] shrink-0" />
             <span>Guaranteed fit for <strong className="font-semibold">{savedPhone.model}</strong></span>

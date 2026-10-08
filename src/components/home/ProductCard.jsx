@@ -4,6 +4,7 @@ import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
+import { isProductCompatibleWithPhone } from '../../lib/useProducts';
 import { ColorSwatch } from '../ui/ColorSwatch';
 import { useProductColors } from '../../lib/colorExtraction';
 
@@ -22,14 +23,11 @@ export function ProductCard({ product, onAddToCart }) {
   const isLowStock = !isOutOfStock && (product.available_stock <= 5 || product.stock_status === 'LOW_STOCK');
   const hasDiscount = product.mrp > product.selling_price;
 
-  // Compatibility check against saved phone
-  const isCompatible =
-    !savedPhone ||
-    !product.compatible_models ||
-    product.compatible_models.length === 0 ||
-    product.compatible_models.includes('Universal') ||
-    product.mobile_brand === 'Universal' ||
-    product.compatible_models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim());
+  // Compatibility check against saved phone (never filters out universal accessories)
+  const isCompatible = isProductCompatibleWithPhone(product, savedPhone);
+  const isPhoneSpecificCase =
+    (product.category || '').toLowerCase() === 'mobile cases' &&
+    (product.compatible_models || []).length > 0;
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
@@ -89,7 +87,7 @@ export function ProductCard({ product, onAddToCart }) {
             )}
           </div>
 
-          {savedPhone && isCompatible && (
+          {savedPhone && isPhoneSpecificCase && isCompatible && (
             <span className="text-[11px] font-normal bg-white/90 text-[#141414] border border-[#E7E5E4] px-2 py-0.5 rounded-md backdrop-blur-xs">
               Fits {savedPhone.model.replace(/^iPhone\s+/i, '')}
             </span>
