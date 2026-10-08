@@ -65,4 +65,19 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  @keyframes heroProgressBar {
+    0% {
+      transform: scaleX(0);
+    }
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  .animate-hero-progress {
+    animation: heroProgressBar 5s linear forwards;
+    transform-origin: left center;
+  }
 }
+

@@ -330,8 +330,12 @@ export function HomePage({ onAddToCart }) {
       {/* Full-bleed Hero Banner Section (Only on All Products / Full Catalog) */}
       {activeCategory === 'All' && (
         <HeroSection
-          onShopClick={() => {
-            setSearchParams({});
+          onShopClick={(cat) => {
+            if (cat && cat !== 'All') {
+              handleFilterChange('category', cat);
+            } else {
+              setSearchParams({});
+            }
             if (productSectionRef.current) {
               productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
             }
