@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useProductsContext } from '../context/ProductsContext';
 import { AdminLogin } from '../components/admin/AdminLogin';
 import { AdminHeader } from '../components/admin/AdminHeader';
@@ -7,141 +7,37 @@ import { AdminOrdersTab } from '../components/admin/AdminOrdersTab';
 import { AdminHeroTab } from '../components/admin/AdminHeroTab';
 import { AdminFeaturedTab } from '../components/admin/AdminFeaturedTab';
 import { AdminProductsTab } from '../components/admin/AdminProductsTab';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseConfigured } from '../lib/supabase';
 
 const LOCAL_STORAGE_ORDERS_KEY = 'wrapstore_orders_v2';
 
-// Seed sample orders for initial showcase if no real customer orders exist yet
-const INITIAL_DEMO_ORDERS = [
-  {
-    orderId: 'WS-892104',
-    createdAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(), // 28 mins ago
-    status: 'Payment received',
-    subtotal: 1299,
-    shippingFee: 0,
-    total: 1299,
-    contact: {
-      name: 'Karthik Subramanian',
-      phone: '98402 18942',
-      email: 'karthik.sub@gmail.com',
-    },
-    delivery: {
-      address: '42, 3rd Cross Street, Gandhinagar',
-      city: 'Dharmapuri',
-      state: 'Tamil Nadu',
-      pincode: '636701',
-    },
-    payment: 'Online Payment (Razorpay - UPI)',
-    items: [
-      {
-        name: 'Nomad Vachetta Leather Case',
-        selected_model: 'iPhone 16 Pro Max',
-        color: 'Saddle Brown',
-        price: 1299,
-        quantity: 1,
-        image: '/hero/slide-2.webp',
-      },
-    ],
-  },
-  {
-    orderId: 'WS-891942',
-    createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), // 3 hours ago
-    status: 'Packed',
-    subtotal: 1798,
-    shippingFee: 0,
-    total: 1798,
-    contact: {
-      name: 'Ananya Ramesh',
-      phone: '94431 82740',
-      email: 'ananya.ramesh@outlook.com',
-    },
-    delivery: {
-      address: '12B, Lake View Enclave, Anna Nagar',
-      city: 'Salem',
-      state: 'Tamil Nadu',
-      pincode: '636007',
-    },
-    payment: 'Online Payment (Razorpay - Card)',
-    items: [
-      {
-        name: 'Matte Liquid Silicone Case',
-        selected_model: 'Samsung Galaxy S24 Ultra',
-        color: 'Midnight Blue',
-        price: 999,
-        quantity: 1,
-        image: '/hero/slide-1.webp',
-      },
-      {
-        name: '9H HD Tempered Glass Screen Guard',
-        selected_model: 'Samsung Galaxy S24 Ultra',
-        color: 'Clear',
-        price: 799,
-        quantity: 1,
-        image: '/hero/slide-3.webp',
-      },
-    ],
-  },
-  {
-    orderId: 'WS-890215',
-    createdAt: new Date(Date.now() - 22 * 3600 * 1000).toISOString(), // Yesterday
-    status: 'Shipped',
-    subtotal: 1499,
-    shippingFee: 0,
-    total: 1499,
-    contact: {
-      name: 'Vigneshwaran P.',
-      phone: '81240 55198',
-      email: 'vignesh.dpi@gmail.com',
-    },
-    delivery: {
-      address: '78, Bazaar Street, Near Town Bus Stand',
-      city: 'Dharmapuri',
-      state: 'Tamil Nadu',
-      pincode: '636701',
-    },
-    payment: 'Online Payment (Razorpay - Net Banking)',
-    items: [
-      {
-        name: 'Carbon Fiber Rugged Armor Case',
-        selected_model: 'iPhone 15',
-        color: 'Matte Black',
-        price: 1499,
-        quantity: 1,
-        image: '/hero/slide-1.webp',
-      },
-    ],
-  },
-  {
-    orderId: 'WS-888430',
-    createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(), // 2 days ago
-    status: 'Delivered',
-    subtotal: 899,
-    shippingFee: 0,
-    total: 899,
-    contact: {
-      name: 'Priya Sundaram',
-      phone: '97890 23411',
-      email: 'priya.sundaram@gmail.com',
-    },
-    delivery: {
-      address: '15, Railway Station Road',
-      city: 'Dharmapuri',
-      state: 'Tamil Nadu',
-      pincode: '636701',
-    },
-    payment: 'Online Payment (Razorpay - UPI)',
-    items: [
-      {
-        name: 'Frosted Translucent MagSafe Case',
-        selected_model: 'iPhone 16 Pro',
-        color: 'Titanium Gray',
-        price: 899,
-        quantity: 1,
-        image: '/hero/slide-2.webp',
-      },
-    ],
-  },
-];
+// Known demo order IDs to purge from any previous local test sessions
+const DEMO_ORDER_IDS = new Set([
+  'WS-892104',
+  'WS-891942',
+  'WS-890215',
+  'WS-888430',
+  'WS-123456',
+]);
+
+const DEMO_NAMES = new Set([
+  'karthik subramanian',
+  'ananya ramesh',
+  'vigneshwaran p.',
+  'priya sundaram',
+  'john doe',
+]);
+
+/**
+ * Filter out any mock/seed test orders so only genuine customer transactions exist.
+ */
+function isGenuineOrder(ord) {
+  if (!ord || !ord.orderId) return false;
+  if (DEMO_ORDER_IDS.has(ord.orderId)) return false;
+  const name = (ord.contact?.name || '').trim().toLowerCase();
+  if (DEMO_NAMES.has(name)) return false;
+  return true;
+}
 
 export function AdminPage() {
   const { products, refetch } = useProductsContext();
@@ -162,29 +58,162 @@ export function AdminPage() {
   // Active View Tab
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Orders State
+  // Orders State — clean, strictly starts empty if no real orders have been placed
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const realtimeChannelRef = useRef(null);
 
-  // Load orders from localStorage or seed
+  // Load clean genuine orders from storage on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setOrders(parsed);
+        if (Array.isArray(parsed)) {
+          // Purge all test / dummy data
+          const clean = parsed.filter(isGenuineOrder);
+          localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(clean));
+          setOrders(clean);
           return;
         }
       }
-      // If no customer orders in storage yet, seed initial demo orders
-      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(INITIAL_DEMO_ORDERS));
-      setOrders(INITIAL_DEMO_ORDERS);
+      // If nothing or invalid, ensure empty array
+      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify([]));
+      setOrders([]);
     } catch (e) {
       console.warn('Could not read orders from localStorage:', e);
-      setOrders(INITIAL_DEMO_ORDERS);
+      setOrders([]);
     }
   }, []);
+
+  // Fetch online orders from Supabase if table exists
+  const fetchSupabaseOrders = useCallback(async () => {
+    if (!supabaseConfigured || !supabase) return;
+    try {
+      const { data: dbOrders, error } = await supabase
+        .from('online_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(dbOrders) && dbOrders.length > 0) {
+        // Merge with local orders, de-duplicating by ID
+        setOrders((prev) => {
+          const map = new Map();
+          // Add remote orders
+          dbOrders.forEach((o) => {
+            const formatted = {
+              orderId: o.id || o.order_id,
+              createdAt: o.created_at,
+              status: o.order_status || o.payment_status || 'Payment received',
+              subtotal: Number(o.subtotal || o.total || 0),
+              total: Number(o.total || o.subtotal || 0),
+              shippingFee: Number(o.shipping_fee || 0),
+              contact: {
+                name: o.customer_name || 'Customer',
+                phone: o.customer_phone || '',
+                email: o.customer_email || '',
+              },
+              delivery: o.shipping_address || {},
+              items: o.items || [],
+              payment: o.payment_status || 'Online Payment',
+            };
+            if (isGenuineOrder(formatted)) {
+              map.set(formatted.orderId, formatted);
+            }
+          });
+          // Add local genuine orders
+          prev.forEach((o) => {
+            if (isGenuineOrder(o) && !map.has(o.orderId)) {
+              map.set(o.orderId, o);
+            }
+          });
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+          );
+        });
+      }
+    } catch (err) {
+      console.warn('[AdminPage] fetchSupabaseOrders error:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSupabaseOrders();
+  }, [fetchSupabaseOrders]);
+
+  // Realtime Supabase Subscription:
+  // When a product is sold through POS (invoices, invoice_items, stock changes)
+  // or added through POS (products, product_images), update immediately!
+  useEffect(() => {
+    if (!supabaseConfigured || !supabase) return;
+
+    try {
+      const channelTopic = `admin-realtime-${Math.random().toString(36).substring(2, 9)}`;
+      const channel = supabase.channel(channelTopic);
+
+      channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+          console.log('[Admin Realtime] Product change from POS / Web:', payload.eventType);
+          refetch(); // Live update product catalog & stock numbers
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'product_images' }, () => {
+          refetch();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, (payload) => {
+          console.log('[Admin Realtime] Product sold via POS (invoices):', payload.eventType);
+          refetch(); // Live update stock count
+          fetchSupabaseOrders();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoice_items' }, () => {
+          console.log('[Admin Realtime] POS item sold (invoice_items)');
+          refetch(); // Live update stock count
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'online_orders' }, () => {
+          console.log('[Admin Realtime] Online order change');
+          refetch();
+          fetchSupabaseOrders();
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[Admin Realtime] Connected to POS sales and product sync stream');
+          }
+        });
+
+      realtimeChannelRef.current = channel;
+    } catch (err) {
+      console.warn('[Admin Realtime] Subscription error:', err);
+    }
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        try {
+          supabase.removeChannel(realtimeChannelRef.current);
+        } catch {}
+        realtimeChannelRef.current = null;
+      }
+    };
+  }, [refetch, fetchSupabaseOrders]);
+
+  // Window event listener: instant live update if an order is submitted locally
+  useEffect(() => {
+    const handleOrderCreated = (e) => {
+      if (e.detail && isGenuineOrder(e.detail)) {
+        setOrders((prev) => {
+          const exists = prev.some((o) => o.orderId === e.detail.orderId);
+          if (exists) return prev;
+          const updated = [e.detail, ...prev];
+          try {
+            localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+        refetch(); // Refresh stock immediately
+      }
+    };
+
+    window.addEventListener('wrapstore:order_created', handleOrderCreated);
+    return () => window.removeEventListener('wrapstore:order_created', handleOrderCreated);
+  }, [refetch]);
 
   // Update order status callback
   const handleUpdateOrderStatus = useCallback((orderId, newStatus) => {

@@ -44,8 +44,12 @@ export function AdminHeader({ activeTab, onTabChange, onLogout, adminEmail }) {
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
 
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>POS & Store Realtime Active</span>
+          </div>
+
           <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-[#E5E5E3]">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[13px] font-mono font-medium text-[#141414]">
               {adminEmail || 'admin@wrapstore.com'}
             </span>

@@ -238,8 +238,25 @@ export function AdminOrdersTab({
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-[#6B6B6B]">
-                    No orders match your filter criteria.
+                  <td colSpan="7" className="py-16 text-center text-[#6B6B6B]">
+                    <div className="w-12 h-12 rounded-full bg-[#FAFAF9] border border-[#E5E5E3] flex items-center justify-center mx-auto mb-3 text-[#8C8C8C]">
+                      <Package className="w-6 h-6 text-[#8C8C8C]" />
+                    </div>
+                    {orders.length === 0 ? (
+                      <>
+                        <p className="text-[15px] font-semibold text-[#141414]">No Orders Recorded Yet</p>
+                        <p className="text-[12px] text-[#6B6B6B] mt-1 max-w-sm mx-auto">
+                          New orders placed online or completed via POS will stream in here in real time.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[15px] font-semibold text-[#141414]">No Matching Orders</p>
+                        <p className="text-[12px] text-[#6B6B6B] mt-1 max-w-sm mx-auto">
+                          No orders match your search query or status filter. Try clearing filters.
+                        </p>
+                      </>
+                    )}
                   </td>
                 </tr>
               )}

@@ -56,6 +56,13 @@ export async function submitOrder(orderInput) {
     console.warn('Could not save order to localStorage:', e);
   }
 
+  // Notify active admin tabs in real time
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new CustomEvent('wrapstore:order_created', { detail: newOrder }));
+    } catch {}
+  }
+
   return {
     success: true,
     orderId,
@@ -73,7 +80,7 @@ export async function trackOrder(orderId, phone) {
   try {
     const existingOrders = JSON.parse(localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY) || '[]');
     localOrder = existingOrders.find((o) => {
-      const idMatch = o.orderId.toUpperCase() === cleanOrderId;
+      const idMatch = (o.orderId || '').toUpperCase() === cleanOrderId;
       if (!idMatch) return false;
       if (!cleanPhone) return true;
       const orderPhone = (o.contact?.phone || '').replace(/\D/g, '');
@@ -88,34 +95,6 @@ export async function trackOrder(orderId, phone) {
       success: true,
       order: localOrder,
       status: localOrder.status || 'Payment received',
-      allSteps: ORDER_STATUS_STEPS,
-    };
-  }
-
-  // Fallback demo response for test order IDs (e.g. WS-123456)
-  if (cleanOrderId.startsWith('WS-') || cleanOrderId.length >= 6) {
-    return {
-      success: true,
-      order: {
-        orderId: cleanOrderId,
-        createdAt: new Date().toISOString(),
-        status: 'Packed',
-        contact: { name: 'Customer', phone: cleanPhone || '9442218765' },
-        delivery: { address: 'Sample Address', city: 'Dharmapuri', pincode: '636701' },
-        payment: 'Online Payment (Razorpay)',
-        items: [
-          {
-            name: 'Nomad Vachetta Leather Case',
-            selected_model: 'iPhone 16 Pro Max',
-            color: 'Saddle Brown',
-            price: 1299,
-            quantity: 1,
-            image: '/subcategories/iphone.jpg',
-          },
-        ],
-        total: 1299,
-      },
-      status: 'Packed',
       allSteps: ORDER_STATUS_STEPS,
     };
   }

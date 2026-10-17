@@ -252,8 +252,14 @@ export function AdminOverviewTab({
             </table>
           </div>
         ) : (
-          <div className="py-12 text-center text-[#6B6B6B]">
-            <p className="text-[14px]">No customer orders recorded yet.</p>
+          <div className="py-16 px-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#FAFAF9] border border-[#E5E5E3] flex items-center justify-center mx-auto mb-3 text-[#8C8C8C]">
+              <ShoppingBag className="w-6 h-6" />
+            </div>
+            <h3 className="text-[15px] font-semibold text-[#141414]">No Customer Orders Yet</h3>
+            <p className="text-[13px] text-[#6B6B6B] mt-1 max-w-sm mx-auto">
+              Real-time sales and customer orders will automatically appear here as soon as orders are placed.
+            </p>
           </div>
         )}
       </div>

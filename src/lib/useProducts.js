@@ -404,9 +404,29 @@ export function useProducts() {
             console.log('[Realtime] subcategories change:', payload.eventType);
             fetchAll();
           })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' },
+          (payload) => {
+            console.log('[Realtime] POS invoice recorded / product sold:', payload.eventType);
+            fetchAll();
+          })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoice_items' },
+          (payload) => {
+            console.log('[Realtime] POS invoice item updated:', payload.eventType);
+            fetchAll();
+          })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'online_orders' },
+          (payload) => {
+            console.log('[Realtime] online order change:', payload.eventType);
+            fetchAll();
+          })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'online_order_items' },
+          (payload) => {
+            console.log('[Realtime] online order item change:', payload.eventType);
+            fetchAll();
+          })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('[Realtime] subscribed to products, product_images, categories, subcategories');
+            console.log('[Realtime] active sync for products, stock, POS invoices, and orders');
           }
         });
 
