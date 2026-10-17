@@ -25,6 +25,7 @@ const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ defa
 const TypeTestPage = lazy(() => import('./pages/TypeTestPage').then((m) => ({ default: m.TypeTestPage })));
 const IntroTestPage = lazy(() => import('./pages/IntroTestPage').then((m) => ({ default: m.IntroTestPage })));
 const StaticPage = lazy(() => import('./pages/StaticPage').then((m) => ({ default: m.StaticPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 
 function RouteFallback() {
   return (
@@ -37,14 +38,16 @@ function RouteFallback() {
 function AppContent() {
   const location = useLocation();
   const isCheckout = location.pathname === '/checkout';
+  const isAdmin = location.pathname.startsWith('/wrapwebadmin');
+  const isReduced = isCheckout || isAdmin;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#141414] font-sans antialiased">
-      {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout flow) */}
-      {!isCheckout && <Header />}
+      {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout or admin flows) */}
+      {!isReduced && <Header />}
 
-      {/* Global Phone Selection Modal */}
-      <PhoneSelectionModal />
+      {/* Global Phone Selection Modal (Hidden on admin) */}
+      {!isAdmin && <PhoneSelectionModal />}
 
       {/* Page Routes with Suspense code splitting */}
       <Suspense fallback={<RouteFallback />}>
@@ -55,6 +58,9 @@ function AppContent() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
           <Route path="/track-order" element={<TrackOrderPage />} />
+
+          {/* Dedicated Admin Portal */}
+          <Route path="/wrapwebadmin" element={<AdminPage />} />
 
           {/* Auth & Account Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -81,11 +87,11 @@ function AppContent() {
         </Routes>
       </Suspense>
 
-      {/* Footer (Hidden on reduced checkout flow) */}
-      {!isCheckout && <Footer />}
+      {/* Footer (Hidden on reduced checkout or admin flows) */}
+      {!isReduced && <Footer />}
 
-      {/* Floating WhatsApp fixed bottom-left (Hidden on reduced checkout flow) */}
-      {!isCheckout && <FloatingWhatsApp />}
+      {/* Floating WhatsApp fixed bottom-left (Hidden on reduced checkout or admin flows) */}
+      {!isReduced && <FloatingWhatsApp />}
     </div>
   );
 }

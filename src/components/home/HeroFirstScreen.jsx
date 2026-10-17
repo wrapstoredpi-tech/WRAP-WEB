@@ -6,6 +6,7 @@ import { store } from '../../config/store';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { useIntro } from '../../context/IntroContext';
 import { useIntroReveal } from '../../hooks/useIntroReveal';
+import { getHeroSlides } from '../../lib/heroSlides';
 
 export function HeroFirstScreen() {
   const { openPhoneSheet } = usePhoneContext();
@@ -13,7 +14,18 @@ export function HeroFirstScreen() {
   const heroTextRevealStyle = useIntroReveal(80);
   const heroPhotoRevealStyle = useIntroReveal(160);
 
-  const slides = homeConfig.heroSlider?.slides || [];
+  const [slides, setSlides] = useState(() => getHeroSlides());
+
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail) {
+        setSlides(e.detail);
+        setActiveIndex(0);
+      }
+    };
+    window.addEventListener('wrapstore:hero_slides_updated', handleUpdate);
+    return () => window.removeEventListener('wrapstore:hero_slides_updated', handleUpdate);
+  }, []);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);

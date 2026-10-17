@@ -69,6 +69,26 @@ export function isBaseEligible(p) {
   return isOnlineVisible && isActive && notRejected && availableStock > 0;
 }
 
+export function getPinnedDealId() {
+  if (typeof window !== 'undefined') {
+    try {
+      const pinned = localStorage.getItem('wrapstore_pinned_deal_id');
+      if (pinned) return pinned;
+    } catch {}
+  }
+  return dealConfig?.productId || null;
+}
+
+export function getPinnedFeaturedId() {
+  if (typeof window !== 'undefined') {
+    try {
+      const pinned = localStorage.getItem('wrapstore_pinned_featured_id');
+      if (pinned) return pinned;
+    } catch {}
+  }
+  return featuredConfig?.productId || null;
+}
+
 /**
  * Select the Deal of the Day product:
  * - products_with_availability where online_visible, is_active, approval_status != 'REJECTED',
@@ -93,9 +113,10 @@ export function selectDealOfTheDay(products) {
     return null;
   }
 
-  // 1. Config pinned deal
-  if (dealConfig?.productId) {
-    const pinned = eligible.find((item) => item.product.id === dealConfig.productId);
+  // 1. Config or Admin pinned deal
+  const pinnedDealId = getPinnedDealId();
+  if (pinnedDealId) {
+    const pinned = eligible.find((item) => item.product.id === pinnedDealId);
     if (pinned) return pinned;
   }
 
@@ -128,9 +149,10 @@ export function selectFeaturedProduct(products, dealProductId = null, bestSeller
     return null;
   }
 
-  // 1. Config pinned featured product
-  if (featuredConfig?.productId) {
-    const pinned = eligible.find((p) => p.id === featuredConfig.productId);
+  // 1. Config or Admin pinned featured product
+  const pinnedFeaturedId = getPinnedFeaturedId();
+  if (pinnedFeaturedId) {
+    const pinned = eligible.find((p) => p.id === pinnedFeaturedId);
     if (pinned) return pinned;
   }
 
