@@ -45,6 +45,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, supabaseConfigured } from './supabase';
+import { getValidColors, isRealColor } from './colors';
 
 // ─── Fallback placeholder image ───────────────────────────────────────────────
 const PLACEHOLDER_IMG =
@@ -171,7 +172,7 @@ export function parseColors(colorVariants) {
  */
 export function normaliseProduct(raw, imagesMap = {}, catMap = {}, subMap = {}) {
   const compatible_models = parseModels(raw.mobile_model);
-  const color_variants = parseColors(raw.color_variants);
+  const color_variants = getValidColors(raw.color_variants);
 
   // ── Images ──────────────────────────────────────────────────────────────────
   // Real DB columns: public_url, sort_order, is_primary (NOT image_url / display_order)
@@ -502,6 +503,38 @@ export function useProduct(id) {
     }
 
     fetchSingle();
+
+    // ── Realtime listener for POS updates to this product ────────
+    let channel = null;
+    try {
+      const channelTopic = `ws-prod-${id}-${Math.random().toString(36).substring(2, 8)}`;
+      channel = supabase.channel(channelTopic);
+
+      channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+          if (!payload.new || payload.new.id === id || payload.new.product_id === id) {
+            console.log('[Realtime:useProduct] product updated from POS:', payload.eventType);
+            fetchSingle();
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'product_images' }, (payload) => {
+          if (!payload.new || payload.new.product_id === id) {
+            console.log('[Realtime:useProduct] product image updated:', payload.eventType);
+            fetchSingle();
+          }
+        })
+        .subscribe();
+    } catch (err) {
+      console.warn('[Realtime:useProduct] subscription error:', err);
+    }
+
+    return () => {
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
   }, [id]);
 
   return { product, isLoading, error };
@@ -554,7 +587,7 @@ export function deriveFilterOptions(products, categories = [], subcategories = [
   products.forEach((p) => {
     (p.color_variants || []).forEach((c) => {
       const name = typeof c === 'string' ? c.trim() : (c?.name || c?.color || String(c)).trim();
-      if (!name || name.toLowerCase() === '[object object]' || name.toLowerCase() === 'null') return;
+      if (!name || !isRealColor(name)) return;
       const lower = name.toLowerCase();
       if (!colorMap.has(lower)) {
         colorMap.set(lower, name);

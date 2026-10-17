@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { isRealColor, getValidColors } from '../lib/colors';
 
 const CartContext = createContext(undefined);
 const LOCAL_STORAGE_KEY = 'wrapstore_cart_items_v4';
@@ -42,7 +43,8 @@ export function CartProvider({ children }) {
     const maxStock = product.available_stock ?? product.current_stock ?? 99;
     const addQty = Math.max(1, Number(quantityToAdd) || 1);
     const modelToSave = selectedModel || product.selected_model || null;
-    const colorToSave = selectedColor || product.selected_color || null;
+    const rawColor = selectedColor || product.selected_color || null;
+    const colorToSave = isRealColor(rawColor) ? rawColor : (getValidColors(product)[0] || null);
 
     setCartItems((prevItems) => {
       // Find line matching both product ID and selected model
@@ -158,9 +160,9 @@ export function useHydratedCart(products = []) {
 
         // Model resolution: line choice > saved product model > null
         const resolvedModel = item.selected_model || product.mobile_model || null;
-        const resolvedColor =
-          item.selected_color ||
-          (product.color_variants && product.color_variants.length > 0 ? product.color_variants[0] : null);
+        const itemColor = isRealColor(item.selected_color) ? item.selected_color : null;
+        const validProdColors = getValidColors(product);
+        const resolvedColor = itemColor || (validProdColors.length > 0 ? validProdColors[0] : null);
 
         return {
           id: item.id || item.productId,

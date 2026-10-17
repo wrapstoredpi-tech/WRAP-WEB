@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
 import { storeConfig } from '../../config/store';
+import { ColorSwatch, getValidColors } from '../ui/ColorSwatch';
 
 export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const { addItem } = useCart();
@@ -55,12 +56,13 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   };
 
   const canAddToCart = !isOutOfStock && quantity > 0 && (!needsModelSelection || Boolean(selectedModel));
+  const validColors = getValidColors(product);
 
   const handleAddToCart = () => {
     if (!canAddToCart) return;
 
     setIsAdding(true);
-    const chosenColor = product.color_variants && product.color_variants.length > 0 ? product.color_variants[0] : null;
+    const chosenColor = validColors.length > 0 ? validColors[0] : null;
     const modelToSave = selectedModel || 'Universal';
 
     addItem(product, quantity, modelToSave, chosenColor);
@@ -148,15 +150,18 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
         </div>
       )}
 
-      {/* 6. Colours (display only, not selectable) */}
-      {product.color_variants && product.color_variants.length > 0 && (
-        <div className="space-y-1 pt-1">
-          <span className="text-[14px] font-semibold text-[#141414]">
-            Colours:
-          </span>
-          <span className="text-[14px] text-[#6B6B6B] ml-2">
-            {product.color_variants.join(', ')}
-          </span>
+      {/* 6. Colours (display only, not selectable) - only shown when POS updated colors */}
+      {validColors.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-semibold text-[#141414]">
+              Colours:
+            </span>
+            <ColorSwatch colors={validColors} size="sm" />
+            <span className="text-[14px] text-[#6B6B6B]">
+              {validColors.join(', ')}
+            </span>
+          </div>
         </div>
       )}
 

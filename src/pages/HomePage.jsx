@@ -217,6 +217,17 @@ export function HomePage() {
       result = result.filter((p) => p.stock_status !== 'OUT_OF_STOCK' && (p.available_stock ?? p.current_stock ?? 0) > 0);
     }
 
+    // Color filter (matches real colors updated from POS)
+    if (filters.selectedColor) {
+      const targetC = filters.selectedColor.toLowerCase().trim();
+      result = result.filter((p) =>
+        (p.color_variants || []).some((c) => {
+          const cName = typeof c === 'string' ? c : (c?.name || c?.color || String(c));
+          return cName.toLowerCase().trim() === targetC;
+        })
+      );
+    }
+
     // Sorting
     if (sortBy === 'price_asc') {
       result.sort((a, b) => a.selling_price - b.selling_price);

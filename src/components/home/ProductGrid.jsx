@@ -71,6 +71,14 @@ export function ProductGrid({
     });
   }
 
+  if (filters.selectedColor) {
+    activeTags.push({
+      key: 'selectedColor',
+      label: `Colour: ${filters.selectedColor}`,
+      onRemove: () => onFilterChange('selectedColor', ''),
+    });
+  }
+
   const visibleProducts = products.slice(0, displayCount);
   const hasMore = displayCount < products.length;
 

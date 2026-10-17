@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatINR } from '../../lib/currency';
+import { ColorSwatch, getValidColors } from '../ui/ColorSwatch';
 
 export function ProductCard({ product }) {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export function ProductCard({ product }) {
   const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0;
   const isLowStock = !isOutOfStock && (product.available_stock <= 5 || product.stock_status === 'LOW_STOCK');
   const hasDiscount = product.mrp > product.selling_price;
+  const validColors = getValidColors(product);
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
@@ -59,6 +61,13 @@ export function ProductCard({ product }) {
               </span>
             )}
           </div>
+
+          {/* Color variants preview (only shown if colors updated from POS, disappears cleanly otherwise) */}
+          {validColors.length > 0 && (
+            <div className="pt-0.5">
+              <ColorSwatch colors={validColors.slice(0, 5)} size="xs" />
+            </div>
+          )}
         </div>
 
         {/* Quiet low-stock / stock note */}
