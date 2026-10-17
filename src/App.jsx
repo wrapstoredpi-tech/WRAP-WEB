@@ -1,105 +1,91 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { PhoneSelectionModal } from './components/layout/PhoneSelectionModal';
-import { HomePage } from './pages/HomePage';
-import { ProductDetailPage } from './pages/ProductDetailPage';
-import { CartPage } from './pages/CartPage';
-import { CheckoutPage } from './pages/CheckoutPage';
-import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
-import { TrackOrderPage } from './pages/TrackOrderPage';
+import { FloatingWhatsApp } from './components/layout/FloatingWhatsApp';
+import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { PhoneProvider } from './context/PhoneContext';
-import { Check, X } from 'lucide-react';
+import { IntroProvider } from './context/IntroContext';
+
+// Route-level code splitting
+const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CartPage = lazy(() => import('./pages/CartPage').then((m) => ({ default: m.CartPage })));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })));
+const TrackOrderPage = lazy(() => import('./pages/TrackOrderPage').then((m) => ({ default: m.TrackOrderPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const AccountPage = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
+const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
+const TypeTestPage = lazy(() => import('./pages/TypeTestPage').then((m) => ({ default: m.TypeTestPage })));
+const IntroTestPage = lazy(() => import('./pages/IntroTestPage').then((m) => ({ default: m.IntroTestPage })));
+const StaticPage = lazy(() => import('./pages/StaticPage').then((m) => ({ default: m.StaticPage })));
+
+function RouteFallback() {
+  return (
+    <div className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-24 flex items-center justify-center">
+      <p className="text-[14px] text-[#6B6B6B]">Loading page...</p>
+    </div>
+  );
+}
 
 function AppContent() {
-  const [toastMessage, setToastMessage] = useState(null);
-  const navigate = useNavigate();
   const location = useLocation();
-
-  const searchParams = new URLSearchParams(location.search);
-  const activeCategoryNav = location.pathname === '/' ? (searchParams.get('category') || 'All') : 'All';
-
-  const handleAddToCart = (product, quantity = 1) => {
-    // Navigate directly to the full /cart page on add to bag
-    navigate('/cart');
-  };
-
-  const handleCategoryNavSelect = (categoryName) => {
-    if (categoryName === 'All') {
-      navigate('/');
-    } else {
-      navigate(`/?category=${encodeURIComponent(categoryName)}`);
-    }
-  };
+  const isCheckout = location.pathname === '/checkout';
 
   return (
-    <div className="min-h-screen flex flex-col bg-base text-neutral-900 font-sans selection:bg-neutral-200 selection:text-neutral-900">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 text-white px-4 py-3 shadow-modal border border-neutral-800 flex items-center gap-3 animate-fade-in rounded-lg">
-          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-body font-medium">{toastMessage}</span>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="ml-2 text-neutral-400 hover:text-white transition-colors"
-            aria-label="Dismiss message"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Sticky Header with Bag Counter Link to /cart */}
-      <Header
-        activeCategory={activeCategoryNav}
-        onCategorySelect={handleCategoryNavSelect}
-      />
+    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#141414] font-sans antialiased">
+      {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout flow) */}
+      {!isCheckout && <Header />}
 
       {/* Global Phone Selection Modal */}
       <PhoneSelectionModal />
 
-      {/* Page Routes */}
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <HomePage
-              onAddToCart={handleAddToCart}
-              activeCategoryNav={activeCategoryNav}
-            />
-          }
-        />
-        <Route
-          path="/product/:id"
-          element={
-            <ProductDetailPage
-              onAddToCart={handleAddToCart}
-            />
-          }
-        />
-        <Route
-          path="/cart"
-          element={<CartPage />}
-        />
-        <Route
-          path="/checkout"
-          element={<CheckoutPage />}
-        />
-        <Route
-          path="/order-confirmation"
-          element={<OrderConfirmationPage />}
-        />
-        <Route
-          path="/track-order"
-          element={<TrackOrderPage />}
-        />
-      </Routes>
+      {/* Page Routes with Suspense code splitting */}
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+          <Route path="/track-order" element={<TrackOrderPage />} />
 
-      {/* Footer */}
-      <Footer />
+          {/* Auth & Account Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Dedicated About & Contact Pages */}
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+
+          {/* Temporary Typography Pairing Route */}
+          <Route path="/type-test" element={<TypeTestPage />} />
+
+          {/* Temporary Logo Intro Animation QA Route */}
+          <Route path="/intro-test" element={<IntroTestPage />} />
+
+          {/* Policy Pages */}
+          <Route path="/shipping-returns" element={<StaticPage pageKey="shipping" />} />
+          <Route path="/privacy" element={<StaticPage pageKey="privacy" />} />
+          <Route path="/terms" element={<StaticPage pageKey="terms" />} />
+
+          {/* Catch-all redirect to Home */}
+          <Route path="*" element={<HomePage />} />
+        </Routes>
+      </Suspense>
+
+      {/* Footer (Hidden on reduced checkout flow) */}
+      {!isCheckout && <Footer />}
+
+      {/* Floating WhatsApp fixed bottom-left (Hidden on reduced checkout flow) */}
+      {!isCheckout && <FloatingWhatsApp />}
     </div>
   );
 }
@@ -107,7 +93,7 @@ function AppContent() {
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -115,19 +101,24 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    this.setState({ errorInfo });
+    console.error('ErrorBoundary caught:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '40px', fontFamily: 'Poppins, sans-serif', backgroundColor: '#FAFAF9', color: '#141414' }}>
-          <h1 style={{ color: '#9E381A', fontSize: '24px', fontWeight: 600 }}>Application Render Error</h1>
-          <p style={{ marginTop: '12px' }}><strong>Error:</strong> {this.state.error && this.state.error.toString()}</p>
-          <pre style={{ marginTop: '16px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '10px', overflow: 'auto', border: '1px solid #E7E5E4', fontSize: '13px' }}>
-            {this.state.errorInfo && this.state.errorInfo.componentStack}
-          </pre>
+        <div className="p-8 font-sans bg-[#FAFAF9] text-[#141414]">
+          <h1 className="text-[20px] font-semibold text-[#B0521F]">Unable to render page</h1>
+          <p className="text-[14px] text-[#6B6B6B] mt-2">
+            An unexpected error occurred. Please refresh the page or return home.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.assign('/')}
+            className="mt-4 px-4 py-2 bg-[#141414] text-white text-[14px] font-semibold rounded-[6px]"
+          >
+            Go to Home
+          </button>
         </div>
       );
     }
@@ -139,13 +130,17 @@ export function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <CartProvider>
-          <ProductsProvider>
-            <PhoneProvider>
-              <AppContent />
-            </PhoneProvider>
-          </ProductsProvider>
-        </CartProvider>
+        <IntroProvider>
+          <AuthProvider>
+            <CartProvider>
+              <ProductsProvider>
+                <PhoneProvider>
+                  <AppContent />
+                </PhoneProvider>
+              </ProductsProvider>
+            </CartProvider>
+          </AuthProvider>
+        </IntroProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

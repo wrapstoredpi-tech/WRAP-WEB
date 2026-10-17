@@ -67,17 +67,24 @@ export function SkeletonText({
  */
 export function SkeletonCard({ className = '' }) {
   return (
-    <div className={`flex flex-col space-y-3 bg-white p-3 sm:p-4 rounded-lg border border-[#E7E5E4] ${className}`} aria-hidden="true">
-      {/* 4:5 Aspect Ratio Locked Container */}
-      <div className="relative aspect-[4/5] w-full bg-[#F5F5F4] rounded-lg overflow-hidden">
-        <Skeleton className="w-full h-full" />
+    <div
+      className={`flex flex-col bg-white rounded-[6px] border border-[#E5E5E3] overflow-hidden ${className}`}
+      aria-hidden="true"
+    >
+      {/* 4:5 Aspect Ratio Locked Container matching ProductCard */}
+      <div className="relative aspect-[4/5] w-full bg-[#FAFAF9] overflow-hidden">
+        <Skeleton className="w-full h-full rounded-none" />
       </div>
 
-      {/* Metadata & Title */}
-      <div className="space-y-1.5 pt-1">
-        <Skeleton width="40%" height="11px" />
-        <Skeleton width="85%" height="15px" />
-        <Skeleton width="35%" height="15px" />
+      {/* Card Details matching ProductCard padding and heights */}
+      <div className="p-4 flex flex-col justify-between flex-1 space-y-2">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-4/5 rounded-[4px]" />
+          <Skeleton className="h-4 w-2/5 rounded-[4px]" />
+        </div>
+        <div className="pt-1">
+          <Skeleton className="h-3 w-1/3 rounded-[4px]" />
+        </div>
       </div>
     </div>
   );

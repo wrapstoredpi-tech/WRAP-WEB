@@ -1,17 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, Check, Smartphone } from 'lucide-react';
+import { X, Search, Check } from 'lucide-react';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { useProductsContext } from '../../context/ProductsContext';
 
 export function PhoneSelectionModal() {
-  const { isPhoneSheetOpen, closePhoneSheet, selectPhone, skipPhoneSelection, savedPhone } =
-    usePhoneContext();
+  const { isPhoneSheetOpen, closePhoneSheet, selectPhone, savedPhone } = usePhoneContext();
   const { products } = useProductsContext();
 
   const [selectedBrand, setSelectedBrand] = useState('Apple');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Build searchable model dictionary from live catalog
+  // Extract distinct compatible models by brand from products
   const modelsByBrand = useMemo(() => {
     const appleSet = new Set();
     const samsungSet = new Set();
@@ -23,9 +22,9 @@ export function PhoneSelectionModal() {
 
       for (const m of models) {
         if (!m || m === 'Universal') continue;
-        if (brand === 'Apple' || m.toLowerCase().includes('iphone')) {
+        if (brand.toLowerCase().includes('apple') || m.toLowerCase().includes('iphone')) {
           appleSet.add(m);
-        } else if (brand === 'Samsung' || m.toLowerCase().includes('galaxy') || m.toLowerCase().includes('samsung')) {
+        } else if (brand.toLowerCase().includes('samsung') || m.toLowerCase().includes('galaxy')) {
           samsungSet.add(m);
         } else {
           otherSet.add(m);
@@ -33,11 +32,34 @@ export function PhoneSelectionModal() {
       }
     }
 
+    // Curated fallbacks if catalog is loading or has few rows
     if (appleSet.size === 0) {
-      ['iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16', 'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15', 'iPhone 14 Pro', 'iPhone 13'].forEach(m => appleSet.add(m));
+      [
+        'iPhone 16 Pro Max',
+        'iPhone 16 Pro',
+        'iPhone 16 Plus',
+        'iPhone 16',
+        'iPhone 15 Pro Max',
+        'iPhone 15 Pro',
+        'iPhone 15 Plus',
+        'iPhone 15',
+        'iPhone 14 Pro Max',
+        'iPhone 14 Pro',
+        'iPhone 14',
+        'iPhone 13',
+      ].forEach((m) => appleSet.add(m));
     }
     if (samsungSet.size === 0) {
-      ['Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S23 Ultra', 'Galaxy S23', 'Galaxy Z Flip 5'].forEach(m => samsungSet.add(m));
+      [
+        'Samsung Galaxy S24 Ultra',
+        'Samsung Galaxy S24+',
+        'Samsung Galaxy S24',
+        'Samsung Galaxy S23 Ultra',
+        'Samsung Galaxy S23+',
+        'Samsung Galaxy S23',
+        'Samsung Galaxy Z Fold 5',
+        'Samsung Galaxy Z Flip 5',
+      ].forEach((m) => samsungSet.add(m));
     }
 
     return {
@@ -55,158 +77,119 @@ export function PhoneSelectionModal() {
       : modelsByBrand[selectedBrand] || [];
 
   const filteredModels = searchQuery.trim()
-    ? currentModels.filter((m) => m.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? currentModels.filter((m) => m.toLowerCase().includes(searchQuery.toLowerCase().trim()))
     : currentModels;
+
+  const handleSelectModel = (modelName) => {
+    selectPhone(selectedBrand, modelName);
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#141414]/35 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#141414]/50"
       onClick={closePhoneSheet}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="phone-sheet-title"
+      aria-labelledby="phone-modal-title"
     >
       <div
-        className="w-full max-w-md bg-white rounded-t-lg sm:rounded-lg border border-[#E7E5E4] shadow-modal overflow-hidden flex flex-col max-h-[85vh] animate-slide-down"
+        className="w-full max-w-[480px] bg-[#FAFAF9] rounded-[6px] border border-[#E5E5E3] subtle-elevation overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 pb-4 border-b border-[#E7E5E4] flex items-start justify-between gap-4">
+        <div className="p-4 border-b border-[#E5E5E3] flex items-center justify-between">
           <div>
-            <h2 id="phone-sheet-title" className="text-[18px] font-semibold text-[#141414] tracking-tight">
-              Select Device
+            <h2 id="phone-modal-title" className="text-[20px] font-semibold text-[#141414]">
+              Select your phone
             </h2>
-            <p className="text-[13px] text-[#666664] mt-1 leading-normal">
-              Filter cases engineered for your exact model.
+            <p className="text-[12px] text-[#6B6B6B] mt-0.5">
+              Choose your phone to filter compatible cases.
             </p>
           </div>
 
           <button
             type="button"
             onClick={closePhoneSheet}
-            className="w-8 h-8 flex items-center justify-center text-[#666664] hover:text-[#141414] rounded-md transition-colors"
-            aria-label="Close"
+            className="w-11 h-11 flex items-center justify-center text-[#6B6B6B] hover:text-[#141414] rounded-[6px] transition-colors"
+            aria-label="Close dialog"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1">
-          {/* Brand Buttons */}
-          <div>
-            <label className="block text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight mb-2">
-              Brand
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          {/* Brand Switcher */}
+          <div className="flex gap-2">
+            {['Apple', 'Samsung'].map((brand) => (
               <button
+                key={brand}
                 type="button"
-                onClick={() => setSelectedBrand('Apple')}
-                className={`
-                  h-11 px-4 rounded-lg border text-left flex items-center justify-between text-[13px] transition-colors
-                  ${
-                    selectedBrand === 'Apple'
-                      ? 'border-[#141414] bg-[#141414] text-white font-semibold'
-                      : 'border-[#E7E5E4] bg-[#FAFAF9] text-[#141414] hover:border-[#D6D3D1] font-normal'
-                  }
-                `}
+                onClick={() => {
+                  setSelectedBrand(brand);
+                  setSearchQuery('');
+                }}
+                className={`flex-1 min-h-[44px] text-[14px] font-semibold rounded-[6px] border transition-colors ${
+                  selectedBrand === brand
+                    ? 'bg-[#141414] text-white border-[#141414]'
+                    : 'bg-white text-[#141414] border-[#E5E5E3] hover:border-[#141414]'
+                }`}
               >
-                <span>Apple iPhone</span>
-                {selectedBrand === 'Apple' && <Check className="w-3.5 h-3.5 text-white" />}
+                {brand === 'Apple' ? 'iPhone (Apple)' : 'Samsung Galaxy'}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedBrand('Samsung')}
-                className={`
-                  h-11 px-4 rounded-lg border text-left flex items-center justify-between text-[13px] transition-colors
-                  ${
-                    selectedBrand === 'Samsung'
-                      ? 'border-[#141414] bg-[#141414] text-white font-semibold'
-                      : 'border-[#E7E5E4] bg-[#FAFAF9] text-[#141414] hover:border-[#D6D3D1] font-normal'
-                  }
-                `}
-              >
-                <span>Samsung Galaxy</span>
-                {selectedBrand === 'Samsung' && <Check className="w-3.5 h-3.5 text-white" />}
-              </button>
-            </div>
+            ))}
           </div>
 
-          {/* Search Model */}
-          <div>
-            <label className="block text-[11px] uppercase font-semibold text-[#A8A29E] tracking-tight mb-2">
-              Model
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={`Search ${selectedBrand} models...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#FAFAF9] border border-[#E7E5E4] rounded-lg px-3.5 py-2.5 pl-9 text-[13px] text-[#141414] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#141414] transition-colors"
-              />
-              <Search className="w-3.5 h-3.5 text-[#A8A29E] absolute left-3 top-3 pointer-events-none" />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-2.5 text-[12px] text-[#666664] hover:text-[#141414]"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-[#6B6B6B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder={`Search ${selectedBrand} models...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-[#E5E5E3] rounded-[6px] pl-10 pr-4 py-2.5 min-h-[44px] text-[14px] text-[#141414] placeholder:text-[#6B6B6B] focus:outline-none focus:border-[#141414] transition-colors"
+            />
           </div>
 
-          {/* Model List */}
-          <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+          {/* Models List */}
+          <div className="space-y-1">
             {filteredModels.length > 0 ? (
-              filteredModels.map((modelName) => {
-                const isSelected = savedPhone?.model === modelName;
+              filteredModels.map((model) => {
+                const isSelected = savedPhone?.model === model;
                 return (
                   <button
-                    key={modelName}
+                    key={model}
                     type="button"
-                    onClick={() => selectPhone(selectedBrand, modelName)}
-                    className={`
-                      w-full h-10 px-3.5 rounded-lg border text-left flex items-center justify-between transition-colors text-[13px]
-                      ${
-                        isSelected
-                          ? 'border-[#141414] bg-[#141414] text-white font-semibold'
-                          : 'border-transparent bg-transparent text-[#141414] hover:bg-[#FAFAF9]'
-                      }
-                    `}
+                    onClick={() => handleSelectModel(model)}
+                    className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-[6px] text-left text-[14px] flex items-center justify-between border transition-colors ${
+                      isSelected
+                        ? 'bg-white border-[#141414] font-semibold text-[#141414]'
+                        : 'bg-white border-[#E5E5E3] text-[#141414] hover:border-[#141414]'
+                    }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Smartphone className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#A8A29E]'}`} />
-                      <span>{modelName}</span>
-                    </div>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                    <span>{model}</span>
+                    {isSelected && <Check className="w-4 h-4 text-[#B0521F]" />}
                   </button>
                 );
               })
             ) : (
-              <p className="text-[13px] text-[#666664] py-4 text-center font-normal">
-                No matching models found.
-              </p>
+              <div className="py-8 text-center text-[14px] text-[#6B6B6B]">
+                No models found matching "{searchQuery}".
+              </div>
             )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 px-6 border-t border-[#E7E5E4] bg-[#FAFAF9] flex items-center justify-between">
+        {/* Footer actions */}
+        <div className="p-4 border-t border-[#E5E5E3] bg-[#FAFAF9] flex items-center justify-between">
           <button
             type="button"
-            onClick={skipPhoneSelection}
-            className="text-[13px] text-[#666664] hover:text-[#141414] transition-colors"
+            onClick={closePhoneSheet}
+            className="text-[12px] text-[#6B6B6B] hover:text-[#141414] underline underline-offset-2 min-h-[44px] flex items-center"
           >
-            Skip selection
+            Browse all models without saving
           </button>
-
-          <span className="text-[11px] text-[#A8A29E]">
-            Editable anytime
-          </span>
         </div>
       </div>
     </div>

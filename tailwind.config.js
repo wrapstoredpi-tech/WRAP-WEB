@@ -7,95 +7,65 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Design System: Ultra-premium minimal palette
-        base: {
-          DEFAULT: '#FAFAF9',
-          offwhite: '#FAFAF9',
-          surface: '#FFFFFF',
-          charcoal: '#141414',
-          gray: '#666664',
-        },
-        neutral: {
-          50: '#FAFAF9',
-          100: '#F5F5F4',
-          200: '#E7E5E4',
-          300: '#D6D3D1',
-          400: '#A8A29E',
-          500: '#666664',
-          600: '#525250',
-          700: '#383836',
-          800: '#262624',
-          900: '#141414',
-          950: '#0C0C0C',
-        },
-        // Single WCAG AA-compliant accent (Contrast 5.85:1 on #FAFAF9)
+        bg: '#FAFAF9',
+        text: '#141414',
+        secondary: '#6B6B6B',
+        border: '#E5E5E3',
         accent: {
-          light: '#F8EBE7',
-          tint: '#F8EBE7',
-          border: '#ECCEC5',
-          DEFAULT: '#9E381A',
-          hover: '#832C13',
-          dark: '#6E230E',
+          DEFAULT: '#B0521F',
+          hover: '#994518',
+          tint: '#F9EDE7',
         },
       },
       fontFamily: {
-        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['var(--font-display)'],
+        sans: ['var(--font-sans)'],
       },
       fontSize: {
-        // 5-size type scale strictly defined
-        'caption': ['0.8125rem', { lineHeight: '1.5', letterSpacing: '0' }], // 13px
-        'body-sm': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0' }],  // 14px
-        'body': ['0.9375rem', { lineHeight: '1.6', letterSpacing: '0' }],     // 15px
-        'subheading': ['1.0625rem', { lineHeight: '1.4', letterSpacing: '-0.01em' }], // 17px
-        'heading': ['1.5rem', { lineHeight: '1.25', letterSpacing: '-0.02em' }],      // 24px
-        'display': ['2.25rem', { lineHeight: '1.15', letterSpacing: '-0.03em' }],     // 36px
-        'display-sm': ['1.75rem', { lineHeight: '1.2', letterSpacing: '-0.025em' }],  // 28px
+        display: ['56px', { lineHeight: '60px', letterSpacing: '-0.01em' }],
+        'display-mobile': ['36px', { lineHeight: '40px', letterSpacing: '-0.01em' }],
+        h2: ['40px', { lineHeight: '1.1', letterSpacing: '-0.01em' }],
+        'h2-mobile': ['30px', { lineHeight: '1.1', letterSpacing: '-0.01em' }],
+        h3: ['20px', { lineHeight: '1.3' }],
+        body: ['16px', { lineHeight: '1.6' }],
+        'body-mobile': ['15px', { lineHeight: '1.6' }],
+        small: ['14px', { lineHeight: '1.5' }],
+        caption: ['12px', { lineHeight: '1.4' }],
+        12: ['12px', { lineHeight: '16px' }],
+        14: ['14px', { lineHeight: '20px' }],
+        15: ['15px', { lineHeight: '22px' }],
+        16: ['16px', { lineHeight: '24px' }],
+        20: ['20px', { lineHeight: '28px' }],
+        28: ['28px', { lineHeight: '34px' }],
+        30: ['30px', { lineHeight: '1.1' }],
+        36: ['36px', { lineHeight: '40px' }],
+        40: ['40px', { lineHeight: '1.1' }],
+        56: ['56px', { lineHeight: '60px' }],
       },
       fontWeight: {
-        // 2 weights only: Regular (400) & Semibold (600)
         normal: '400',
         semibold: '600',
       },
       borderRadius: {
-        // One unified corner radius everywhere: 10px
-        DEFAULT: '10px',
-        'sm': '6px',
-        'md': '8px',
-        'lg': '10px',
-        'xl': '10px',
-        '2xl': '10px',
-        '3xl': '10px',
-        'full': '9999px',
+        // One corner radius (6px) used everywhere
+        DEFAULT: '6px',
+        none: '0px',
+        sm: '6px',
+        md: '6px',
+        lg: '6px',
+        xl: '6px',
+        '2xl': '6px',
+        '3xl': '6px',
+        full: '9999px',
       },
       boxShadow: {
-        // Single subtle elevation level for cards/modals
-        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        'modal': '0 8px 30px rgba(0, 0, 0, 0.08)',
-        'none': 'none',
+        // One subtle level on dropdowns and the cart summary only
+        DEFAULT: '0 4px 12px rgba(0, 0, 0, 0.06)',
+        subtle: '0 4px 12px rgba(0, 0, 0, 0.06)',
+        none: 'none',
       },
-      transitionDuration: {
-        DEFAULT: '180ms',
-        'fast': '120ms',
-      },
-      animation: {
-        'fade-in': 'fadeIn 180ms ease-out',
-        'slide-down': 'slideDown 180ms ease-out',
-        'drawer-in': 'drawerIn 220ms ease-out',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideDown: {
-          '0%': { opacity: '0', transform: 'translateY(-4px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        drawerIn: {
-          '0%': { transform: 'translateX(100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
+      maxWidth: {
+        container: '1280px',
       },
     },
   },

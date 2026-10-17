@@ -1,38 +1,107 @@
+/* ── Typography: @fontsource Self-Hosted Fonts (latin & latin-ext) ────────── */
+/* Poppins: 400, 500, 600, 700 with latin, latin-ext (U+20B9 Rupee sign), and devanagari */
+@import '@fontsource/poppins/latin-400.css';
+@import '@fontsource/poppins/latin-ext-400.css';
+@import '@fontsource/poppins/devanagari-400.css';
+
+@import '@fontsource/poppins/latin-500.css';
+@import '@fontsource/poppins/latin-ext-500.css';
+@import '@fontsource/poppins/devanagari-500.css';
+
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-ext-600.css';
+@import '@fontsource/poppins/devanagari-600.css';
+
+@import '@fontsource/poppins/latin-700.css';
+@import '@fontsource/poppins/latin-ext-700.css';
+@import '@fontsource/poppins/devanagari-700.css';
+
+/* DM Serif Display: 400 (regular only) */
+@import '@fontsource/dm-serif-display/latin-400.css';
+@import '@fontsource/dm-serif-display/latin-ext-400.css';
+
+/* Pairing B for /type-test: Cormorant Garamond 500 (display only) */
+@import '@fontsource/cormorant-garamond/latin-500.css';
+@import '@fontsource/cormorant-garamond/latin-ext-500.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --color-bg-base: #FAFAF9;
-    --color-bg-surface: #FFFFFF;
-    --color-text-primary: #141414;
-    --color-text-muted: #666664;
-    --color-border: #E7E5E4;
-    --color-accent: #9E381A;
-    --color-accent-hover: #832C13;
-    --color-accent-tint: #F8EBE7;
-    --color-accent-border: #ECCEC5;
+    /* Default Pairing A */
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    --color-bg: #FAFAF9;
+    --color-text: #141414;
+    --color-text-secondary: #6B6B6B;
+    --color-border: #E5E5E3;
+    --color-accent: #B0521F;
+    --radius: 6px;
   }
 
   * {
-    border-color: #E7E5E4;
+    border-color: #E5E5E3;
   }
 
   html {
     background-color: #FAFAF9;
     color: #141414;
-    -webkit-tap-highlight-color: transparent;
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans);
     font-weight: 400;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     min-height: 100vh;
-    overflow-x: hidden;
     background-color: #FAFAF9;
     color: #141414;
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* Headlines at 28px and up: Display serif, regular 400 only */
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  /* H3: Poppins 600, 20px */
+  h3 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1.3;
+  }
+
+  h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+
+  /* Never bold a paragraph */
+  p {
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  /* Prices and all numbers use Poppins with tabular-nums, never the serif */
+  .tabular-nums, [data-price], .price-text {
+    font-family: var(--font-sans) !important;
+    font-variant-numeric: tabular-nums;
   }
 
   /* Accessible visible focus states */
@@ -41,9 +110,9 @@
     outline-offset: 2px;
   }
 
-  /* Strict typography weight enforcement (400 and 600 only) */
-  h1, h2, h3, h4, h5, h6, strong, b, th {
-    font-weight: 600;
+  /* Ensure interactive tap targets satisfy 44px minimum */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 
   /* Reduced motion for accessibility */
@@ -66,18 +135,34 @@
     scrollbar-width: none;
   }
 
-  @keyframes heroProgressBar {
-    0% {
+  /* Hero slide indicator line fill animation (28x2px over 5s) */
+  @keyframes heroLineFill {
+    from {
       transform: scaleX(0);
     }
-    100% {
+    to {
       transform: scaleX(1);
     }
   }
 
-  .animate-hero-progress {
-    animation: heroProgressBar 5s linear forwards;
+  .animate-hero-fill {
+    animation: heroLineFill 5s linear forwards;
     transform-origin: left center;
   }
-}
 
+  /* Hero bottom-left scrim gradient: max opacity 0.6, transparent by 60% of width */
+  .hero-scrim {
+    background: linear-gradient(
+      to top right,
+      rgba(20, 20, 20, 0.6) 0%,
+      rgba(20, 20, 20, 0.5) 25%,
+      rgba(20, 20, 20, 0.2) 45%,
+      rgba(20, 20, 20, 0) 60%
+    );
+  }
+
+  /* Single subtle elevation for dropdowns and cart summary only */
+  .subtle-elevation {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+}

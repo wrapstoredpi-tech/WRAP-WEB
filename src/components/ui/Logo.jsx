@@ -68,7 +68,7 @@ export function Logo({
           fill={contrastTextColor}
           fontFamily="Poppins, sans-serif"
           fontSize="24"
-          fontWeight="600"
+          fontWeight="700"
           letterSpacing="0.1em"
           textAnchor="middle"
         >
@@ -82,7 +82,7 @@ export function Logo({
           fill={primaryColor}
           fontFamily="Poppins, sans-serif"
           fontSize="24"
-          fontWeight="600"
+          fontWeight="700"
           letterSpacing="0.12em"
           textAnchor="middle"
         >

@@ -1,173 +1,160 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check } from 'lucide-react';
-import { Button } from '../ui/Button';
 import { Logo } from '../ui/Logo';
-import { useProductsContext } from '../../context/ProductsContext';
+import { store } from '../../config/store';
 
 export function Footer() {
-  const { categories = [] } = useProductsContext();
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleSubscribe = (e) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setTimeout(() => {
-        setEmail('');
-      }, 2500);
-    }
-  };
-
   return (
-    <footer className="bg-white border-t border-[#E7E5E4] mt-24 text-[#141414]">
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
-        {/* Main Footer Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 pb-14 border-b border-[#E7E5E4]">
+    <footer className="w-full bg-white border-t border-[#E5E5E3] mt-16 text-[#141414]">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        
+        {/* Main Grid: 4 Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pb-12 border-b border-[#E5E5E3]">
           
-          {/* Brand Premise & Newsletter (5 Cols) */}
-          <div className="lg:col-span-5 space-y-4">
-            <Logo size="md" />
-            
-            <p className="text-body text-[#666664] max-w-sm pt-1 leading-relaxed">
-              Quiet design and intentional craft. Low-profile protective structures and daily carry essentials.
+          {/* Brand Info */}
+          <div className="space-y-3">
+            <Link to="/" className="inline-block">
+              <Logo size="md" />
+            </Link>
+            <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
+              Precision-molded protective phone cases and curated daily accessories. Physical store in Dharmapuri.
             </p>
-
-            {/* Newsletter Subscription */}
-            <div className="pt-2 max-w-sm space-y-2">
-              <span className="text-[12px] uppercase font-semibold text-[#666664] tracking-wider block">
-                Stay in the loop
-              </span>
-              <form onSubmit={handleSubscribe} className="flex gap-2">
-                <input
-                  type="email"
-                  required
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-[#FAFAF9] border border-[#E7E5E4] rounded-lg px-3.5 py-2.5 text-body text-[#141414] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#141414] transition-colors"
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  rightIcon={subscribed ? <Check className="w-4 h-4 text-emerald-400" /> : <ArrowRight className="w-4 h-4" />}
-                >
-                  {subscribed ? 'Joined' : 'Subscribe'}
-                </Button>
-              </form>
-              {subscribed && (
-                <p className="text-caption text-emerald-700 mt-1 animate-fade-in font-semibold">
-                  Thank you for subscribing to WrapStore updates.
-                </p>
-              )}
+            <div className="pt-2">
+              <span className="block text-[12px] font-semibold text-[#141414]">Online Payment</span>
+              <p className="text-[12px] text-[#6B6B6B] mt-0.5 leading-normal">
+                Secure online payment by Razorpay (UPI, Cards, Net Banking, Wallets).
+              </p>
             </div>
           </div>
 
-          {/* Navigation Links Grid (7 Cols: 3 Sub-columns) */}
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8">
-            
-            {/* Column 1: Collection */}
-            <div className="space-y-3">
-              <p className="text-caption uppercase font-semibold text-[#141414] tracking-wider">
-                Collection
-              </p>
-              <ul className="space-y-2.5 text-body text-[#666664]">
-                <li>
-                  <Link to="/" className="hover:text-[#141414] transition-colors">
-                    All Products
-                  </Link>
-                </li>
-                {categories.map((cat) => (
-                  <li key={cat.id}>
-                    <Link
-                      to={`/?category=${encodeURIComponent(cat.name)}`}
-                      className="hover:text-[#141414] transition-colors"
-                    >
-                      {cat.name}
-                    </Link>
-                  </li>
+          {/* Shop Column */}
+          <div className="space-y-3">
+            <h3 className="text-[16px] font-semibold text-[#141414]">
+              Shop Collection
+            </h3>
+            <ul className="space-y-2 text-[14px] text-[#6B6B6B]">
+              <li>
+                <Link to="/?brand=Apple&category=Mobile%20Cases" className="hover:text-[#141414] transition-colors">
+                  iPhone Cases
+                </Link>
+              </li>
+              <li>
+                <Link to="/?brand=Samsung&category=Mobile%20Cases" className="hover:text-[#141414] transition-colors">
+                  Samsung Cases
+                </Link>
+              </li>
+              <li>
+                <Link to="/?category=Accessories" className="hover:text-[#141414] transition-colors">
+                  All Accessories
+                </Link>
+              </li>
+              <li>
+                <Link to="/?subcategory=Tempered%20Glass" className="hover:text-[#141414] transition-colors">
+                  Tempered Glass &amp; Lens Protectors
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Quick Links Column */}
+          <div className="space-y-3">
+            <h3 className="text-[16px] font-semibold text-[#141414]">
+              Quick Links
+            </h3>
+            <ul className="space-y-2 text-[14px] text-[#6B6B6B]">
+              <li>
+                <Link to="/about" className="hover:text-[#141414] transition-colors">
+                  About us
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact" className="hover:text-[#141414] transition-colors">
+                  Contact &amp; Store details
+                </Link>
+              </li>
+              <li>
+                <Link to="/track-order" className="hover:text-[#141414] transition-colors">
+                  Track your order
+                </Link>
+              </li>
+              <li>
+                <Link to="/shipping-returns" className="hover:text-[#141414] transition-colors">
+                  Shipping and returns
+                </Link>
+              </li>
+              <li>
+                <Link to="/privacy" className="hover:text-[#141414] transition-colors">
+                  Privacy policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms" className="hover:text-[#141414] transition-colors">
+                  Terms and conditions
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Store Address & Contact Column */}
+          <div className="space-y-3">
+            <h3 className="text-[16px] font-semibold text-[#141414]">
+              Store &amp; Location
+            </h3>
+            <div className="space-y-2 text-[14px] text-[#6B6B6B]">
+              <div className="leading-relaxed">
+                {store.addressLines.map((line, idx) => (
+                  <p key={idx}>{line}</p>
                 ))}
-              </ul>
-            </div>
+              </div>
 
-            {/* Column 2: Assistance */}
-            <div className="space-y-3">
-              <p className="text-caption uppercase font-semibold text-[#141414] tracking-wider">
-                Assistance
-              </p>
-              <ul className="space-y-2.5 text-body text-[#666664]">
-                <li>
-                  <Link to="/track-order" className="hover:text-[#141414] transition-colors">
-                    Track Order
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/cart" className="hover:text-[#141414] transition-colors">
-                    Shopping Bag
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/checkout" className="hover:text-[#141414] transition-colors">
-                    Checkout
-                  </Link>
-                </li>
-                <li>
-                  <span className="text-[#666664] cursor-default">
-                    Lifetime Guarantee
-                  </span>
-                </li>
-                <li>
-                  <span className="text-[#666664] cursor-default">
-                    30-Day Returns
-                  </span>
-                </li>
-              </ul>
-            </div>
+              {/* Hide the hours row while store.hours is empty */}
+              {store.hours && store.hours.trim() !== '' && (
+                <p className="text-[12px] pt-1">
+                  <strong className="text-[#141414] block">Hours:</strong>
+                  {store.hours}
+                </p>
+              )}
 
-            {/* Column 3: Studio */}
-            <div className="space-y-3">
-              <p className="text-caption uppercase font-semibold text-[#141414] tracking-wider">
-                Studio
-              </p>
-              <ul className="space-y-2.5 text-body text-[#666664]">
-                <li>
-                  <span className="text-[#666664] cursor-default">
-                    Precision Fit
-                  </span>
-                </li>
-                <li>
-                  <span className="text-[#666664] cursor-default">
-                    Tactile Materials
-                  </span>
-                </li>
-                <li>
-                  <span className="text-[#666664] cursor-default">
-                    Everyday Carry
-                  </span>
-                </li>
-                <li>
-                  <span className="text-[#666664] cursor-default">
-                    Support: contact@wrapstore.in
-                  </span>
-                </li>
-              </ul>
-            </div>
+              <div className="pt-1">
+                <a
+                  href={`tel:${store.phoneTel}`}
+                  className="text-[14px] text-[#141414] hover:text-[#B0521F] hover:underline"
+                >
+                  Call {store.phoneDisplay}
+                </a>
+              </div>
 
+              {store.whatsappNumber && (
+                <div className="pt-1">
+                  <a
+                    href={`https://wa.me/${store.whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[14px] font-semibold text-[#B0521F] hover:underline inline-flex items-center gap-1"
+                  >
+                    WhatsApp: +{store.whatsappNumber} →
+                  </a>
+                </div>
+              )}
+
+              <div className="pt-1">
+                <a
+                  href={store.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[13px] text-[#6B6B6B] hover:text-[#141414] hover:underline"
+                >
+                  View on Google Maps →
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Bar: Copyright and Legal Links (No INR) */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-caption text-[#666664]">
-          <p className="font-normal">
-            &copy; {new Date().getFullYear()} WrapStore. All rights reserved.
-          </p>
-
-          <div className="flex items-center space-x-6 text-caption text-[#666664]">
-            <span className="cursor-default hover:text-[#141414] transition-colors">Privacy Policy</span>
-            <span className="cursor-default hover:text-[#141414] transition-colors">Terms of Service</span>
-          </div>
+        {/* Bottom Bar */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-[#6B6B6B]">
+          <p>© {new Date().getFullYear()} WrapStore. All rights reserved.</p>
+          <p>Online payment only via Razorpay. Dharmapuri, Tamil Nadu.</p>
         </div>
       </div>
     </footer>

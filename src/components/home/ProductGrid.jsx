@@ -1,11 +1,11 @@
-import React from 'react';
-import { SlidersHorizontal, ArrowUpDown, X, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
+import { SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import { SkeletonCard } from '../ui/Skeleton';
 
 export function ProductGrid({
   products = [],
-  totalAllProducts = 0,
+  title = 'All Products',
+  breadcrumb,
   isLoading = false,
   sortBy = 'newest',
   onSortChange,
@@ -14,30 +14,28 @@ export function ProductGrid({
   filters = {},
   onFilterChange,
   onResetFilters,
-  onAddToCart,
-  showAllToggle,
-  onToggleShowAll,
-  showingAllDesigns,
 }) {
-  // Collect active filter tags for one-click removal (excluding primary category tab)
-  const activeTags = [];
+  const [displayCount, setDisplayCount] = useState(12);
 
-  if (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All') {
-    activeTags.push({
-      key: 'subcategory',
-      label: `Type: ${filters.subcategory}`,
-      onRemove: () => onFilterChange && onFilterChange('subcategory', 'All Types'),
-    });
-  }
+  // Collect active filter tags for one-click removal
+  const activeTags = [];
 
   if (filters.brand && filters.brand !== 'All Brands' && filters.brand !== '') {
     activeTags.push({
       key: 'brand',
       label: `Brand: ${filters.brand}`,
       onRemove: () => {
-        onFilterChange && onFilterChange('brand', 'All Brands');
-        onFilterChange && onFilterChange('selectedModel', '');
+        onFilterChange('brand', 'All Brands');
+        onFilterChange('selectedModel', '');
       },
+    });
+  }
+
+  if (filters.series) {
+    activeTags.push({
+      key: 'series',
+      label: `Series: ${filters.series}`,
+      onRemove: () => onFilterChange('series', ''),
     });
   }
 
@@ -45,7 +43,15 @@ export function ProductGrid({
     activeTags.push({
       key: 'selectedModel',
       label: `Model: ${filters.selectedModel}`,
-      onRemove: () => onFilterChange && onFilterChange('selectedModel', ''),
+      onRemove: () => onFilterChange('selectedModel', ''),
+    });
+  }
+
+  if (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All') {
+    activeTags.push({
+      key: 'subcategory',
+      label: `Type: ${filters.subcategory}`,
+      onRemove: () => onFilterChange('subcategory', 'All Types'),
     });
   }
 
@@ -53,114 +59,97 @@ export function ProductGrid({
     activeTags.push({
       key: 'priceRange',
       label: `Price: ${filters.priceRange}`,
-      onRemove: () => onFilterChange && onFilterChange('priceRange', 'All Prices'),
-    });
-  }
-
-  if (filters.selectedColor) {
-    activeTags.push({
-      key: 'selectedColor',
-      label: `Colour: ${filters.selectedColor}`,
-      onRemove: () => onFilterChange && onFilterChange('selectedColor', ''),
+      onRemove: () => onFilterChange('priceRange', 'All Prices'),
     });
   }
 
   if (filters.inStockOnly) {
     activeTags.push({
       key: 'inStockOnly',
-      label: 'In-Stock Only',
-      onRemove: () => onFilterChange && onFilterChange('inStockOnly', false),
+      label: 'In-stock only',
+      onRemove: () => onFilterChange('inStockOnly', false),
     });
   }
 
+  const visibleProducts = products.slice(0, displayCount);
+  const hasMore = displayCount < products.length;
+
+  const handleLoadMore = () => {
+    setDisplayCount((prev) => prev + 12);
+  };
+
   return (
-    <div className="w-full space-y-4 sm:space-y-5">
-      {/* ── Top Bar: Filter Trigger, Results Count, Sort ──────────────────── */}
-      <div className="flex items-center justify-between gap-4 pb-3 sm:pb-4 border-b border-[#E7E5E4]">
-        
-        {/* Left Side: Filter Control & Toggle */}
-        <div className="flex items-center gap-2.5">
+    <div className="w-full space-y-5">
+      {/* Optional Breadcrumb */}
+      {breadcrumb && (
+        <nav aria-label="Breadcrumb" className="text-[12px] text-[#6B6B6B]">
+          {breadcrumb}
+        </nav>
+      )}
+
+      {/* Title with product count in plain text & Sort aligned right */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E5E5E3]">
+        <div className="flex items-center gap-3">
+          {/* Mobile Filter Button */}
           <button
             type="button"
             onClick={onOpenMobileFilters}
-            className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-lg border text-[13px] font-semibold flex items-center gap-2 transition-colors ${
-              activeFilterCount > 0
-                ? 'bg-[#141414] text-white border-[#141414]'
-                : 'bg-white text-[#141414] border-[#E7E5E4] hover:border-[#141414]'
-            }`}
-            aria-label="Filter products"
+            className="lg:hidden min-h-[44px] px-3.5 rounded-[6px] border border-[#E5E5E3] bg-white text-[14px] font-semibold text-[#141414] flex items-center gap-2"
+            aria-label="Open filters"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Filter</span>
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Filters</span>
             {activeFilterCount > 0 && (
-              <span className="min-w-[18px] h-4 px-1 rounded-full bg-white text-[#141414] font-semibold text-[10px] flex items-center justify-center">
-                {activeFilterCount}
-              </span>
+              <span className="text-[12px] text-[#B0521F]">({activeFilterCount})</span>
             )}
           </button>
 
-          {showAllToggle && (
-            <button
-              type="button"
-              onClick={onToggleShowAll}
-              className={`h-9 sm:h-10 px-3 sm:px-3.5 rounded-lg text-[13px] border transition-colors ${
-                showingAllDesigns
-                  ? 'bg-[#141414] text-white border-[#141414] font-semibold'
-                  : 'bg-white text-[#666664] border-[#E7E5E4] hover:border-[#D6D3D1] font-normal'
-              }`}
-            >
-              {showingAllDesigns ? 'All Devices' : 'Show All Designs'}
-            </button>
-          )}
+          <div>
+            <h1 className="text-[28px] font-semibold text-[#141414] tracking-[-0.01em]">
+              {title} <span className="text-[16px] font-normal text-[#6B6B6B]">({products.length})</span>
+            </h1>
+          </div>
         </div>
 
-        {/* Right Side: Results Count & Sort Dropdown */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <span className="text-[13px] text-[#666664] font-normal hidden sm:inline-block">
-            {products.length} {products.length === 1 ? 'object' : 'objects'}
-          </span>
-
+        {/* Sort aligned right */}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <label htmlFor="sort-dropdown" className="text-[14px] text-[#6B6B6B]">
+            Sort:
+          </label>
           <div className="relative">
-            <label htmlFor="sort-by-select" className="sr-only">
-              Sort by
-            </label>
             <select
-              id="sort-by-select"
+              id="sort-dropdown"
               value={sortBy}
               onChange={(e) => onSortChange && onSortChange(e.target.value)}
-              className="h-9 sm:h-10 bg-white border border-[#E7E5E4] hover:border-[#D6D3D1] rounded-lg pl-3 pr-8 py-1.5 text-[13px] font-normal text-[#141414] focus:outline-none focus:border-[#141414] appearance-none cursor-pointer transition-colors"
+              className="bg-white border border-[#E5E5E3] rounded-[6px] pl-3 pr-8 py-2 min-h-[40px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] appearance-none cursor-pointer"
             >
-              <option value="newest">Sort: Newest</option>
+              <option value="newest">Newest</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
-              <option value="discount">Highest Discount</option>
+              <option value="discount">Discount</option>
               <option value="in_stock">In Stock First</option>
             </select>
-            <ArrowUpDown className="w-3.5 h-3.5 text-[#A8A29E] absolute right-2.5 top-3 sm:top-3.5 pointer-events-none" />
+            <ArrowUpDown className="w-3.5 h-3.5 text-[#6B6B6B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* ── Active Filters Chips Bar (Shows ONLY when non-category filters are active) ── */}
+      {/* Active filters as removable chips above grid */}
       {activeTags.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap p-2.5 bg-white rounded-lg border border-[#E7E5E4] animate-fade-in">
-          <span className="text-[11px] font-semibold text-[#A8A29E] uppercase tracking-tight mr-1">
-            Filtered:
-          </span>
-
+        <div className="flex flex-wrap items-center gap-2 pt-1 animate-fade-in">
           {activeTags.map((tag) => (
             <span
               key={tag.key}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FAFAF9] text-[#141414] rounded-md text-[12px] font-semibold border border-[#E7E5E4]"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#E5E5E3] rounded-[6px] text-[12px] text-[#141414]"
             >
               <span>{tag.label}</span>
               <button
                 type="button"
                 onClick={tag.onRemove}
-                className="text-[#666664] hover:text-[#141414] p-0.5"
-                aria-label={`Remove ${tag.label} filter`}
+                className="hover:text-[#B0521F] p-0.5 cursor-pointer"
+                aria-label={`Remove filter ${tag.label}`}
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </span>
           ))}
@@ -168,49 +157,46 @@ export function ProductGrid({
           <button
             type="button"
             onClick={onResetFilters}
-            className="text-[12px] font-semibold text-[#666664] hover:text-[#9E381A] flex items-center gap-1 ml-auto px-2 py-1 transition-colors"
+            className="text-[12px] font-semibold text-[#B0521F] hover:underline ml-2 cursor-pointer"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span>Clear all</span>
+            Clear all
           </button>
         </div>
       )}
 
-      {/* ── Product Grid (Locked 4:5 ratios) ──────────────────────────────── */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 pt-1">
-          {Array.from({ length: 8 }).map((_, idx) => (
-            <SkeletonCard key={idx} />
-          ))}
-        </div>
-      ) : products.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 pt-1">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={onAddToCart}
-            />
+      {/* Grid of Cards: 3 columns desktop, 2 columns mobile */}
+      {visibleProducts.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
+          {visibleProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (
-        /* Empty State */
-        <div className="py-16 sm:py-24 text-center border border-dashed border-[#E7E5E4] rounded-lg bg-white p-8 space-y-3">
-          <p className="text-[16px] font-semibold text-[#141414]">
-            No objects match your criteria
-          </p>
-          <p className="text-[13px] text-[#666664] max-w-sm mx-auto">
-            Try adjusting your search filters or clear your selection to explore the complete catalog.
-          </p>
+        <div className="py-16 text-center bg-white rounded-[6px] border border-[#E5E5E3] p-8 space-y-3">
+          <p className="text-[16px] font-semibold text-[#141414]">No products match the selected filters.</p>
+          <p className="text-[14px] text-[#6B6B6B]">Try adjusting your device model or clearing some filters.</p>
           <div className="pt-2">
             <button
               type="button"
               onClick={onResetFilters}
-              className="h-10 px-5 rounded-lg bg-[#141414] hover:bg-[#262624] text-white font-semibold text-[13px] transition-colors"
+              className="min-h-[44px] px-5 py-2 bg-[#141414] text-white text-[14px] font-semibold rounded-[6px]"
             >
               Reset Filters
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Load More at bottom */}
+      {hasMore && (
+        <div className="pt-8 text-center">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            className="min-h-[44px] px-8 py-2.5 bg-white border border-[#E5E5E3] hover:border-[#141414] text-[14px] font-semibold text-[#141414] rounded-[6px] transition-colors"
+          >
+            Load more ({products.length - displayCount} remaining)
+          </button>
         </div>
       )}
     </div>

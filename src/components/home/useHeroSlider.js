@@ -2,38 +2,41 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Custom hook for WrapStore Home Hero Slider.
- * Handles:
- * - 5-second autoplay timer with manual reset
- * - Pause on hover, keyboard focus, document visibility hidden, pause button, and prefers-reduced-motion
- * - CSS Scroll-snap synchronization & programmatic scrolling
- * - Touch swiping & Desktop mouse dragging
- * - Accessible aria-live switching (off during autoplay, polite during manual navigation)
- * - Single slide detection (disables autoplay and controls if slide count <= 1)
+ * 
+ * Manages:
+ * - Dynamic 5-second horizontal slide rotation
+ * - Pause on pointer hover, touch interaction, keyboard focus, and tab hidden
+ * - 2-second resume delay after interaction stops
+ * - Pre-loads background photos for zero layout shift & instant transitions
+ * - Touch swipe and desktop mouse drag support
+ * - Reduced motion support
  */
 export function useHeroSlider({
   slides = [],
   autoScrollInterval = 5000,
+  resumeDelay = 2000,
 }) {
   const slideCount = slides.length;
   const isMultiSlide = slideCount > 1;
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isManualPaused, setIsManualPaused] = useState(false);
-  const [isHoverPaused, setIsHoverPaused] = useState(false);
-  const [isFocusPaused, setIsFocusPaused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isTouching, setIsTouching] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [isTabHidden, setIsTabHidden] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isManualNav, setIsManualNav] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
   const containerRef = useRef(null);
-  const scrollTrackRef = useRef(null);
   const timerRef = useRef(null);
-  const isProgrammaticScrollRef = useRef(false);
+  const resumeTimerRef = useRef(null);
+  const touchStartXRef = useRef(0);
+  const touchDeltaXRef = useRef(0);
   const isDraggingRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollLeftStartRef = useRef(0);
-  const hasDraggedRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragDeltaXRef = useRef(0);
 
   // 1. Detect prefers-reduced-motion
   useEffect(() => {
@@ -54,7 +57,7 @@ export function useHeroSlider({
     }
   }, []);
 
-  // 2. Detect Tab Visibility (pause when tab is hidden)
+  // 2. Detect Tab Visibility
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
@@ -68,45 +71,51 @@ export function useHeroSlider({
     };
   }, []);
 
-  // 3. Preload next slide image
+  // 3. Preload slide images
   useEffect(() => {
     if (!isMultiSlide || typeof window === 'undefined') return;
-    const nextIdx = (currentIndex + 1) % slideCount;
-    const nextImgSrc = slides[nextIdx]?.image;
-    if (nextImgSrc) {
-      const img = new Image();
-      img.src = nextImgSrc;
+    slides.forEach((slide) => {
+      if (slide?.image) {
+        const img = new Image();
+        img.src = slide.image;
+      }
+    });
+  }, [slides, isMultiSlide]);
+
+  // 4. Interaction & 2-Second Resume Delay Handling
+  const isInteracting = isHovered || isTouching || isFocused || isTabHidden;
+
+  useEffect(() => {
+    if (prefersReducedMotion || !isMultiSlide) {
+      setIsPaused(true);
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
+      return;
     }
-  }, [currentIndex, slides, isMultiSlide, slideCount]);
 
-  // Determine if autoplay is currently paused
-  const isPaused = 
-    !isMultiSlide ||
-    isManualPaused ||
-    isHoverPaused ||
-    isFocusPaused ||
-    isTabHidden ||
-    prefersReducedMotion;
-
-  // Function to programmatically scroll container to a slide index
-  const scrollToSlide = useCallback((index, behavior = 'smooth') => {
-    const track = scrollTrackRef.current;
-    if (!track) return;
-
-    const width = track.clientWidth || track.offsetWidth;
-    if (width > 0) {
-      isProgrammaticScrollRef.current = true;
-      track.scrollTo({
-        left: index * width,
-        behavior: prefersReducedMotion ? 'auto' : behavior,
-      });
-
-      // Clear programmatic flag after scroll settles
-      setTimeout(() => {
-        isProgrammaticScrollRef.current = false;
-      }, 550);
+    if (isInteracting) {
+      setIsPaused(true);
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
+    } else {
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+      }
+      resumeTimerRef.current = setTimeout(() => {
+        setIsPaused(false);
+      }, resumeDelay);
     }
-  }, [prefersReducedMotion]);
+
+    return () => {
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+      }
+    };
+  }, [isInteracting, prefersReducedMotion, isMultiSlide, resumeDelay]);
 
   // Navigate to specific slide
   const goToSlide = useCallback((index, isManual = true) => {
@@ -118,9 +127,7 @@ export function useHeroSlider({
     if (isManual) {
       setIsManualNav(true);
     }
-
-    scrollToSlide(target, 'smooth');
-  }, [isMultiSlide, slideCount, scrollToSlide]);
+  }, [isMultiSlide, slideCount]);
 
   // Advance to next slide
   const nextSlide = useCallback((isManual = true) => {
@@ -134,14 +141,9 @@ export function useHeroSlider({
     goToSlide((currentIndex - 1 + slideCount) % slideCount, isManual);
   }, [currentIndex, isMultiSlide, slideCount, goToSlide]);
 
-  // Toggle manual pause/play
-  const togglePause = useCallback(() => {
-    setIsManualPaused((prev) => !prev);
-  }, []);
-
-  // 4. Autoplay Timer: advances every 5000ms unless paused
+  // 5. Autoplay Timer: advances dynamically every 5000ms
   useEffect(() => {
-    if (isPaused) {
+    if (isPaused || !isMultiSlide) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -149,7 +151,6 @@ export function useHeroSlider({
       return;
     }
 
-    // Set 5-second interval
     timerRef.current = setInterval(() => {
       setIsManualNav(false);
       nextSlide(false);
@@ -161,26 +162,9 @@ export function useHeroSlider({
         timerRef.current = null;
       }
     };
-  }, [isPaused, autoScrollInterval, nextSlide, resetKey]);
+  }, [isPaused, isMultiSlide, autoScrollInterval, nextSlide, resetKey]);
 
-  // 5. Scroll Event Listener (Handles touch swiping & snap alignment)
-  const handleScroll = useCallback(() => {
-    if (isProgrammaticScrollRef.current) return;
-    const track = scrollTrackRef.current;
-    if (!track) return;
-
-    const width = track.clientWidth || track.offsetWidth;
-    if (width <= 0) return;
-
-    const newIndex = Math.round(track.scrollLeft / width);
-    if (newIndex >= 0 && newIndex < slideCount && newIndex !== currentIndex) {
-      setCurrentIndex(newIndex);
-      setIsManualNav(true);
-      setResetKey((prev) => prev + 1);
-    }
-  }, [slideCount, currentIndex]);
-
-  // 6. Keyboard navigation (Left / Right arrows)
+  // 6. Keyboard navigation (Left / Right arrow keys)
   const handleKeyDown = useCallback((e) => {
     if (!isMultiSlide) return;
 
@@ -193,116 +177,106 @@ export function useHeroSlider({
     }
   }, [isMultiSlide, prevSlide, nextSlide]);
 
-  // 7. Mouse Drag Handlers (Desktop drag support)
+  // 7. Touch Swipe Handlers
+  const handleTouchStart = useCallback((e) => {
+    setIsTouching(true);
+    touchStartXRef.current = e.touches[0].clientX;
+    touchDeltaXRef.current = 0;
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!touchStartXRef.current) return;
+    touchDeltaXRef.current = e.touches[0].clientX - touchStartXRef.current;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsTouching(false);
+    const delta = touchDeltaXRef.current;
+    if (Math.abs(delta) > 45) {
+      if (delta < 0) {
+        nextSlide(true);
+      } else {
+        prevSlide(true);
+      }
+    }
+    touchStartXRef.current = 0;
+    touchDeltaXRef.current = 0;
+  }, [nextSlide, prevSlide]);
+
+  // 8. Desktop Mouse Drag Handlers
   const handleMouseDown = useCallback((e) => {
     if (!isMultiSlide || e.button !== 0) return;
-    const track = scrollTrackRef.current;
-    if (!track) return;
-
     isDraggingRef.current = true;
-    hasDraggedRef.current = false;
-    startXRef.current = e.pageX;
-    scrollLeftStartRef.current = track.scrollLeft;
-    track.style.scrollBehavior = 'auto';
-    track.style.cursor = 'grabbing';
+    dragStartXRef.current = e.pageX;
+    dragDeltaXRef.current = 0;
   }, [isMultiSlide]);
 
   const handleMouseMove = useCallback((e) => {
     if (!isDraggingRef.current) return;
-    const track = scrollTrackRef.current;
-    if (!track) return;
-
-    const deltaX = e.pageX - startXRef.current;
-    if (Math.abs(deltaX) > 5) {
-      hasDraggedRef.current = true;
-    }
-    track.scrollLeft = scrollLeftStartRef.current - deltaX;
+    dragDeltaXRef.current = e.pageX - dragStartXRef.current;
   }, []);
 
-  const handleMouseUpOrLeave = useCallback((e) => {
+  const handleMouseUpOrLeave = useCallback(() => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
-
-    const track = scrollTrackRef.current;
-    if (!track) return;
-
-    track.style.cursor = '';
-    track.style.scrollBehavior = 'smooth';
-
-    const width = track.clientWidth || track.offsetWidth;
-    if (width > 0 && hasDraggedRef.current) {
-      const targetIndex = Math.min(
-        Math.max(0, Math.round(track.scrollLeft / width)),
-        slideCount - 1
-      );
-      goToSlide(targetIndex, true);
+    const delta = dragDeltaXRef.current;
+    if (Math.abs(delta) > 50) {
+      if (delta < 0) {
+        nextSlide(true);
+      } else {
+        prevSlide(true);
+      }
     }
-  }, [slideCount, goToSlide]);
+    dragStartXRef.current = 0;
+    dragDeltaXRef.current = 0;
+  }, [nextSlide, prevSlide]);
 
-  // 8. Hover event listeners
   const handleMouseEnter = useCallback(() => {
-    setIsHoverPaused(true);
+    setIsHovered(true);
   }, []);
 
-  const handleMouseLeave = useCallback((e) => {
-    handleMouseUpOrLeave(e);
-    setIsHoverPaused(false);
+  const handleMouseLeave = useCallback(() => {
+    handleMouseUpOrLeave();
+    setIsHovered(false);
   }, [handleMouseUpOrLeave]);
 
-  // 9. Focus event listeners
+  // 9. Focus Handlers
   const handleFocus = useCallback(() => {
-    setIsFocusPaused(true);
+    setIsFocused(true);
   }, []);
 
   const handleBlur = useCallback((e) => {
     if (!containerRef.current) {
-      setIsFocusPaused(false);
+      setIsFocused(false);
       return;
     }
-    // Check if the newly focused element is still inside hero container
     const isStillInside = containerRef.current.contains(e.relatedTarget);
     if (!isStillInside) {
-      setIsFocusPaused(false);
+      setIsFocused(false);
     }
   }, []);
-
-  // Sync scroll position on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      const track = scrollTrackRef.current;
-      if (!track) return;
-      const width = track.clientWidth || track.offsetWidth;
-      if (width > 0) {
-        track.scrollLeft = currentIndex * width;
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [currentIndex]);
 
   return {
     currentIndex,
     slideCount,
     isMultiSlide,
     isPaused,
-    isManualPaused,
     isManualNav,
     prefersReducedMotion,
     resetKey,
     containerRef,
-    scrollTrackRef,
     goToSlide,
     nextSlide,
     prevSlide,
-    togglePause,
-    handleScroll,
     handleKeyDown,
     handleMouseDown,
     handleMouseMove,
     handleMouseLeave,
     handleMouseUpOrLeave,
     handleMouseEnter,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
     handleFocus,
     handleBlur,
   };

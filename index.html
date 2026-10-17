@@ -1,17 +1,119 @@
 <!doctype html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/wrapstore-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WRAPSTORE — Thoughtful Objects & Everyday Carry</title>
-    <meta name="description" content="Minimal, editorial, photography-forward e-commerce design system for WrapStore." />
-    <!-- Google Fonts: Poppins (Regular 400 & Semibold 600 only) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>WrapStore — Phone Cases & Accessories</title>
+    <meta name="description" content="Cases for iPhone and Samsung, plus everyday accessories. Choose your phone, pick a design, pay securely online." />
+
+    <!-- Self-hosted font preloads: Poppins 400, Poppins 600, and DM Serif Display 400 -->
+    <link rel="preload" href="/fonts/poppins-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/fonts/poppins-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/fonts/dm-serif-display-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+
+    <!-- Intro Logo Preload -->
+    <link rel="preload" href="/intro/logo-trimmed.png" as="image" />
+
+    <!-- Critical Intro CSS: Inlined for instantaneous zero-flash presentation -->
+    <style id="wrapstore-intro-critical-css">
+      #wrapstore-intro {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background-color: #FFFFFF;
+        display: grid;
+        place-items: center;
+        height: 100vh;
+        height: 100dvh;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
+        box-sizing: border-box;
+      }
+      #wrapstore-intro-logo {
+        display: block;
+        width: clamp(220px, 62vw, 420px);
+        height: auto;
+        max-height: 40vh;
+        max-height: 40dvh;
+        object-fit: contain;
+        clip-path: inset(0 100% 0 0);
+        -webkit-clip-path: inset(0 100% 0 0);
+        opacity: 1;
+        user-select: none;
+        -webkit-user-select: none;
+        pointer-events: none;
+      }
+      html.no-intro #wrapstore-intro {
+        display: none !important;
+      }
+    </style>
+    <noscript>
+      <style>
+        #wrapstore-intro { display: none !important; }
+      </style>
+    </noscript>
   </head>
-  <body class="bg-[#FAFAF9] text-[#141414] font-sans antialiased selection:bg-[#F8EBE7] selection:text-[#9E381A]">
+  <body class="bg-[#FAFAF9] text-[#141414] antialiased">
+    <!-- Inline Decision Script: runs synchronously before first paint to prevent any flash -->
+    <script>
+      (function() {
+        try {
+          var p = window.location.pathname;
+          var isHome = p === '/' || p === '' || p === '/index.html';
+          var isIntroTest = p === '/intro-test';
+          var seen = false;
+          try {
+            seen = sessionStorage.getItem('wrapstore_intro_seen') !== null;
+          } catch(e) {}
+          var prefersReduced = false;
+          try {
+            prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          } catch(e) {}
+
+          if ((!isHome && !isIntroTest) || (seen && !isIntroTest) || prefersReduced) {
+            document.documentElement.classList.add('no-intro');
+            window.__WRAPSTORE_INTRO_ELIGIBLE__ = false;
+            return;
+          }
+
+          if (!isIntroTest) {
+            try {
+              sessionStorage.setItem('wrapstore_intro_seen', '1');
+            } catch(e) {}
+          }
+          window.__WRAPSTORE_INTRO_ELIGIBLE__ = true;
+          document.documentElement.classList.add('has-intro');
+        } catch(e) {
+          document.documentElement.classList.add('no-intro');
+          window.__WRAPSTORE_INTRO_ELIGIBLE__ = false;
+        }
+      })();
+    </script>
+
+    <!-- Pre-rendered intro markup: present in DOM if eligible -->
+    <div id="wrapstore-intro" role="dialog" aria-modal="true" aria-label="WrapStore Intro">
+      <img
+        id="wrapstore-intro-logo"
+        src="/intro/logo-trimmed.png"
+        alt="WrapStore"
+        width="572"
+        height="158"
+        loading="eager"
+        decoding="async"
+      />
+    </div>
+
+    <!-- Cleanup script immediately following: if not eligible, remove element from DOM instantly -->
+    <script>
+      if (!window.__WRAPSTORE_INTRO_ELIGIBLE__) {
+        var el = document.getElementById('wrapstore-intro');
+        if (el) el.remove();
+      }
+    </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

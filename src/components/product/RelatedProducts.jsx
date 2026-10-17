@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useProductsContext } from '../../context/ProductsContext';
 import { ProductCard } from '../home/ProductCard';
 
-export function RelatedProducts({ currentProductId, category, currentProduct, onAddToCart }) {
+export function RelatedProducts({ currentProductId, currentProduct }) {
   const { products } = useProductsContext();
 
   const related = useMemo(() => {
@@ -25,26 +25,23 @@ export function RelatedProducts({ currentProductId, category, currentProduct, on
   if (related.length === 0) return null;
 
   return (
-    <section className="pt-12 sm:pt-16 border-t border-[#E7E5E4]">
-      <div className="space-y-6">
-        <div>
-          <span className="text-[12px] uppercase font-semibold text-[#A8A29E] tracking-tight block mb-1">
-            Related
-          </span>
-          <h2 className="text-[22px] sm:text-[24px] font-semibold text-[#141414] tracking-tight">
-            Complementary Objects
-          </h2>
-        </div>
+    <section className="pt-12 sm:pt-16 border-t border-[#E5E5E3] space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-[28px] font-semibold text-[#141414] tracking-[-0.01em]">
+          Related products
+        </h2>
+        <p className="text-[14px] text-[#6B6B6B]">
+          Other cases and accessories matched to your setup.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          {related.map((prod) => (
-            <ProductCard
-              key={prod.id}
-              product={prod}
-              onAddToCart={onAddToCart}
-            />
-          ))}
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        {related.map((prod) => (
+          <ProductCard
+            key={prod.id}
+            product={prod}
+          />
+        ))}
       </div>
     </section>
   );

@@ -1,88 +1,73 @@
-import React, { useState } from 'react';
-import { Badge } from '../ui/Badge';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 
-const PLACEHOLDER_IMG =
-  'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=800&q=75';
+const FALLBACK_PLACEHOLDER = '/subcategories/iphone.jpg';
 
 export function ImageGallery({ images = [], product, className = '' }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isFading, setIsFading] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+  const imageContainerRef = useRef(null);
 
-  const imageList = images.length > 0 ? images : [];
-  const hasRealImages = imageList.length > 0;
-  const displayImages = hasRealImages ? imageList : [PLACEHOLDER_IMG];
-
+  const displayImages = images && images.length > 0 ? images : (product?.image_url ? [product.image_url] : [FALLBACK_PLACEHOLDER]);
   const currentImage = displayImages[Math.min(selectedIndex, displayImages.length - 1)];
 
-  const handleSelect = (index) => {
-    if (index === selectedIndex) return;
-    setIsFading(true);
-    setTimeout(() => {
-      setSelectedIndex(index);
-      setIsFading(false);
-    }, 120);
+  const handleMouseMove = (e) => {
+    if (!imageContainerRef.current) return;
+    const { left, top, width, height } = imageContainerRef.current.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setMousePos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
   };
 
   const handleNext = () => {
-    const nextIndex = (selectedIndex + 1) % displayImages.length;
-    handleSelect(nextIndex);
+    setSelectedIndex((prev) => (prev + 1) % displayImages.length);
   };
 
   const handlePrev = () => {
-    const prevIndex = (selectedIndex - 1 + displayImages.length) % displayImages.length;
-    handleSelect(prevIndex);
+    setSelectedIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
   };
 
-  const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || (product.available_stock ?? product.current_stock ?? 0) === 0;
-  const hasDiscount = product.discount_percentage > 0;
-
   return (
-    <div className={`space-y-3.5 ${className}`}>
-      {/* Main Image Frame (4:5 Aspect Ratio Locked) */}
-      <div className="relative aspect-[4/5] w-full bg-[#F5F5F4] rounded-lg border border-[#E7E5E4] overflow-hidden group">
+    <div className={`space-y-3 ${className}`}>
+      {/* Main Image Frame (4:5 Aspect Ratio Locked, with zoom on hover) */}
+      <div
+        ref={imageContainerRef}
+        onMouseEnter={() => setIsZoomed(true)}
+        onMouseLeave={() => setIsZoomed(false)}
+        onMouseMove={handleMouseMove}
+        className="relative aspect-[4/5] w-full bg-[#FAFAF9] rounded-[6px] border border-[#E5E5E3] overflow-hidden group select-none cursor-crosshair"
+      >
         <img
           src={currentImage}
-          alt={`${product.name} view ${selectedIndex + 1}`}
-          className={`
-            w-full h-full object-cover object-center transition-opacity duration-150 ease-out
-            ${isFading ? 'opacity-40' : 'opacity-100'}
-            ${isOutOfStock ? 'grayscale opacity-50' : ''}
-          `}
+          alt={`${product?.name || 'Product'} image ${selectedIndex + 1}`}
+          loading="eager"
+          className={`w-full h-full object-cover transition-transform duration-150 ${
+            isZoomed ? 'scale-150' : 'scale-100'
+          }`}
+          style={
+            isZoomed
+              ? { transformOrigin: `${mousePos.x}% ${mousePos.y}%` }
+              : undefined
+          }
         />
 
-        {!hasRealImages && (
-          <div className="absolute bottom-3 inset-x-3 flex justify-center">
-            <span className="text-[11px] bg-[#141414]/70 text-white px-2.5 py-1 rounded-md">
-              No photo available
-            </span>
-          </div>
-        )}
-
-        {/* Quiet Badges Overlay */}
-        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
-          {isOutOfStock ? (
-            <Badge variant="outofstock" size="sm">
-              Sold out
-            </Badge>
-          ) : hasDiscount ? (
-            <Badge variant="discount" size="sm">
-              -{product.discount_percentage}%
-            </Badge>
-          ) : null}
+        {/* Quiet Zoom Hint Icon */}
+        <div className="absolute top-3 right-3 p-1.5 bg-white/80 rounded-[6px] text-[#6B6B6B] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+          <ZoomIn className="w-4 h-4" />
         </div>
 
-        {/* Navigation Arrows */}
-        {hasRealImages && displayImages.length > 1 && (
-          <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        {/* Carousel Chevrons if multi-image */}
+        {displayImages.length > 1 && (
+          <>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handlePrev();
               }}
-              className="w-9 h-9 rounded-md bg-white/90 text-[#141414] shadow-sm hover:bg-white flex items-center justify-center transition-colors pointer-events-auto"
-              aria-label="Previous view"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white text-[#141414] rounded-[6px] flex items-center justify-center border border-[#E5E5E3] opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Previous image"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -92,39 +77,36 @@ export function ImageGallery({ images = [], product, className = '' }) {
                 e.stopPropagation();
                 handleNext();
               }}
-              className="w-9 h-9 rounded-md bg-white/90 text-[#141414] shadow-sm hover:bg-white flex items-center justify-center transition-colors pointer-events-auto"
-              aria-label="Next view"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white text-[#141414] rounded-[6px] flex items-center justify-center border border-[#E5E5E3] opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Next image"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-          </div>
+          </>
         )}
       </div>
 
       {/* Thumbnails Strip */}
-      {hasRealImages && displayImages.length > 1 && (
-        <div className="grid grid-cols-4 gap-2.5">
+      {displayImages.length > 1 && (
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
           {displayImages.map((img, idx) => {
             const isSelected = selectedIndex === idx;
             return (
               <button
                 key={idx}
                 type="button"
-                onClick={() => handleSelect(idx)}
-                className={`
-                  relative aspect-[4/5] bg-[#F5F5F4] rounded-lg overflow-hidden border transition-colors
-                  ${
-                    isSelected
-                      ? 'border-[#141414] shadow-sm'
-                      : 'border-[#E7E5E4] opacity-60 hover:opacity-100'
-                  }
-                `}
-                aria-label={`View image ${idx + 1}`}
+                onClick={() => setSelectedIndex(idx)}
+                className={`relative aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden border transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-[#141414]'
+                    : 'border-[#E5E5E3] opacity-60 hover:opacity-100'
+                }`}
+                aria-label={`View photo ${idx + 1}`}
               >
                 <img
                   src={img}
                   alt={`Thumbnail ${idx + 1}`}
-                  className="w-full h-full object-cover object-center"
+                  className="w-full h-full object-cover"
                 />
               </button>
             );

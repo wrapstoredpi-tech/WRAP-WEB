@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const CartContext = createContext(undefined);
-const LOCAL_STORAGE_KEY = 'wrapstore_cart_items_v3';
+const LOCAL_STORAGE_KEY = 'wrapstore_cart_items_v4';
 
 export function CartProvider({ children }) {
-  // Raw cart stubs — only IDs + quantities
   const [cartItems, setCartItems] = useState(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -35,50 +34,74 @@ export function CartProvider({ children }) {
   }, [cartItems]);
 
   // ── Cart Actions ────────────────────────────────────────────────────────────
-  const addItem = (product, quantityToAdd = 1) => {
+  const addItem = (product, quantityToAdd = 1, selectedModel = null, selectedColor = null) => {
     if (!product || !product.id) return false;
     // Out-of-stock guard
     if (product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0) return false;
 
     const maxStock = product.available_stock ?? product.current_stock ?? 99;
     const addQty = Math.max(1, Number(quantityToAdd) || 1);
+    const modelToSave = selectedModel || product.selected_model || null;
+    const colorToSave = selectedColor || product.selected_color || null;
 
     setCartItems((prevItems) => {
-      const existingIndex = prevItems.findIndex((i) => i.productId === product.id);
+      // Find line matching both product ID and selected model
+      const existingIndex = prevItems.findIndex(
+        (i) => i.productId === product.id && (i.selected_model || null) === (modelToSave || null)
+      );
 
       if (existingIndex > -1) {
         const currentQty = prevItems[existingIndex].quantity || 0;
         const newQty = Math.min(currentQty + addQty, maxStock);
         const updated = [...prevItems];
-        updated[existingIndex] = { ...updated[existingIndex], quantity: newQty };
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: newQty,
+          selected_model: modelToSave,
+          selected_color: colorToSave || updated[existingIndex].selected_color,
+        };
         return updated;
       } else {
         const finalQty = Math.min(addQty, maxStock);
-        return [...prevItems, { productId: product.id, quantity: finalQty }];
+        const lineId = `${product.id}_${modelToSave || 'default'}_${Date.now()}`;
+        return [
+          ...prevItems,
+          {
+            id: lineId,
+            productId: product.id,
+            quantity: finalQty,
+            selected_model: modelToSave,
+            selected_color: colorToSave,
+          },
+        ];
       }
     });
 
-    setLastAddedItem({ product, quantity: addQty });
+    setLastAddedItem({ product, quantity: addQty, selected_model: modelToSave });
     return true;
   };
 
-  const removeItem = (productId) => {
-    if (!productId) return;
-    setCartItems((prev) => prev.filter((i) => i.productId !== productId));
+  const removeItem = (lineIdOrProductId) => {
+    if (!lineIdOrProductId) return;
+    setCartItems((prev) =>
+      prev.filter((i) => i.id !== lineIdOrProductId && i.productId !== lineIdOrProductId)
+    );
   };
 
-  const updateQuantity = (productId, newQuantity, maxStock = 99) => {
-    if (!productId) return;
+  const updateQuantity = (lineIdOrProductId, newQuantity, maxStock = 99) => {
+    if (!lineIdOrProductId) return;
     const targetQty = Number(newQuantity);
     if (isNaN(targetQty) || targetQty <= 0) {
-      removeItem(productId);
+      removeItem(lineIdOrProductId);
       return;
     }
 
     const capped = Math.min(targetQty, maxStock || 99);
     setCartItems((prev) =>
       prev.map((item) =>
-        item.productId === productId ? { ...item, quantity: capped } : item
+        item.id === lineIdOrProductId || item.productId === lineIdOrProductId
+          ? { ...item, quantity: capped }
+          : item
       )
     );
   };
@@ -108,7 +131,7 @@ export function useCart() {
 
 /**
  * useHydratedCart(products)
- * Hydrates cart stubs with live product prices, stock levels, and names.
+ * Hydrates cart stubs with live product prices, stock levels, model choices, and names.
  */
 export function useHydratedCart(products = []) {
   const { cartItems } = useCart();
@@ -128,13 +151,29 @@ export function useHydratedCart(products = []) {
       .map((item) => {
         const product = productMap[item.productId];
         if (!product) return null;
-        const stockWarning = product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0;
+        const availableStock = product.available_stock ?? product.current_stock ?? 0;
+        const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || availableStock === 0;
+        const exceedsStock = item.quantity > availableStock;
+        const stockWarning = isOutOfStock || exceedsStock;
+
+        // Model resolution: line choice > saved product model > null
+        const resolvedModel = item.selected_model || product.mobile_model || null;
+        const resolvedColor =
+          item.selected_color ||
+          (product.color_variants && product.color_variants.length > 0 ? product.color_variants[0] : null);
+
         return {
-          id: item.productId,
+          id: item.id || item.productId,
+          lineId: item.id || item.productId,
           productId: item.productId,
           product,
           quantity: item.quantity,
+          selected_model: resolvedModel,
+          selected_color: resolvedColor,
           stockWarning,
+          isOutOfStock,
+          exceedsStock,
+          availableStock,
         };
       })
       .filter(Boolean);
@@ -150,6 +189,7 @@ export function useHydratedCart(products = []) {
   const shippingFee = items.length === 0 ? 0 : isFreeShipping ? 0 : 99;
   const estimatedTotal = subtotal + shippingFee;
   const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+  const hasStockWarnings = items.some((item) => item.stockWarning);
 
   return {
     items,
@@ -159,6 +199,7 @@ export function useHydratedCart(products = []) {
     estimatedTotal,
     amountToFreeShipping,
     freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
+    hasStockWarnings,
   };
 }
 

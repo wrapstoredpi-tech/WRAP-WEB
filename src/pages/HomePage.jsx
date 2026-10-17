@@ -1,32 +1,35 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { HeroSection } from '../components/home/HeroSection';
-import { ShopByCategory } from '../components/home/ShopByCategory';
-import { ProductGrid } from '../components/home/ProductGrid';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
+import { ShopByCategoryRow } from '../components/home/ShopByCategoryRow';
+import { DealOfTheDaySection } from '../components/home/DealOfTheDaySection';
+import { FeaturedProductSection } from '../components/home/FeaturedProductSection';
+import { NewArrivalsSection } from '../components/home/NewArrivalsSection';
+import { HomeAboutBlock } from '../components/home/HomeAboutBlock';
+import { StoreDetailsSection } from '../components/home/StoreDetailsSection';
+import { HomeSEO } from '../components/home/HomeSEO';
+import { FilterSidebar } from '../components/home/FilterSidebar';
 import { FilterBottomSheet } from '../components/home/FilterBottomSheet';
-import { CategoryHub } from '../components/category/CategoryHub';
+import { ProductGrid } from '../components/home/ProductGrid';
 import { useProductsContext } from '../context/ProductsContext';
-import { usePhoneContext } from '../context/PhoneContext';
-import { deriveFilterOptions, PRICE_RANGES, isProductCompatibleWithPhone } from '../lib/useProducts';
-import { formatINR } from '../lib/currency';
-import { Smartphone, ChevronRight, ArrowLeft } from 'lucide-react';
+import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
+import { fetchBestSellersMap } from '../lib/productRowAdapter';
+import { selectDealOfTheDay, selectFeaturedProduct } from '../lib/dealFeaturedAdapter';
+import { ChevronRight } from 'lucide-react';
 
 const INITIAL_FILTERS = {
   category: 'All',
-  category_id: null,
   subcategory: 'All Types',
-  subcategory_id: null,
   brand: 'All Brands',
+  series: '',
   selectedModel: '',
   priceRange: 'All Prices',
   selectedColor: '',
   inStockOnly: false,
 };
 
-export function HomePage({ onAddToCart }) {
+export function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const productSectionRef = useRef(null);
 
   const {
     products: liveProducts = [],
@@ -35,7 +38,40 @@ export function HomePage({ onAddToCart }) {
     isLoading = false,
   } = useProductsContext();
 
-  const { savedPhone, openPhoneSheet } = usePhoneContext();
+  // Bestsellers RPC map state
+  const [bestSellerMap, setBestSellerMap] = useState(new Map());
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchBestSellersMap(16).then((map) => {
+      if (isMounted) {
+        setBestSellerMap(map);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Compute Deal of the Day product
+  const dealData = useMemo(() => {
+    return selectDealOfTheDay(liveProducts);
+  }, [liveProducts]);
+
+  const dealProductId = dealData?.product?.id || null;
+
+  // Compute Featured product (excluding product used in Deal)
+  const featuredProduct = useMemo(() => {
+    return selectFeaturedProduct(liveProducts, dealProductId, bestSellerMap);
+  }, [liveProducts, dealProductId, bestSellerMap]);
+
+  // Compute excluded product IDs for New Arrivals (strictly exclude products shown above)
+  const excludedProductIds = useMemo(() => {
+    const set = new Set();
+    if (dealProductId) set.add(dealProductId);
+    if (featuredProduct?.id) set.add(featuredProduct.id);
+    return set;
+  }, [dealProductId, featuredProduct]);
 
   const filterOptions = useMemo(
     () => deriveFilterOptions(liveProducts, liveCategories, liveSubcategories),
@@ -44,208 +80,128 @@ export function HomePage({ onAddToCart }) {
 
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [sortBy, setSortBy] = useState('newest');
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
-  const [showAllDesigns, setShowAllDesigns] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Read URL query parameters
+  // URL query parameters
   const catQuery = searchParams.get('category');
   const subQuery = searchParams.get('subcategory');
+  const brandQuery = searchParams.get('brand');
+  const seriesQuery = searchParams.get('series');
+  const searchQuery = searchParams.get('search');
+  const viewQuery = searchParams.get('view');
+  const featuredQuery = searchParams.get('featured') === '1';
 
-  const activeCategory = catQuery && catQuery !== 'All' ? catQuery : 'All';
-  const matchedCategory = useMemo(() => {
-    if (activeCategory === 'All') return null;
-    return liveCategories.find((c) => c.name.toLowerCase() === activeCategory.toLowerCase()) || null;
-  }, [activeCategory, liveCategories]);
-
-  // Check if current category has subcategories in DB
-  const categorySubcategories = useMemo(() => {
-    if (!matchedCategory) return [];
-    return liveSubcategories.filter((s) => s.category_id === matchedCategory.id);
-  }, [matchedCategory, liveSubcategories]);
-
-  // Determine whether to display Step 1 Hub Screen vs Step 2 Product Grid Screen
-  const isHubView = Boolean(
-    matchedCategory &&
-    categorySubcategories.length > 0 &&
-    !subQuery
+  // Determine if we should show Listing mode instead of Home mode
+  const isListingMode = Boolean(
+    catQuery || subQuery || brandQuery || seriesQuery || searchQuery || viewQuery === 'all' || featuredQuery
   );
 
-  // Sync category and subcategory from URL searchParams
+  // Sync state from URL params
   useEffect(() => {
-    if (activeCategory !== 'All' && matchedCategory) {
-      let resolvedSub = 'All Types';
-      let resolvedSubId = null;
-
-      if (subQuery && subQuery !== 'all' && subQuery !== 'All Types') {
-        const matchedSub = liveSubcategories.find(
-          (s) => s.category_id === matchedCategory.id && s.name.toLowerCase() === subQuery.toLowerCase()
-        );
-        if (matchedSub) {
-          resolvedSub = matchedSub.name;
-          resolvedSubId = matchedSub.id;
-        } else {
-          resolvedSub = subQuery;
-        }
-      }
-
-      setFilters((prev) => ({
-        ...prev,
-        category: matchedCategory.name,
-        category_id: matchedCategory.id,
-        subcategory: resolvedSub,
-        subcategory_id: resolvedSubId,
-      }));
-    } else {
-      setFilters((prev) => ({
-        ...prev,
-        category: 'All',
-        category_id: null,
-        subcategory: 'All Types',
-        subcategory_id: null,
-      }));
-    }
-  }, [activeCategory, subQuery, matchedCategory, liveSubcategories]);
+    setFilters((prev) => ({
+      ...prev,
+      category: catQuery || 'All',
+      subcategory: subQuery || 'All Types',
+      brand: brandQuery || (seriesQuery?.toLowerCase().includes('galaxy') ? 'Samsung' : seriesQuery?.toLowerCase().includes('iphone') ? 'Apple' : 'All Brands'),
+      series: seriesQuery || '',
+      selectedModel: searchParams.get('model') || '',
+    }));
+  }, [catQuery, subQuery, brandQuery, seriesQuery, searchParams]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => {
       const next = { ...prev, [key]: value };
 
-      if (key === 'category') {
-        if (value === 'All' || value === 'All Categories') {
-          next.category = 'All';
-          next.category_id = null;
-          next.subcategory = 'All Types';
-          next.subcategory_id = null;
-          setSearchParams({});
-        } else {
-          const matched = liveCategories.find((c) => c.name === value);
-          next.category = value;
-          next.category_id = matched?.id || null;
-          next.subcategory = 'All Types';
-          next.subcategory_id = null;
-          // Navigating to category hub (Step 1)
-          setSearchParams({ category: value });
-        }
+      // Update URL search parameters
+      const params = new URLSearchParams(searchParams);
+      if (value && value !== 'All' && value !== 'All Types' && value !== 'All Brands' && value !== 'All Prices') {
+        params.set(key, value);
+      } else {
+        params.delete(key);
       }
 
-      if (key === 'subcategory') {
-        if (value === 'All Types' || value === 'All' || value === 'all') {
-          next.subcategory = 'All Types';
-          next.subcategory_id = null;
-          if (next.category !== 'All') {
-            setSearchParams({ category: next.category, subcategory: 'all' });
-          }
-        } else {
-          const subObj = liveSubcategories.find((s) => s.name === value);
-          next.subcategory = value;
-          next.subcategory_id = subObj?.id || null;
-          if (next.category !== 'All') {
-            setSearchParams({ category: next.category, subcategory: value });
-          }
-        }
-      }
-
+      setSearchParams(params);
       return next;
     });
   };
 
   const handleResetFilters = () => {
-    setFilters((prev) => ({
-      ...INITIAL_FILTERS,
-      category: prev.category,
-      category_id: prev.category_id,
-      subcategory: prev.subcategory,
-      subcategory_id: prev.subcategory_id,
-    }));
-    setShowAllDesigns(true);
+    setFilters(INITIAL_FILTERS);
+    setSearchParams(isListingMode ? (featuredQuery ? { featured: '1' } : { view: 'all' }) : {});
   };
 
-  const handleSelectCategoryTile = (tile) => {
-    if (tile.category === 'All' || !tile.category) {
-      handleFilterChange('category', 'All');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    if (tile.category && tile.subcategory) {
-      setSearchParams({ category: tile.category, subcategory: tile.subcategory });
-    } else if (tile.category) {
-      setSearchParams({ category: tile.category });
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // "Made for your phone" products (shown on home page when phone model is selected)
-  const madeForYourPhoneProducts = useMemo(() => {
-    if (!savedPhone) return [];
-    return liveProducts
-      .filter((p) => {
-        const isCase = (p.category || '').toLowerCase() === 'mobile cases';
-        const models = p.compatible_models || [];
-        if (!isCase || models.length === 0 || models.includes('Universal')) return false;
-        return models.some((m) => m.toLowerCase().trim() === savedPhone.model.toLowerCase().trim());
-      })
-      .slice(0, 4);
-  }, [liveProducts, savedPhone]);
-
-  // Main filtered products for the Step 2 grid
+  // Filtered products calculation
   const filteredProducts = useMemo(() => {
     let result = [...liveProducts];
 
-    // Phone compatibility filter (keeps all universal accessories and matching cases)
-    if (savedPhone && !showAllDesigns) {
-      result = result.filter((p) => isProductCompatibleWithPhone(p, savedPhone));
-    }
-
-    // Manual brand filter from bottom sheet
-    if (filters.brand && filters.brand !== 'All Brands') {
+    // Search query
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (p) =>
-          p.mobile_brand === filters.brand ||
-          p.mobile_brand === 'Universal' ||
-          (p.compatible_models || []).includes('Universal') ||
-          (p.category && p.category.toLowerCase() !== 'mobile cases')
+          p.name.toLowerCase().includes(q) ||
+          (p.category || '').toLowerCase().includes(q) ||
+          (p.subcategory || '').toLowerCase().includes(q) ||
+          (p.mobile_brand || '').toLowerCase().includes(q) ||
+          (p.compatible_models || []).some((m) => m.toLowerCase().includes(q))
       );
-    }
-
-    // Manual model filter from bottom sheet
-    if (filters.selectedModel) {
-      const targetM = filters.selectedModel.toLowerCase().trim();
-      result = result.filter((p) => {
-        const models = p.compatible_models || [];
-        if (
-          models.includes('Universal') ||
-          p.mobile_brand === 'Universal' ||
-          (p.category && p.category.toLowerCase() !== 'mobile cases')
-        ) {
-          return true;
-        }
-        return models.some((m) => m.toLowerCase().trim() === targetM);
-      });
     }
 
     // Category filter
-    if (filters.category !== 'All' && filters.category !== 'All Categories') {
-      if (filters.category_id) {
-        result = result.filter((p) => p.category_id === filters.category_id);
-      } else {
-        result = result.filter((p) => p.category === filters.category);
-      }
+    if (filters.category && filters.category !== 'All' && filters.category !== 'All Categories') {
+      result = result.filter((p) => p.category?.toLowerCase() === filters.category.toLowerCase());
     }
 
-    // Subcategory filter (if specific subcategory is selected)
-    if (
-      filters.subcategory_id ||
-      (filters.subcategory &&
-        filters.subcategory !== 'All Types' &&
-        filters.subcategory !== 'All' &&
-        filters.subcategory !== 'all')
-    ) {
-      result = result.filter((p) =>
-        filters.subcategory_id
-          ? p.subcategory_id === filters.subcategory_id
-          : p.subcategory === filters.subcategory
+    // Subcategory filter
+    if (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All') {
+      result = result.filter(
+        (p) => p.subcategory?.toLowerCase() === filters.subcategory.toLowerCase()
       );
+    }
+
+    // Brand filter
+    if (filters.brand && filters.brand !== 'All Brands') {
+      result = result.filter((p) => {
+        const isCase = (p.category || '').toLowerCase().includes('case');
+        if (!isCase) return true; // Accessories remain visible
+        const pBrand = (p.mobile_brand || '').toLowerCase();
+        const targetB = filters.brand.toLowerCase();
+        return pBrand.includes(targetB) || (p.compatible_models || []).some((m) => m.toLowerCase().includes(targetB));
+      });
+    }
+
+    // Series filter (e.g. "iPhone 16 Series")
+    if (filters.series) {
+      const sLower = filters.series.toLowerCase();
+      const numMatch = sLower.match(/\d+/);
+      const number = numMatch ? numMatch[0] : '';
+
+      result = result.filter((p) => {
+        const isCase = (p.category || '').toLowerCase().includes('case');
+        if (!isCase) return true;
+        const models = p.compatible_models || [];
+        return models.some((m) => {
+          const mLower = m.toLowerCase();
+          if (sLower.includes('galaxy') || sLower.includes('samsung')) {
+            return mLower.includes('galaxy') && (!number || mLower.includes(number));
+          }
+          if (sLower.includes('iphone')) {
+            return mLower.includes('iphone') && (!number || mLower.includes(number));
+          }
+          return mLower.includes(sLower);
+        });
+      });
+    }
+
+    // Selected model filter
+    if (filters.selectedModel) {
+      const targetM = filters.selectedModel.toLowerCase().trim();
+      result = result.filter((p) => {
+        const isCase = (p.category || '').toLowerCase().includes('case');
+        if (!isCase) return true;
+        const models = p.compatible_models || [];
+        return models.some((m) => m.toLowerCase().trim() === targetM);
+      });
     }
 
     // Price range filter
@@ -256,284 +212,175 @@ export function HomePage({ onAddToCart }) {
       }
     }
 
-    // Color filter
-    if (filters.selectedColor) {
-      const targetColor = filters.selectedColor.toLowerCase().trim();
-      result = result.filter((p) =>
-        p.color_variants?.some((c) => {
-          const name = typeof c === 'string' ? c.trim() : (c?.name || c?.color || String(c)).trim();
-          return name.toLowerCase() === targetColor;
-        })
-      );
-    }
-
-    // In-stock only filter
+    // In-stock only
     if (filters.inStockOnly) {
-      result = result.filter((p) => p.stock_status !== 'OUT_OF_STOCK' && p.available_stock > 0);
+      result = result.filter((p) => p.stock_status !== 'OUT_OF_STOCK' && (p.available_stock ?? p.current_stock ?? 0) > 0);
     }
 
-    // Sort
-    result.sort((a, b) => {
-      if (sortBy === 'price_asc') return a.selling_price - b.selling_price;
-      if (sortBy === 'price_desc') return b.selling_price - a.selling_price;
-      if (sortBy === 'discount') return (b.discount_percentage || 0) - (a.discount_percentage || 0);
-      if (sortBy === 'in_stock') {
-        if (a.stock_status === 'OUT_OF_STOCK') return 1;
-        if (b.stock_status === 'OUT_OF_STOCK') return -1;
-        return 0;
+    // Sorting
+    if (sortBy === 'price_asc') {
+      result.sort((a, b) => a.selling_price - b.selling_price);
+    } else if (sortBy === 'price_desc') {
+      result.sort((a, b) => b.selling_price - a.selling_price);
+    } else if (sortBy === 'discount') {
+      result.sort((a, b) => (b.discount_percentage || 0) - (a.discount_percentage || 0));
+    } else if (sortBy === 'in_stock') {
+      result.sort((a, b) => (b.available_stock || 0) - (a.available_stock || 0));
+    } else {
+      // 'newest' (or featured-first when ?featured=1)
+      if (featuredQuery) {
+        result.sort((a, b) => {
+          const aFeat = a.online_featured ? 1 : 0;
+          const bFeat = b.online_featured ? 1 : 0;
+          if (bFeat !== aFeat) return bFeat - aFeat;
+          const aRank = bestSellerMap?.get(a.id)?.rank ?? 999;
+          const bRank = bestSellerMap?.get(b.id)?.rank ?? 999;
+          if (aRank !== bRank) return aRank - bRank;
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+      } else {
+        result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
       }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
+    }
 
     return result;
-  }, [liveProducts, savedPhone, showAllDesigns, filters, sortBy]);
+  }, [liveProducts, filters, sortBy, searchQuery, featuredQuery, bestSellerMap]);
 
-  const activeFilterCount = useMemo(() => {
-    return [
-      Boolean(filters.subcategory_id) ||
-        (filters.subcategory &&
-          filters.subcategory !== 'All Types' &&
-          filters.subcategory !== 'All' &&
-          filters.subcategory !== 'all'),
-      filters.brand && filters.brand !== 'All Brands',
-      Boolean(filters.selectedModel),
-      filters.priceRange !== 'All Prices',
-      Boolean(filters.selectedColor),
-      filters.inStockOnly,
-    ].filter(Boolean).length;
-  }, [filters]);
+  // Listing page title derivation
+  const listingTitle = useMemo(() => {
+    if (searchQuery) return `Search results for "${searchQuery}"`;
+    if (featuredQuery) return 'Featured Products';
+    if (filters.series) return filters.series;
+    if (filters.brand && filters.brand !== 'All Brands') {
+      return filters.brand === 'Apple' ? 'iPhone Cases' : `${filters.brand} Cases`;
+    }
+    if (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All') {
+      return filters.subcategory;
+    }
+    if (filters.category && filters.category !== 'All') {
+      return filters.category;
+    }
+    return 'All Products';
+  }, [filters, searchQuery, featuredQuery]);
 
-  // ── 1. STEP 1: HUB SCREEN ──────────────────────────────────────────────────
-  if (isHubView && matchedCategory) {
+  // ───────────────────────────────────────────────────────────────────────────
+  // VIEW 1: HOME PAGE (Strict Home Order with 96px desktop / 64px mobile spacing)
+  // Order: Info bar, Header, First screen, Shop by category, Deal of the day,
+  //        Featured, New arrivals, About us, Contact and store, Footer.
+  // ───────────────────────────────────────────────────────────────────────────
+  if (!isListingMode) {
     return (
-      <div className="flex flex-col min-h-screen bg-[#FAFAF9]">
-        <CategoryHub
-          category={matchedCategory}
-          subcategories={liveSubcategories}
-          products={liveProducts}
-          onSelectSubcategory={(sub) => {
-            setSearchParams({ category: matchedCategory.name, subcategory: sub.name });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onBackToAllProducts={() => {
-            setSearchParams({});
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        />
-      </div>
+      <>
+        {/* Page SEO title, meta description, OG tags */}
+        <HomeSEO />
+
+        <main className="flex-1 w-full bg-[#FAFAF9] pb-16 sm:pb-24">
+          <div className="space-y-16 lg:space-y-24">
+            
+            {/* 1. First Screen: Hero 12-col grid (copy 5 cols left, photo slider 7 cols right) */}
+            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+              <HeroFirstScreen />
+            </div>
+
+            {/* 2. Shop by Category: Row directly under first screen */}
+            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+              <ShopByCategoryRow
+                products={liveProducts}
+                subcategories={liveSubcategories}
+                categories={liveCategories}
+              />
+            </div>
+
+            {/* 3. Deal of the Day: Full-bleed band #F4F3F0 with 1px borders, hides if no eligible product */}
+            {dealData && (
+              <DealOfTheDaySection dealData={dealData} />
+            )}
+
+            {/* 4. Featured: Plain background, 12-col grid mirrored, hides if no eligible product */}
+            {featuredProduct && (
+              <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+                <FeaturedProductSection product={featuredProduct} />
+              </div>
+            )}
+
+            {/* 5. New arrivals: Grid of up to 8, excluding Deal and Featured products */}
+            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+              <NewArrivalsSection
+                products={liveProducts}
+                excludedProductIds={excludedProductIds}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* 6. About us: 2-column block */}
+            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+              <HomeAboutBlock />
+            </div>
+
+            {/* 7. Contact and store: Store details, hours, map CTA */}
+            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+              <StoreDetailsSection />
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
-  // ── 2. STEP 2: PRODUCT GRID SCREEN ─────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
+  // VIEW 2: LISTING PAGE (Breadcrumb, Sidebar filters, Sort right, Product Cards grid)
+  // ───────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAFAF9]">
-      {/* Full-bleed Hero Banner Section (Only on All Products / Full Catalog) */}
-      {activeCategory === 'All' && (
-        <HeroSection
-          onShopClick={(cat) => {
-            if (cat && cat !== 'All') {
-              handleFilterChange('category', cat);
-            } else {
-              setSearchParams({});
-            }
-            if (productSectionRef.current) {
-              productSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-            }
-          }}
-        />
-      )}
-
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 w-full">
+    <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* ── SHOP BY CATEGORY (Placed between Banner & Fitted For Your Model) ── */}
-        {activeCategory === 'All' && (
-          <ShopByCategory onSelectTile={handleSelectCategoryTile} />
-        )}
-
-        {/* ── Optional: "Made for your phone" quick carousel on All Products ── */}
-        {activeCategory === 'All' && savedPhone && madeForYourPhoneProducts.length > 0 && (
-          <section className="p-4 sm:p-6 bg-[#141414] text-white rounded-lg space-y-4 sm:space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-white/10 flex items-center justify-center text-white">
-                  <Smartphone className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-[15px] sm:text-[16px] font-semibold text-white">
-                    Fitted for your {savedPhone.model}
-                  </h3>
-                  <p className="text-[12px] text-[#A8A29E] font-normal">
-                    Precision cutouts and verified geometry
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={openPhoneSheet}
-                className="text-[13px] text-[#D6D3D1] hover:text-white font-normal underline transition-colors cursor-pointer"
-              >
-                Change
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-              {madeForYourPhoneProducts.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => navigate(`/product/${p.id}`)}
-                  className="bg-[#262624] rounded-lg p-3 cursor-pointer hover:bg-[#383836] transition-colors flex flex-col justify-between space-y-2 border border-[#383836]"
-                >
-                  <div className="aspect-[4/5] rounded-md overflow-hidden bg-[#141414]">
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div>
-                    <h4 className="text-[13px] font-semibold text-white line-clamp-1">{p.name}</h4>
-                    <p className="text-[13px] text-[#D6D3D1] font-normal pt-0.5">
-                      {formatINR(p.selling_price)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Main Product Listing Section ─────────────────────────────────── */}
-        <section ref={productSectionRef} className="space-y-4 sm:space-y-5">
-          
-          {/* Breadcrumb & Return to Hub Back-link (When in Category Drill-down) */}
-          {matchedCategory && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E7E5E4] animate-fade-in">
-              <nav aria-label="Breadcrumb" className="text-[13px] text-[#666664]">
-                <ol className="flex items-center space-x-2 truncate font-normal">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => setSearchParams({})}
-                      className="hover:text-[#141414] transition-colors cursor-pointer"
-                    >
-                      All Products
-                    </button>
-                  </li>
-                  <li>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => setSearchParams({ category: matchedCategory.name })}
-                      className="hover:text-[#141414] transition-colors font-semibold text-[#141414] underline underline-offset-4 decoration-[#D6D3D1] hover:decoration-[#141414] cursor-pointer"
-                    >
-                      {matchedCategory.name}
-                    </button>
-                  </li>
-                  {subQuery && subQuery !== 'all' && (
-                    <>
-                      <li>
-                        <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
-                      </li>
-                      <li className="text-[#141414] font-semibold truncate" aria-current="page">
-                        {filters.subcategory}
-                      </li>
-                    </>
-                  )}
-                  {subQuery === 'all' && (
-                    <>
-                      <li>
-                        <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E]" />
-                      </li>
-                      <li className="text-[#141414] font-semibold truncate" aria-current="page">
-                        All Designs
-                      </li>
-                    </>
-                  )}
-                </ol>
-              </nav>
-
-              <button
-                type="button"
-                onClick={() => setSearchParams({ category: matchedCategory.name })}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#141414] hover:text-[#9E381A] bg-white border border-[#E7E5E4] hover:border-[#141414] px-3.5 py-1.5 rounded-lg transition-colors shadow-xs self-start sm:self-auto cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to {matchedCategory.name} Hub</span>
-              </button>
-            </div>
-          )}
-
-          {/* Horizontal Category Tabs Bar (for All Products or category hopping) */}
-          <div className="pb-1">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-              <button
-                type="button"
-                onClick={() => handleFilterChange('category', 'All')}
-                className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors cursor-pointer ${
-                  filters.category === 'All'
-                    ? 'bg-[#141414] text-white'
-                    : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
-                }`}
-              >
-                All Objects
-              </button>
-
-              {liveCategories.map((cat) => {
-                const isSelected = filters.category === cat.name;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleFilterChange('category', cat.name)}
-                    className={`h-9 sm:h-10 px-4 rounded-lg font-semibold text-[13px] shrink-0 transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#141414] text-white'
-                        : 'bg-white text-[#141414] border border-[#E7E5E4] hover:border-[#141414]'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Product Grid */}
-          <ProductGrid
-            products={filteredProducts}
-            totalAllProducts={liveProducts.length}
-            isLoading={isLoading}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            onOpenMobileFilters={() => setIsFilterSheetOpen(true)}
-            activeFilterCount={activeFilterCount}
+        {/* Left Sidebar on Desktop */}
+        <div className="hidden lg:block lg:col-span-3 sticky top-24 bg-white border border-[#E5E5E3] rounded-[6px] p-5">
+          <FilterSidebar
             filters={filters}
             onFilterChange={handleFilterChange}
             onResetFilters={handleResetFilters}
-            onAddToCart={onAddToCart}
-            showAllToggle={Boolean(savedPhone)}
-            onToggleShowAll={() => setShowAllDesigns((prev) => !prev)}
-            showingAllDesigns={showAllDesigns}
+            totalResultsCount={filteredProducts.length}
+            filterOptions={filterOptions}
           />
-        </section>
+        </div>
+
+        {/* Right Column: Grid and Controls */}
+        <div className="lg:col-span-9">
+          <ProductGrid
+            products={filteredProducts}
+            title={listingTitle}
+            breadcrumb={
+              <div className="flex items-center gap-1.5 pb-2">
+                <Link to="/" className="hover:text-[#141414] transition-colors">
+                  Home
+                </Link>
+                <ChevronRight className="w-3 h-3" />
+                <span className="text-[#141414] font-semibold">{listingTitle}</span>
+              </div>
+            }
+            isLoading={isLoading}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            onOpenMobileFilters={() => setIsMobileFilterOpen(true)}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onResetFilters={handleResetFilters}
+          />
+        </div>
       </div>
 
-      {/* Filter Bottom Sheet / Modal */}
+      {/* Mobile Bottom Sheet Filters */}
       <FilterBottomSheet
-        isOpen={isFilterSheetOpen}
-        onClose={() => setIsFilterSheetOpen(false)}
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
         filters={filters}
         onFilterChange={handleFilterChange}
         onResetFilters={handleResetFilters}
-        filterOptions={filterOptions}
-        products={liveProducts}
         totalResultsCount={filteredProducts.length}
+        filterOptions={filterOptions}
       />
-    </div>
+    </main>
   );
 }
 

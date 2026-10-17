@@ -1,17 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useProductsContext } from '../context/ProductsContext';
-import { Breadcrumbs } from '../components/product/Breadcrumbs';
 import { ImageGallery } from '../components/product/ImageGallery';
 import { ProductInfoPanel } from '../components/product/ProductInfoPanel';
 import { RelatedProducts } from '../components/product/RelatedProducts';
 import { StickyMobileCartBar } from '../components/product/StickyMobileCartBar';
-import { Button } from '../components/ui/Button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 export function ProductDetailPage({ onAddToCart }) {
   const { id } = useParams();
-  const navigate = useNavigate();
   const buyButtonRef = useRef(null);
 
   const { products, isLoading } = useProductsContext();
@@ -23,29 +20,23 @@ export function ProductDetailPage({ onAddToCart }) {
 
   if (isLoading) {
     return (
-      <main className="flex-grow max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12 py-24 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-[#666664]">
-          <Loader2 className="w-6 h-6 animate-spin text-[#141414]" />
-          <span className="text-[13px] font-normal">Loading object...</span>
-        </div>
+      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-20 flex items-center justify-center">
+        <p className="text-[14px] text-[#6B6B6B]">Loading product details...</p>
       </main>
     );
   }
 
   if (!product) {
     return (
-      <main className="flex-grow max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12 py-24 text-center">
-        <div className="max-w-md mx-auto space-y-5 bg-white p-8 rounded-lg border border-[#E7E5E4]">
-          <div className="space-y-1.5">
-            <h1 className="text-[20px] font-semibold text-[#141414]">Object Not Found</h1>
-            <p className="text-[13px] text-[#666664] font-normal">
-              The requested object is no longer available in the catalog.
-            </p>
-          </div>
-          <Link to="/" className="inline-block pt-2">
-            <Button variant="primary" size="md" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              Return to Catalog
-            </Button>
+      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-20 text-center space-y-4">
+        <h1 className="text-[28px] font-semibold text-[#141414]">Product Not Found</h1>
+        <p className="text-[14px] text-[#6B6B6B]">The product you requested could not be located in our catalog.</p>
+        <div className="pt-2">
+          <Link
+            to="/"
+            className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-[#141414] text-white text-[14px] font-semibold rounded-[6px]"
+          >
+            Return to Home
           </Link>
         </div>
       </main>
@@ -53,23 +44,45 @@ export function ProductDetailPage({ onAddToCart }) {
   }
 
   return (
-    <main className="flex-grow max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12 py-4 sm:py-8 w-full space-y-12">
-      {/* Breadcrumb Navigation */}
-      <Breadcrumbs
-        category={product.category}
-        productName={product.name}
-        onCategoryClick={() => {}}
-      />
+    <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-12">
+      {/* Breadcrumb */}
+      <nav aria-label="Breadcrumb" className="text-[12px] text-[#6B6B6B] flex items-center gap-1.5">
+        <Link to="/" className="hover:text-[#141414] transition-colors">
+          Home
+        </Link>
+        <ChevronRight className="w-3 h-3 text-[#6B6B6B]" />
+        <Link
+          to={`/?category=${encodeURIComponent(product.category || 'All')}`}
+          className="hover:text-[#141414] transition-colors"
+        >
+          {product.category}
+        </Link>
+        {product.subcategory && (
+          <>
+            <ChevronRight className="w-3 h-3 text-[#6B6B6B]" />
+            <Link
+              to={`/?category=${encodeURIComponent(product.category)}&subcategory=${encodeURIComponent(product.subcategory)}`}
+              className="hover:text-[#141414] transition-colors"
+            >
+              {product.subcategory}
+            </Link>
+          </>
+        )}
+        <ChevronRight className="w-3 h-3 text-[#6B6B6B]" />
+        <span className="text-[#141414] font-semibold truncate max-w-[200px] sm:max-w-xs">
+          {product.name}
+        </span>
+      </nav>
 
-      {/* Main Presentation */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-        {/* Gallery */}
+      {/* Main 2-Column Presentation: Gallery (55%) & Buy Box (45%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        {/* Gallery: ~58% (7 of 12 cols) */}
         <div className="lg:col-span-7">
           <ImageGallery images={product.images} product={product} />
         </div>
 
-        {/* Info Panel */}
-        <div className="lg:col-span-5">
+        {/* Buy Box: ~42% (5 of 12 cols) */}
+        <div className="lg:col-span-5 bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8">
           <ProductInfoPanel
             product={product}
             onAddToCart={onAddToCart}
@@ -78,15 +91,13 @@ export function ProductDetailPage({ onAddToCart }) {
         </div>
       </div>
 
-      {/* Related Objects */}
+      {/* Related Products */}
       <RelatedProducts
         currentProductId={product.id}
-        category={product.category}
         currentProduct={product}
-        onAddToCart={onAddToCart}
       />
 
-      {/* Mobile Sticky Bar */}
+      {/* Mobile Sticky Add to Bag Bar */}
       <StickyMobileCartBar
         product={product}
         buyButtonRef={buyButtonRef}

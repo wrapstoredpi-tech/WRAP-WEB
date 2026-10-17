@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Check } from 'lucide-react';
 import { useProductsContext } from '../../context/ProductsContext';
@@ -10,8 +10,9 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
   const { products = [] } = useProductsContext();
   const { cartItems = [], addItem } = useCart();
   const { savedPhone } = usePhoneContext();
+  const [addedIds, setAddedIds] = useState(new Set());
 
-  // 1. Determine target phone brand & model from savedPhone or infer from cart items
+  // Determine target phone brand & model from savedPhone or cart items
   const targetPhoneContext = useMemo(() => {
     if (savedPhone && savedPhone.model) {
       return {
@@ -20,7 +21,6 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
       };
     }
 
-    // Infer from cart items
     for (const item of cartItems) {
       const p = products.find((prod) => prod.id === item.productId);
       if (p && p.mobile_brand && p.mobile_brand !== 'Universal') {
@@ -34,20 +34,18 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
     return null;
   }, [savedPhone, cartItems, products]);
 
-  // 2. Filter cross-sell accessories (non-case products)
+  // Filter cross-sell accessories (non-case products, matched to phone + universal accessories included)
   const crossSellProducts = useMemo(() => {
     const cartProductIds = new Set(cartItems.map((i) => i.productId));
 
-    // Exclude cases and items already in cart
     const nonCaseProducts = products.filter((p) => {
       if (cartProductIds.has(p.id)) return false;
-      if (p.stock_status === 'OUT_OF_STOCK' || p.available_stock === 0) return false;
+      if (p.stock_status === 'OUT_OF_STOCK' || (p.available_stock ?? p.current_stock ?? 0) === 0) return false;
       const cat = (p.category || '').toLowerCase();
       return !cat.includes('case');
     });
 
     if (nonCaseProducts.length === 0) {
-      // Fallback to any in-stock non-cart product if no dedicated accessories exist
       return products
         .filter((p) => !cartProductIds.has(p.id) && p.stock_status !== 'OUT_OF_STOCK')
         .slice(0, 4);
@@ -75,15 +73,9 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
       });
     }
 
-    // If matches are few, pad with featured or popular accessories
     if (matching.length < 4) {
       const remaining = nonCaseProducts.filter((p) => !matching.some((m) => m.id === p.id));
-      const sortedRemaining = [...remaining].sort((a, b) => {
-        if (a.online_featured && !b.online_featured) return -1;
-        if (!a.online_featured && b.online_featured) return 1;
-        return 0;
-      });
-      matching = [...matching, ...sortedRemaining];
+      matching = [...matching, ...remaining];
     }
 
     return matching.slice(0, 4);
@@ -91,75 +83,86 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
 
   if (crossSellProducts.length === 0) return null;
 
-  const handleAddCrossSell = (product, e) => {
+  const handleAdd = (product, e) => {
     e.preventDefault();
     e.stopPropagation();
-    const success = addItem(product, 1);
-    if (success && onAdded) {
-      onAdded(product);
+    const success = addItem(product, 1, 'Universal');
+    if (success) {
+      setAddedIds((prev) => new Set(prev).add(product.id));
+      if (onAdded) onAdded(product);
+      setTimeout(() => {
+        setAddedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(product.id);
+          return next;
+        });
+      }, 2000);
     }
   };
 
   return (
-    <section className={`space-y-4 pt-8 border-t border-[#E7E5E4] ${className}`}>
+    <section className={`pt-8 border-t border-[#E5E5E3] space-y-4 ${className}`}>
       <div className="space-y-0.5">
-        <h3 className="text-[17px] sm:text-[18px] font-semibold text-[#141414] tracking-tight">
+        <h2 className="text-[20px] font-semibold text-[#141414]">
           {title}
-        </h3>
-        <p className="text-[13px] text-[#666664] font-normal">
-          {targetPhoneContext?.model
-            ? `Curated accessories for your ${targetPhoneContext.model}`
-            : 'Thoughtful additions for your everyday carry setup'}
+        </h2>
+        <p className="text-[12px] text-[#6B6B6B]">
+          {targetPhoneContext
+            ? `Recommended add-ons for your ${targetPhoneContext.model}`
+            : 'Essential chargers, screen guards and cables'}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {crossSellProducts.map((product) => {
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {crossSellProducts.map((p) => {
+          const isJustAdded = addedIds.has(p.id);
           return (
             <div
-              key={product.id}
-              className="group bg-white rounded-lg border border-[#E7E5E4] hover:border-[#141414] p-3 flex flex-col justify-between transition-colors shadow-xs"
+              key={p.id}
+              className="bg-white border border-[#E5E5E3] rounded-[6px] p-3 flex flex-col justify-between hover:border-[#141414] transition-colors"
             >
-              <Link
-                to={`/product/${product.id}`}
-                className="block aspect-[4/5] bg-[#F5F5F4] rounded-md overflow-hidden mb-2.5 relative"
-              >
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  loading="lazy"
-                />
+              <Link to={`/product/${p.id}`} className="space-y-2.5 block">
+                <div className="aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden">
+                  <img
+                    src={p.image_url}
+                    alt={p.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold text-[#141414] line-clamp-1">
+                    {p.name}
+                  </h3>
+                  <p className="text-[14px] text-[#141414] font-semibold pt-0.5">
+                    {formatINR(p.selling_price)}
+                  </p>
+                </div>
               </Link>
 
-              <div className="space-y-1.5 flex-1 flex flex-col justify-between">
-                <div>
-                  <span className="text-[11px] font-normal text-[#666664] block">
-                    {product.category}
-                  </span>
-                  <Link
-                    to={`/product/${product.id}`}
-                    className="text-[13px] font-semibold text-[#141414] hover:text-[#9E381A] transition-colors line-clamp-1 block"
-                  >
-                    {product.name}
-                  </Link>
-                </div>
-
-                <div className="flex items-center justify-between pt-1 gap-2">
-                  <span className="text-[13px] font-semibold text-[#141414]">
-                    {formatINR(product.selling_price)}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={(e) => handleAddCrossSell(product, e)}
-                    className="h-7 px-2.5 bg-[#FAFAF9] hover:bg-[#141414] text-[#141414] hover:text-white border border-[#E7E5E4] hover:border-[#141414] rounded-md text-[12px] font-semibold inline-flex items-center gap-1 transition-colors"
-                    aria-label={`Add ${product.name} to cart`}
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add</span>
-                  </button>
-                </div>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={(e) => handleAdd(p, e)}
+                  disabled={isJustAdded}
+                  className={`w-full min-h-[44px] px-3 py-1.5 text-[12px] font-semibold rounded-[6px] border flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                    isJustAdded
+                      ? 'bg-[#141414] text-white border-[#141414]'
+                      : 'bg-white hover:bg-[#FAFAF9] text-[#141414] border-[#E5E5E3]'
+                  }`}
+                >
+                  {isJustAdded ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Added to Bag</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add to Bag</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           );

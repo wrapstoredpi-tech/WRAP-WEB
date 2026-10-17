@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Check } from 'lucide-react';
-import { Button } from '../ui/Button';
 import { useCart } from '../../context/CartContext';
 import { formatINR } from '../../lib/currency';
 
@@ -34,32 +33,22 @@ export function StickyMobileCartBar({
   const handleAdd = () => {
     if (isOutOfStock) return;
 
-    setIsAdding(true);
-    addItem(product, 1);
-
-    setTimeout(() => {
-      setIsAdding(false);
-      setAdded(true);
-      if (onAddToCart) {
-        onAddToCart(product, 1);
-      }
-      setTimeout(() => setAdded(false), 2000);
-    }, 200);
+    // Scroll to buy box if user hasn't selected model
+    if (buyButtonRef?.current) {
+      buyButtonRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   if (!isVisible) return null;
 
   return (
-    <div
-      className="
-        fixed bottom-0 inset-x-0 z-40 bg-[#FAFAF9]/95 backdrop-blur-md
-        border-t border-[#E7E5E4] shadow-modal p-3.5 sm:hidden
-        animate-slide-down transition-all duration-200
-      "
+    <aside
+      aria-label="Quick Add to Bag"
+      className="fixed bottom-0 inset-x-0 z-40 bg-[#FAFAF9] border-t border-[#E5E5E3] p-3 sm:hidden"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="w-10 h-10 bg-[#F5F5F4] aspect-square rounded-md overflow-hidden shrink-0 border border-[#E7E5E4]">
+          <div className="w-10 h-10 bg-[#FAFAF9] rounded-[6px] overflow-hidden shrink-0 border border-[#E5E5E3]">
             <img
               src={product.image_url || (product.images && product.images[0])}
               alt={product.name}
@@ -67,38 +56,32 @@ export function StickyMobileCartBar({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-[#141414] truncate">
+            <p className="text-[14px] font-semibold text-[#141414] truncate">
               {product.name}
             </p>
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] font-semibold text-[#141414]">
-                {formatINR(product.selling_price)}
-              </span>
-            </div>
+            <span className="text-[12px] font-semibold text-[#141414]">
+              {formatINR(product.selling_price)}
+            </span>
           </div>
         </div>
 
-        <div className="shrink-0 w-32">
-          <Button
-            variant={isOutOfStock ? 'secondary' : 'accent'}
-            size="sm"
-            isFullWidth
+        <div className="shrink-0">
+          <button
+            type="button"
             disabled={isOutOfStock}
-            isLoading={isAdding}
             onClick={handleAdd}
-            leftIcon={
-              added ? (
-                <Check className="w-3.5 h-3.5 text-white" />
-              ) : (
-                <ShoppingBag className="w-3.5 h-3.5" />
-              )
-            }
+            className={`min-h-[44px] px-4 py-2 text-[14px] font-semibold rounded-[6px] flex items-center gap-1.5 transition-colors ${
+              isOutOfStock
+                ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
+                : 'bg-[#B0521F] text-white hover:bg-[#994518]'
+            }`}
           >
-            {isOutOfStock ? 'Out of Stock' : added ? 'Added' : 'Add to Bag'}
-          </Button>
+            <ShoppingBag className="w-4 h-4" />
+            <span>{isOutOfStock ? 'Out of stock' : 'Choose Model'}</span>
+          </button>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
 

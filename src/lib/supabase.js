@@ -47,8 +47,8 @@ export const supabaseConfigured = !!(
 export const supabase = supabaseConfigured
   ? createClient(supabaseUrl, anonKey, {
       auth: {
-        persistSession: false, // website doesn't need auth sessions
-        autoRefreshToken: false,
+        persistSession: true,
+        autoRefreshToken: true,
       },
       realtime: {
         params: {

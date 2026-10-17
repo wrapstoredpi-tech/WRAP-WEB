@@ -1,32 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  User, MapPin, CreditCard,
-  Banknote, ChevronDown, ChevronUp,
-  ShieldCheck, ArrowLeft, Loader2, Package, Check
-} from 'lucide-react';
+import { ChevronDown, ArrowLeft, Lock, X } from 'lucide-react';
 import { useCart, useHydratedCart } from '../context/CartContext';
 import { useProductsContext } from '../context/ProductsContext';
+import { useAuth } from '../context/AuthContext';
+import { AuthForm } from '../components/auth/AuthForm';
 import { submitOrder } from '../lib/checkout';
 import { formatINR } from '../lib/currency';
-import { Button } from '../components/ui/Button';
 import { CrossSellSection } from '../components/cart/CrossSellSection';
+import { Logo } from '../components/ui/Logo';
 
-const LOCAL_STORAGE_USER_KEY = 'wrapstore_checkout_user';
+const LOCAL_STORAGE_USER_KEY = 'wrapstore_checkout_user_v2';
 
 export function CheckoutPage() {
   const { products } = useProductsContext();
-  const { cartItems, clearCart } = useCart();
+  const { clearCart } = useCart();
   const { items, subtotal, shippingFee, estimatedTotal } = useHydratedCart(products);
   const navigate = useNavigate();
 
-  // Load initial form details from localStorage for returning visitors
+  // Load details from localStorage for returning visitors
   const [fields, setFields] = useState(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
       if (stored) return JSON.parse(stored);
     } catch (e) {
-      console.warn('Could not read checkout fields from localStorage', e);
+      console.warn('Could not read checkout fields:', e);
     }
     return {
       name: '',
@@ -38,23 +36,18 @@ export function CheckoutPage() {
     };
   });
 
-  const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
+  const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user } = useAuth();
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  // Save details to localStorage on change
+  // Remember details for returning visitors
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(fields));
     } catch (e) {
-      console.warn('Could not save checkout fields to localStorage', e);
+      console.warn('Could not save checkout fields:', e);
     }
   }, [fields]);
 
@@ -66,21 +59,19 @@ export function CheckoutPage() {
     }
   };
 
-  const validateForm = () => {
+  const validate = () => {
     const errs = {};
     if (!fields.name.trim()) {
       errs.name = 'Full name is required';
     }
 
     const cleanPhone = fields.phone.replace(/\D/g, '');
-    if (!cleanPhone) {
-      errs.phone = '10-digit mobile phone number is required';
-    } else if (cleanPhone.length < 10) {
-      errs.phone = 'Please enter a valid 10-digit phone number';
+    if (!cleanPhone || cleanPhone.length < 10) {
+      errs.phone = 'Valid 10-digit mobile number required';
     }
 
     if (fields.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim())) {
-      errs.email = 'Please enter a valid email address';
+      errs.email = 'Valid email address required';
     }
 
     if (!fields.address.trim()) {
@@ -92,8 +83,8 @@ export function CheckoutPage() {
     }
 
     const cleanPincode = fields.pincode.replace(/\D/g, '');
-    if (!cleanPincode || cleanPincode.length < 6) {
-      errs.pincode = 'Valid 6-digit PIN code is required';
+    if (!cleanPincode || cleanPincode.length !== 6) {
+      errs.pincode = 'Valid 6-digit PIN code required';
     }
 
     return errs;
@@ -101,9 +92,14 @@ export function CheckoutPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    if (items.length === 0) {
+      navigate('/cart');
+      return;
+    }
+
+    const formErrors = validate();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
       return;
     }
 
@@ -111,382 +107,385 @@ export function CheckoutPage() {
 
     try {
       const orderPayload = {
-        items: items.map((i) => ({
-          productId: i.productId,
-          name: i.product.name,
-          price: i.product.selling_price,
-          quantity: i.quantity,
-          image: i.product.image_url,
+        contact: {
+          name: fields.name.trim(),
+          phone: fields.phone.trim(),
+          email: fields.email.trim(),
+        },
+        delivery: {
+          address: fields.address.trim(),
+          city: fields.city.trim(),
+          pincode: fields.pincode.trim(),
+        },
+        items: items.map((line) => ({
+          productId: line.product.id,
+          name: line.product.name,
+          mobile_model: line.selected_model || 'Universal',
+          selected_model: line.selected_model || 'Universal',
+          color: line.selected_color,
+          price: line.product.selling_price,
+          quantity: line.quantity,
+          image: line.product.image_url,
         })),
         subtotal,
         shippingFee,
         total: estimatedTotal,
-        contact: {
-          name: fields.name,
-          phone: fields.phone,
-          email: fields.email,
-        },
-        delivery: {
-          address: fields.address,
-          city: fields.city,
-          pincode: fields.pincode,
-        },
-        payment: paymentMethod,
       };
 
-      const response = await submitOrder(orderPayload);
-      if (response.success) {
+      const result = await submitOrder(orderPayload);
+
+      if (result.success) {
         clearCart();
-        navigate('/order-confirmation', { state: { order: response.order } });
+        navigate('/order-confirmation', { state: { order: result.order } });
       }
-    } catch (e) {
-      console.error('Order submission error:', e);
+    } catch (err) {
+      console.error('Checkout error:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (items.length === 0 && !isSubmitting) {
-    return (
-      <main className="flex-1 max-w-[1240px] mx-auto px-4 sm:px-6 py-20 text-center space-y-6">
-        <div className="w-14 h-14 rounded-lg bg-neutral-100 flex items-center justify-center mx-auto text-neutral-500">
-          <Package className="w-6 h-6 stroke-[1.5]" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-display font-semibold text-neutral-900 tracking-tight">Your bag is empty</h1>
-          <p className="text-body text-neutral-500">Please add items to your cart before proceeding to checkout.</p>
-        </div>
-        <div>
-          <Link to="/">
-            <Button variant="primary" size="lg" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              Return to Catalog
-            </Button>
+  return (
+    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+      {/* Reduced Header: Logo and 'Back to bag' only */}
+      <header className="w-full bg-[#FAFAF9] border-b border-[#E5E5E3] h-[64px] flex items-center px-4 sm:px-6">
+        <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between">
+          <Link to="/" aria-label="WrapStore Home">
+            <Logo size="md" />
+          </Link>
+
+          <Link
+            to="/cart"
+            className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to bag</span>
           </Link>
         </div>
-      </main>
-    );
-  }
+      </header>
 
-  return (
-    <main className="flex-1 bg-base min-h-screen py-8 sm:py-12">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#141414] text-white px-4 py-3 shadow-modal border border-neutral-800 flex items-center gap-2.5 rounded-lg animate-fade-in text-[13px] font-medium">
-          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        <div>
-          {/* Back Link */}
-          <div className="mb-6">
-            <Link
-              to="/cart"
-              className="inline-flex items-center gap-1.5 text-body font-semibold text-neutral-600 hover:text-neutral-900 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Bag</span>
-            </Link>
-          </div>
-
-          {/* Title */}
-          <div className="mb-8 border-b border-neutral-200 pb-6">
-            <span className="text-caption uppercase text-neutral-500 font-semibold tracking-wider block">
-              Express Checkout
+      {/* Main Checkout Area */}
+      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
+        
+        {/* Mobile Collapsible Order Summary Bar */}
+        <div className="lg:hidden bg-white border border-[#E5E5E3] rounded-[6px] p-4">
+          <button
+            type="button"
+            onClick={() => setIsMobileSummaryOpen((prev) => !prev)}
+            className="w-full flex items-center justify-between text-[14px] font-semibold text-[#141414]"
+          >
+            <span className="flex items-center gap-2">
+              <span>Order summary ({items.length} items)</span>
+              <ChevronDown
+                className={`w-4 h-4 text-[#6B6B6B] transition-transform ${
+                  isMobileSummaryOpen ? 'rotate-180' : ''
+                }`}
+              />
             </span>
-            <h1 className="text-display font-semibold text-neutral-900 tracking-tight mt-1">Checkout</h1>
-            <p className="text-body text-neutral-500 mt-1">Provide your shipping address and preferred payment method.</p>
-          </div>
+            <span className="text-[#B0521F]">{formatINR(estimatedTotal)}</span>
+          </button>
 
-          {/* Layout: Single Column Form + Sticky Summary */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-            <form
-              onSubmit={handleSubmit}
-              noValidate
-              className="lg:col-span-7 space-y-8 bg-white border border-neutral-200 rounded-lg p-6 sm:p-8 shadow-card"
-            >
-              {/* 1. Contact Section */}
-              <section className="space-y-4">
-                <div className="pb-3 border-b border-neutral-200 flex items-center gap-2">
-                  <User className="w-4 h-4 text-neutral-700" />
-                  <h2 className="text-subheading font-semibold text-neutral-900">1. Contact Information</h2>
-                </div>
-
-                <div className="space-y-4">
+          {isMobileSummaryOpen && (
+            <div className="mt-4 pt-4 border-t border-[#E5E5E3] space-y-3">
+              {items.map((line) => (
+                <div key={line.id} className="flex justify-between text-[14px]">
                   <div>
-                    <label htmlFor="name-input" className="block text-caption uppercase font-semibold text-neutral-500 mb-1.5 tracking-wider">
-                      Full Name *
-                    </label>
-                    <input
-                      id="name-input"
-                      name="name"
-                      type="text"
-                      autoFocus
-                      placeholder="e.g. John Doe"
-                      value={fields.name}
-                      onChange={handleChange}
-                      className={`w-full bg-base border rounded-lg px-3.5 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none transition-colors ${
-                        errors.name ? 'border-accent' : 'border-neutral-300 focus:border-neutral-900'
-                      }`}
-                    />
-                    {errors.name && <p className="text-caption text-accent mt-1">{errors.name}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="phone-input" className="block text-caption uppercase font-semibold text-neutral-500 mb-1.5 tracking-wider">
-                        Mobile Number *
-                      </label>
-                      <input
-                        id="phone-input"
-                        name="phone"
-                        type="tel"
-                        inputMode="numeric"
-                        placeholder="9876543210"
-                        value={fields.phone}
-                        onChange={handleChange}
-                        className={`w-full bg-base border rounded-lg px-3.5 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none transition-colors ${
-                          errors.phone ? 'border-accent' : 'border-neutral-300 focus:border-neutral-900'
-                        }`}
-                      />
-                      {errors.phone && <p className="text-caption text-accent mt-1">{errors.phone}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="email-input" className="block text-caption uppercase font-semibold text-neutral-500 mb-1.5 tracking-wider">
-                        Email Address (Optional)
-                      </label>
-                      <input
-                        id="email-input"
-                        name="email"
-                        type="email"
-                        placeholder="name@example.com"
-                        value={fields.email}
-                        onChange={handleChange}
-                        className={`w-full bg-base border rounded-lg px-3.5 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none transition-colors ${
-                          errors.email ? 'border-accent' : 'border-neutral-300 focus:border-neutral-900'
-                        }`}
-                      />
-                      {errors.email && <p className="text-caption text-accent mt-1">{errors.email}</p>}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 2. Delivery Section */}
-              <section className="space-y-4 pt-4 border-t border-neutral-200">
-                <div className="pb-3 border-b border-neutral-200 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-neutral-700" />
-                  <h2 className="text-subheading font-semibold text-neutral-900">2. Delivery Address</h2>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="address-input" className="block text-caption uppercase font-semibold text-neutral-500 mb-1.5 tracking-wider">
-                      Flat / House No., Street, Landmark *
-                    </label>
-                    <input
-                      id="address-input"
-                      name="address"
-                      type="text"
-                      placeholder="e.g. 102, Sunrise Apts, 5th Main Road"
-                      value={fields.address}
-                      onChange={handleChange}
-                      className={`w-full bg-base border rounded-lg px-3.5 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none transition-colors ${
-                        errors.address ? 'border-accent' : 'border-neutral-300 focus:border-neutral-900'
-                      }`}
-                    />
-                    {errors.address && <p className="text-caption text-accent mt-1">{errors.address}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="city-input" className="block text-caption uppercase font-semibold text-neutral-500 mb-1.5 tracking-wider">
-                        City *
-                      </label>
-                      <input
-                        id="city-input"
-                        name="city"
-                        type="text"
-                        placeholder="e.g. Mumbai"
-                        value={fields.city}
-                        onChange={handleChange}
-                        className={`w-full bg-base border rounded-lg px-3.5 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none transition-colors ${
-                          errors.city ? 'border-accent' : 'border-neutral-300 focus:border-neutral-900'
-                        }`}
-                      />
-                      {errors.city && <p className="text-caption text-accent mt-1">{errors.city}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="pincode-input" className="block text-caption uppercase font-semibold text-neutral-500 mb-1.5 tracking-wider">
-                        PIN Code *
-                      </label>
-                      <input
-                        id="pincode-input"
-                        name="pincode"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="400001"
-                        value={fields.pincode}
-                        onChange={handleChange}
-                        className={`w-full bg-base border rounded-lg px-3.5 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:outline-none transition-colors ${
-                          errors.pincode ? 'border-accent' : 'border-neutral-300 focus:border-neutral-900'
-                        }`}
-                      />
-                      {errors.pincode && <p className="text-caption text-accent mt-1">{errors.pincode}</p>}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 3. Payment Method Section */}
-              <section className="space-y-4 pt-4 border-t border-neutral-200">
-                <div className="pb-3 border-b border-neutral-200 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-neutral-700" />
-                  <h2 className="text-subheading font-semibold text-neutral-900">3. Payment Selection</h2>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('Cash on Delivery')}
-                    className={`p-4 rounded-lg border text-left transition-colors ${
-                      paymentMethod === 'Cash on Delivery'
-                        ? 'border-neutral-900 bg-neutral-900 text-white'
-                        : 'border-neutral-200 bg-white text-neutral-900 hover:border-neutral-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 font-semibold text-body">
-                      <Banknote className={`w-4 h-4 ${paymentMethod === 'Cash on Delivery' ? 'text-white' : 'text-neutral-600'}`} />
-                      <span>Cash on Delivery</span>
-                    </div>
-                    <p className={`text-caption mt-1 ${paymentMethod === 'Cash on Delivery' ? 'text-neutral-300' : 'text-neutral-500'}`}>
-                      Pay when your package arrives at your doorstep
+                    <p className="font-semibold text-[#141414]">{line.product.name}</p>
+                    <p className="text-[12px] text-[#6B6B6B]">
+                      Qty {line.quantity} {line.selected_model && `• ${line.selected_model}`}
                     </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('Pay Online')}
-                    className={`p-4 rounded-lg border text-left transition-colors ${
-                      paymentMethod === 'Pay Online'
-                        ? 'border-neutral-900 bg-neutral-900 text-white'
-                        : 'border-neutral-200 bg-white text-neutral-900 hover:border-neutral-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 font-semibold text-body">
-                      <CreditCard className={`w-4 h-4 ${paymentMethod === 'Pay Online' ? 'text-white' : 'text-neutral-600'}`} />
-                      <span>Pay Online</span>
-                    </div>
-                    <p className={`text-caption mt-1 ${paymentMethod === 'Pay Online' ? 'text-neutral-300' : 'text-neutral-500'}`}>
-                      Instant UPI, Cards, Net Banking
-                    </p>
-                  </button>
+                  </div>
+                  <span className="font-semibold text-[#141414]">
+                    {formatINR(line.product.selling_price * line.quantity)}
+                  </span>
                 </div>
-              </section>
-
-              {/* Place Order Button */}
-              <div className="pt-4 border-t border-neutral-200">
-                <Button
-                  type="submit"
-                  variant="accent"
-                  size="lg"
-                  isFullWidth
-                  isLoading={isSubmitting}
-                >
-                  Place Order • {formatINR(estimatedTotal)}
-                </Button>
+              ))}
+              <div className="pt-2 border-t border-[#E5E5E3] flex justify-between text-[14px] font-semibold">
+                <span>Total</span>
+                <span>{formatINR(estimatedTotal)}</span>
               </div>
-            </form>
+            </div>
+          )}
+        </div>
 
-            {/* Sticky Summary Side / Collapsible on Mobile */}
-            <aside className="lg:col-span-5 space-y-4">
-              {/* Mobile Collapsible Header */}
-              <div className="lg:hidden">
-                <button
-                  type="button"
-                  onClick={() => setIsSummaryOpen((prev) => !prev)}
-                  className="w-full p-4 bg-white border border-neutral-200 rounded-lg flex items-center justify-between font-semibold text-body text-neutral-900 shadow-card"
-                >
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-neutral-600" />
-                    <span>Order Summary ({items.length} {items.length === 1 ? 'item' : 'items'})</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{formatINR(estimatedTotal)}</span>
-                    {isSummaryOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </div>
-                </button>
-              </div>
-
-              {/* Summary Content Body */}
-              <div
-                className={`bg-white border border-neutral-200 rounded-lg p-6 space-y-4 shadow-card ${
-                  isSummaryOpen ? 'block' : 'hidden lg:block'
-                } sticky top-28`}
-              >
-                <h2 className="text-caption uppercase font-semibold text-neutral-900 pb-3 border-b border-neutral-200 tracking-wider">
-                  Order Items
+        {/* 2-Column Checkout Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          
+          {/* Left Column: Guest Contact, Delivery, Payment */}
+          <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8">
+            
+            {/* Contact Section */}
+            <section className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[20px] font-semibold text-[#141414]">
+                  Contact
                 </h2>
-
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-1 divide-y divide-neutral-100">
-                  {items.map(({ id, product, quantity }) => (
-                    <div key={id} className="flex items-center gap-3 pt-3 first:pt-0">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-12 h-15 aspect-[4/5] object-cover rounded-lg bg-neutral-100 shrink-0 border border-neutral-200"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-body font-semibold text-neutral-900 truncate">{product.name}</p>
-                        <p className="text-caption text-neutral-500">
-                          Qty: {quantity}
-                        </p>
-                      </div>
-                      <span className="text-body font-semibold text-neutral-900">
-                        {formatINR(product.selling_price * quantity)}
-                      </span>
-                    </div>
-                  ))}
+                {!user ? (
+                  <p className="text-[13px] text-[#6B6B6B]">
+                    Have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="font-medium text-[#B0521F] hover:underline cursor-pointer"
+                    >
+                      Sign in
+                    </button>
+                  </p>
+                ) : (
+                  <span className="text-[13px] text-[#6B6B6B]">
+                    Signed in as <strong className="text-[#141414] font-medium">{user.email}</strong>
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label htmlFor="name" className="block text-[14px] font-medium text-[#141414] mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    value={fields.name}
+                    onChange={handleChange}
+                    className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
+                      errors.name ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                    }`}
+                  />
+                  {errors.name && <p className="text-[12px] text-[#B0521F] mt-1">{errors.name}</p>}
                 </div>
 
-                <div className="pt-4 border-t border-neutral-200 space-y-2 text-caption text-neutral-600">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span className="font-semibold text-neutral-900">{formatINR(subtotal)}</span>
+                <div>
+                  <label htmlFor="phone" className="block text-[14px] font-medium text-[#141414] mb-1">
+                    Phone Number (10 digits) *
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    required
+                    placeholder="9876543210"
+                    value={fields.phone}
+                    onChange={handleChange}
+                    className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
+                      errors.phone ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                    }`}
+                  />
+                  {errors.phone && <p className="text-[12px] text-[#B0521F] mt-1">{errors.phone}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-[14px] font-medium text-[#141414] mb-1">
+                    Email Address (Optional)
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    inputMode="email"
+                    placeholder="you@example.com"
+                    value={fields.email}
+                    onChange={handleChange}
+                    className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                  />
+                  {errors.email && <p className="text-[12px] text-[#B0521F] mt-1">{errors.email}</p>}
+                </div>
+              </div>
+            </section>
+
+            {/* Delivery Section */}
+            <section className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 space-y-4">
+              <h2 className="text-[20px] font-semibold text-[#141414]">
+                Delivery Address
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="address" className="block text-[14px] font-medium text-[#141414] mb-1">
+                    Street Address, House / Flat No. *
+                  </label>
+                  <textarea
+                    id="address"
+                    name="address"
+                    rows={3}
+                    required
+                    value={fields.address}
+                    onChange={handleChange}
+                    className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
+                      errors.address ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                    }`}
+                  />
+                  {errors.address && <p className="text-[12px] text-[#B0521F] mt-1">{errors.address}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="city" className="block text-[14px] font-medium text-[#141414] mb-1">
+                      City *
+                    </label>
+                    <input
+                      id="city"
+                      name="city"
+                      type="text"
+                      required
+                      value={fields.city}
+                      onChange={handleChange}
+                      className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
+                        errors.city ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                      }`}
+                    />
+                    {errors.city && <p className="text-[12px] text-[#B0521F] mt-1">{errors.city}</p>}
                   </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span className="font-semibold text-neutral-900">
-                      {shippingFee === 0 ? 'Complimentary' : formatINR(shippingFee)}
+
+                  <div>
+                    <label htmlFor="pincode" className="block text-[14px] font-medium text-[#141414] mb-1">
+                      6-digit PIN Code *
+                    </label>
+                    <input
+                      id="pincode"
+                      name="pincode"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      required
+                      placeholder="636701"
+                      value={fields.pincode}
+                      onChange={handleChange}
+                      className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
+                        errors.pincode ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                      }`}
+                    />
+                    {errors.pincode && <p className="text-[12px] text-[#B0521F] mt-1">{errors.pincode}</p>}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Payment Section: One Plain Line Only */}
+            <section className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 space-y-3">
+              <h2 className="text-[20px] font-semibold text-[#141414]">
+                Payment
+              </h2>
+              <div className="p-4 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] flex items-center gap-3">
+                <Lock className="w-5 h-5 text-[#6B6B6B] shrink-0" />
+                <p className="text-[14px] text-[#141414] font-normal leading-normal">
+                  Pay securely online by UPI, card, net banking or wallet
+                </p>
+              </div>
+            </section>
+
+            {/* Submit Button */}
+            <div>
+              <button
+                type="submit"
+                disabled={isSubmitting || items.length === 0}
+                className="w-full min-h-[48px] px-6 py-3 bg-[#B0521F] hover:bg-[#994518] text-white text-[16px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <span>Processing online payment...</span>
+                ) : (
+                  <span>Pay {formatINR(estimatedTotal)} Online</span>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Right Column: Order Summary (Desktop Sticky) */}
+          <div className="hidden lg:block lg:col-span-5 sticky top-24">
+            <div className="bg-white border border-[#E5E5E3] rounded-[6px] subtle-elevation p-6 space-y-5">
+              <h2 className="text-[20px] font-semibold text-[#141414] pb-3 border-b border-[#E5E5E3]">
+                Order Summary
+              </h2>
+
+              {/* Items List */}
+              <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
+                {items.map((line) => (
+                  <div key={line.id} className="flex gap-3 text-[14px]">
+                    <div className="w-14 aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden border border-[#E5E5E3] shrink-0">
+                      <img
+                        src={line.product.image_url}
+                        alt={line.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-[#141414] truncate">{line.product.name}</p>
+                      <p className="text-[12px] text-[#6B6B6B]">
+                        Qty: {line.quantity} {line.selected_model && `• ${line.selected_model}`}
+                      </p>
+                      <p className="text-[12px] text-[#6B6B6B]">
+                        {formatINR(line.product.selling_price)} each
+                      </p>
+                    </div>
+                    <span className="font-semibold text-[#141414]">
+                      {formatINR(line.product.selling_price * line.quantity)}
                     </span>
                   </div>
-                  <div className="pt-2 border-t border-neutral-200 flex justify-between text-body font-semibold text-neutral-900">
-                    <span>Total Amount</span>
-                    <span className="text-section font-semibold text-accent">{formatINR(estimatedTotal)}</span>
-                  </div>
-                </div>
+                ))}
+              </div>
 
-                <div className="pt-3 border-t border-neutral-200 text-caption text-neutral-500 space-y-1">
-                  <div className="flex items-center gap-1.5 text-neutral-700 font-semibold">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Secure Checkout</span>
-                  </div>
-                  <p>30-day exchange and replacement coverage included.</p>
+              {/* Price Calculations */}
+              <div className="pt-4 border-t border-[#E5E5E3] space-y-2 text-[14px]">
+                <div className="flex justify-between text-[#6B6B6B]">
+                  <span>Subtotal</span>
+                  <span className="text-[#141414] font-semibold">{formatINR(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-[#6B6B6B]">
+                  <span>Shipping</span>
+                  <span className="text-[#141414] font-semibold">
+                    {shippingFee === 0 ? 'Free' : formatINR(shippingFee)}
+                  </span>
+                </div>
+                <div className="pt-3 border-t border-[#E5E5E3] flex justify-between text-[16px] font-semibold text-[#141414]">
+                  <span>Total</span>
+                  <span className="text-[#B0521F]">{formatINR(estimatedTotal)}</span>
                 </div>
               </div>
-            </aside>
+            </div>
           </div>
         </div>
 
-        {/* Cross-Sell Section: "Complete the ecosystem" on Checkout */}
-        <CrossSellSection
-          onAdded={(prod) => showToast(`Added "${prod.name}" to your order.`)}
-        />
-      </div>
-    </main>
+        {/* Keep the "Complete the ecosystem" row */}
+        <CrossSellSection />
+      </main>
+
+      {/* Sign In Dialog for Checkout */}
+      {isAuthModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="checkout-auth-title"
+        >
+          <div className="bg-white rounded-[6px] border border-[#E5E5E3] max-w-[460px] w-full p-6 sm:p-8 shadow-xl relative animate-scale-in">
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute right-4 top-4 text-[#6B6B6B] hover:text-[#141414] p-1 rounded cursor-pointer"
+              aria-label="Close sign in dialog"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 id="checkout-auth-title" className="font-display text-[24px] font-normal text-[#141414] mb-1">
+              Sign in to WrapStore
+            </h3>
+            <p className="text-[13px] text-[#6B6B6B] mb-5">
+              Your typed checkout details will be preserved.
+            </p>
+
+            <AuthForm
+              onSuccess={() => {
+                setIsAuthModalOpen(false);
+              }}
+              returnTo="/checkout"
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
