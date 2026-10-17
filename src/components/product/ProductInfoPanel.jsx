@@ -5,6 +5,7 @@ import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
 import { storeConfig } from '../../config/store';
 import { ColorSwatch, getValidColors } from '../ui/ColorSwatch';
+import { ProductShare } from './ProductShare';
 
 export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const { addItem } = useCart();
@@ -233,6 +234,9 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
           {storeConfig.productTrustLine}
         </p>
       </div>
+
+      {/* 10. Share the product via WhatsApp & Instagram */}
+      <ProductShare product={product} selectedModel={selectedModel} />
 
       {/* Accordions below: Details, Compatible models, Returns and shipping */}
       <div className="pt-4 border-t border-[#E5E5E3] space-y-2">
