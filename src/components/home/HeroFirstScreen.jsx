@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { homeConfig } from '../../config/home';
-import { store } from '../../config/store';
-import { usePhoneContext } from '../../context/PhoneContext';
 import { useIntro } from '../../context/IntroContext';
 import { useIntroReveal } from '../../hooks/useIntroReveal';
 import { getHeroSlides } from '../../lib/heroSlides';
 
 export function HeroFirstScreen() {
-  const { openPhoneSheet } = usePhoneContext();
   const { isIntroDone } = useIntro();
-  const heroTextRevealStyle = useIntroReveal(80);
-  const heroPhotoRevealStyle = useIntroReveal(160);
+  const heroRevealStyle = useIntroReveal(80);
 
   const [slides, setSlides] = useState(() => getHeroSlides());
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
+  // Sync slides if updated via admin or custom event
   useEffect(() => {
     const handleUpdate = (e) => {
-      if (e.detail) {
+      if (e.detail && Array.isArray(e.detail) && e.detail.length > 0) {
         setSlides(e.detail);
         setActiveIndex(0);
       }
@@ -27,22 +27,34 @@ export function HeroFirstScreen() {
     return () => window.removeEventListener('wrapstore:hero_slides_updated', handleUpdate);
   }, []);
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  // Video element refs
+  const videoRefs = useRef({});
 
-  // Touch swipe support
-  const touchStartXRef = useRef(0);
-  const touchEndXRef = useRef(0);
-  const sliderRef = useRef(null);
+  // Play active video when slide changes
+  useEffect(() => {
+    const currentSlide = slides[activeIndex];
+    if (currentSlide?.type === 'video' || currentSlide?.video) {
+      const vid = videoRefs.current[activeIndex];
+      if (vid) {
+        vid.currentTime = 0;
+        vid.play().catch(() => {
+          // Autoplay policy fallback: ensure muted
+          vid.muted = true;
+          vid.play().catch(() => {});
+        });
+      }
+    }
+  }, [activeIndex, slides]);
 
-  // Autoplay timer: does not start until intro:done, starts immediately if intro never ran
+  // Autoplay timer: advances slides every 6 seconds unless paused
   useEffect(() => {
     if (!isIntroDone) return;
     if (paused || slides.length <= 1) return;
 
+    const interval = homeConfig.heroSlider?.autoplayIntervalMs || 6000;
     const timer = setTimeout(() => {
       setActiveIndex((prev) => (prev + 1) % slides.length);
-    }, homeConfig.heroSlider?.autoplayIntervalMs || 5000);
+    }, interval);
 
     return () => clearTimeout(timer);
   }, [activeIndex, paused, slides.length, isIntroDone]);
@@ -54,6 +66,10 @@ export function HeroFirstScreen() {
   const handleNext = useCallback(() => {
     setActiveIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
+
+  // Touch swipe handling
+  const touchStartXRef = useRef(0);
+  const touchEndXRef = useRef(0);
 
   const handleTouchStart = (e) => {
     setPaused(true);
@@ -77,187 +93,176 @@ export function HeroFirstScreen() {
     }
   };
 
-  const whatsappHref = store.whatsappNumber ? `https://wa.me/${store.whatsappNumber}` : null;
+  const currentSlide = slides[activeIndex] || slides[0] || {};
 
   return (
     <section
-      aria-label="Welcome to WrapStore"
-      className="w-full pt-2 sm:pt-4"
+      aria-label="Hero Spotlight Banner"
+      style={heroRevealStyle}
+      className="w-full pt-2 sm:pt-3 select-none"
     >
       {/* ─────────────────────────────────────────────────────────────────
-          12-Column Grid (Desktop) / Stacked (Mobile)
-          Desktop: Left 5 columns (Copy + Actions + Facts) | Right 7 columns (Photo slider)
+          Full-Width Hero Banner
+          Matches attached design:
+          - Full-width modern banner with rounded corners
+          - Video / High-res media display
+          - Bottom-left: "Unlimited Prints" pastel pink pill + "Find your perfect case"
+          - Bottom-right: Pagination pill & circular dots
+          - Sleek hover chevrons & optional sound toggle
           ───────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-        
-        {/* Left Column: 5 columns on desktop */}
-        <div style={heroTextRevealStyle} className="lg:col-span-5 flex flex-col justify-center space-y-5 order-1">
-          
-          {/* H1 in the display font (DM Serif Display 400, 56/60 desktop, 36/40 mobile) */}
-          <h1 className="font-display font-normal text-[36px] sm:text-[46px] lg:text-[56px] leading-[1.1] tracking-[-0.01em] text-[#141414]">
-            {homeConfig.firstScreen?.headline || 'Cases for iPhone and Samsung'}
-          </h1>
-
-          {/* Hero subtext in the sans: 16px desktop (15px mobile), line-height 1.6 */}
-          <p className="font-sans font-normal text-[15px] sm:text-[16px] text-[#525252] leading-[1.6]">
-            {homeConfig.firstScreen?.subtext ||
-              'Cases for iPhone and Samsung, plus everyday accessories. Choose your phone, pick a design, pay securely online.'}
-          </p>
-
-          {/* Primary Action Button + Find Your Phone Link */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 pt-1">
-            <Link
-              to={homeConfig.firstScreen?.primaryButtonLink || '/?category=Mobile%20Cases'}
-              className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 bg-[#141414] hover:bg-[#383836] text-white font-semibold text-[14px] rounded-[6px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 text-center cursor-pointer"
-            >
-              {homeConfig.firstScreen?.primaryButtonText || 'Shop cases'}
-            </Link>
-
-            <button
-              type="button"
-              onClick={openPhoneSheet}
-              className="inline-flex items-center justify-center min-h-[44px] px-3 py-2 text-[14px] font-semibold text-[#141414] hover:text-[#B0521F] underline underline-offset-4 cursor-pointer transition-colors"
-              aria-label="Open phone model selector"
-            >
-              {homeConfig.firstScreen?.findPhoneText || 'Find your phone'}
-            </button>
-          </div>
-
-          {/* Facts row separated by thin dividers, no icons */}
-          <div className="hidden sm:flex items-center text-[12px] lg:text-[13px] text-[#6B6B6B] pt-4 border-t border-[#E5E5E3] select-none">
-            <a
-              href={store.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#141414] transition-colors hover:underline"
-            >
-              {store.addressShort}
-            </a>
-            <span className="w-px h-3.5 bg-[#E5E5E3] mx-3" aria-hidden="true" />
-            <span>Secure online payment</span>
-            <span className="w-px h-3.5 bg-[#E5E5E3] mx-3" aria-hidden="true" />
-            {whatsappHref ? (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#141414] transition-colors hover:underline"
-              >
-                WhatsApp support
-              </a>
-            ) : (
-              <span>WhatsApp support</span>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: 7 columns on desktop (Photo slider only, nothing sits on top of photos) */}
-        <div style={heroPhotoRevealStyle} className="lg:col-span-7 order-2">
-          
-          {/* Slider Container (Fixed ratio 3:2, rounded-[6px], overflow-hidden, no shadow) */}
-          <div
-            ref={sliderRef}
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-            onFocus={() => setPaused(true)}
-            onBlur={() => setPaused(false)}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="group relative aspect-[3/2] w-full rounded-[6px] overflow-hidden bg-[#E5E5E3] select-none"
-            role="region"
-            aria-label="Showroom photo gallery"
-          >
-            {/* Photo Slides: Eager on first image, lazy on subsequent, object-fit: cover, 6px radius */}
-            <div
-              className="flex w-full h-full transition-transform duration-500 ease-out"
-              style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-            >
-              {slides.map((slide, idx) => (
-                <div key={slide.id || idx} className="w-full h-full shrink-0 relative">
+      <div
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="group relative w-full h-[380px] sm:h-[460px] md:h-[520px] lg:h-[580px] xl:h-[640px] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#141414] shadow-[0_8px_30px_rgba(0,0,0,0.06)]"
+      >
+        {/* Slides Track */}
+        <div
+          className="flex w-full h-full transition-transform duration-700 ease-out"
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {slides.map((slide, idx) => {
+            const isVideo = slide.type === 'video' || Boolean(slide.video);
+            return (
+              <div key={slide.id || idx} className="w-full h-full shrink-0 relative bg-neutral-900">
+                {isVideo ? (
+                  <video
+                    ref={(el) => {
+                      if (el) videoRefs.current[idx] = el;
+                    }}
+                    src={slide.video}
+                    poster={slide.image}
+                    autoPlay
+                    loop
+                    muted={isMuted}
+                    playsInline
+                    preload="auto"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
                   <img
                     src={slide.image}
-                    alt={slide.alt || 'WrapStore showroom'}
+                    alt={slide.alt || slide.tag || 'Hero banner'}
                     width={slide.width || 1800}
                     height={slide.height || 1200}
                     loading={idx === 0 ? 'eager' : 'lazy'}
                     fetchpriority={idx === 0 ? 'high' : 'auto'}
                     className="w-full h-full object-cover"
                   />
-                </div>
-              ))}
+                )}
+
+                {/* Subtle vignette shadow on bottom and edges for badge readability */}
+                <div
+                  className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"
+                  aria-hidden="true"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────
+            Bottom-Left Pill Badge:
+            "Unlimited Prints" (Pastel Pink Pill) + "Find your perfect case"
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="absolute left-4 bottom-4 sm:left-8 sm:bottom-8 lg:left-10 lg:bottom-10 z-20 pointer-events-auto">
+          <Link
+            to={currentSlide.link || '/?category=Mobile%20Cases'}
+            className="group/badge inline-flex flex-col items-start transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            aria-label={`${currentSlide.tag || 'Unlimited Prints'} - ${currentSlide.tagSubtitle || 'Find your perfect case'}`}
+          >
+            {/* Top Pink Pill */}
+            <div className="bg-[#FFD1DC] text-[#1E1B4B] px-4 sm:px-5 py-1.5 sm:py-2 rounded-t-2xl rounded-br-2xl sm:rounded-t-[20px] sm:rounded-br-[20px] shadow-[0_4px_16px_rgba(0,0,0,0.18)] flex items-center gap-2">
+              <span className="font-extrabold text-[18px] sm:text-[22px] lg:text-[25px] tracking-tight leading-none text-[#18182E]">
+                {currentSlide.tag || 'Unlimited Prints'}
+              </span>
             </div>
 
-            {/* Slider arrows: plain white chevrons with no circle or background, 32px, desktop only, visible on hover and keyboard focus */}
-            {slides.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  aria-label="Previous slide"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hidden md:flex items-center justify-center cursor-pointer p-0 bg-transparent border-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
-                >
-                  <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
-                </button>
+            {/* Subtitle / CTA Line */}
+            <div className="bg-[#FFD1DC]/90 group-hover/badge:bg-[#FFD1DC] backdrop-blur-md text-[#18182E] px-3.5 sm:px-4 py-1 rounded-b-xl rounded-tr-xl text-[12px] sm:text-[14px] font-semibold tracking-normal transition-colors shadow-sm flex items-center gap-1.5 mt-0.5">
+              <span>{currentSlide.tagSubtitle || 'Find your perfect case'}</span>
+              <span className="text-[12px] opacity-75 group-hover/badge:translate-x-1 transition-transform">
+                →
+              </span>
+            </div>
+          </Link>
+        </div>
 
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  aria-label="Next slide"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hidden md:flex items-center justify-center cursor-pointer p-0 bg-transparent border-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
-                >
-                  <ChevronRight className="w-8 h-8" strokeWidth={2.5} />
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Thin line indicators with no container */}
-          {slides.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5 mt-2.5">
-              {slides.map((_, idx) => (
+        {/* ─────────────────────────────────────────────────────────────────
+            Bottom-Right Pagination:
+            Active pill dot + circular white dots matching reference image
+            ───────────────────────────────────────────────────────────────── */}
+        {slides.length > 1 && (
+          <div
+            className="absolute right-4 bottom-5 sm:right-8 sm:bottom-8 lg:right-10 lg:bottom-10 z-20 flex items-center gap-2 bg-black/25 backdrop-blur-sm px-3 py-1.5 rounded-full"
+            role="tablist"
+            aria-label="Slide indicators"
+          >
+            {slides.map((_, idx) => {
+              const isActive = idx === activeIndex;
+              return (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setActiveIndex(idx)}
+                  role="tab"
+                  aria-selected={isActive}
                   aria-label={`Go to slide ${idx + 1}`}
-                  className={`h-0.5 rounded-full transition-all cursor-pointer ${
-                    idx === activeIndex
-                      ? 'w-6 bg-[#141414]'
-                      : 'w-3 bg-[#D4D4D2] hover:bg-[#A3A3A0]'
+                  className={`transition-all duration-300 rounded-full cursor-pointer ${
+                    isActive
+                      ? 'w-7 sm:w-8 h-2 sm:h-2.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]'
+                      : 'w-2 sm:w-2.5 h-2 sm:h-2.5 bg-white/50 hover:bg-white/80'
                   }`}
                 />
-              ))}
-            </div>
-          )}
-
-          {/* Mobile Facts Row */}
-          <div className="flex sm:hidden items-center justify-between text-[11px] text-[#6B6B6B] pt-3 mt-3 border-t border-[#E5E5E3] select-none">
-            <a
-              href={store.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#141414] hover:underline"
-            >
-              {store.addressShort}
-            </a>
-            <span className="w-px h-3 bg-[#E5E5E3]" aria-hidden="true" />
-            <span>Secure payment</span>
-            <span className="w-px h-3 bg-[#E5E5E3]" aria-hidden="true" />
-            {whatsappHref ? (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#141414] hover:underline"
-              >
-                WhatsApp
-              </a>
-            ) : (
-              <span>Support</span>
-            )}
+              );
+            })}
           </div>
-        </div>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────────
+            Navigation Chevrons (Previous / Next) on Desktop Hover
+            ───────────────────────────────────────────────────────────────── */}
+        {slides.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={handlePrev}
+              aria-label="Previous slide"
+              className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 cursor-pointer z-20 shadow-lg border border-white/10"
+            >
+              <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNext}
+              aria-label="Next slide"
+              className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 cursor-pointer z-20 shadow-lg border border-white/10"
+            >
+              <ChevronRight className="w-6 h-6" strokeWidth={2.5} />
+            </button>
+          </>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────────
+            Optional Audio Toggle for Video Slides (Top Right)
+            ───────────────────────────────────────────────────────────────── */}
+        {(currentSlide.type === 'video' || currentSlide.video) && (
+          <button
+            type="button"
+            onClick={() => setIsMuted((prev) => !prev)}
+            aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md flex items-center justify-center transition-colors cursor-pointer border border-white/15 shadow-md"
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-white/90" />
+            ) : (
+              <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            )}
+          </button>
+        )}
       </div>
     </section>
   );

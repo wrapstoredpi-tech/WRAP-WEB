@@ -76,7 +76,7 @@ export function ContactPage() {
   }, [contactConfig]);
 
   return (
-    <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-10">
+    <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-16 space-y-10">
       {/* Title & Introduction */}
       <div className="space-y-3 pb-6 border-b border-[#E5E5E3]">
         <h1 className="font-display font-normal text-[32px] sm:text-[40px] text-[#141414] tracking-[-0.01em]">

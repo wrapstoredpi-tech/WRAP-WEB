@@ -205,9 +205,9 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
           ─────────────────────────────────────────────────────────────────────────── */}
       <aside
         aria-label="Store contact and location info"
-        className="w-full h-[36px] bg-[#141414] text-[#FAFAF9] border-b border-[#141414] flex items-center px-4 sm:px-6 select-none z-50 text-[12px]"
+        className="w-full h-[36px] bg-[#141414] text-[#FAFAF9] border-b border-[#141414] flex items-center px-4 sm:px-6 lg:px-8 xl:px-12 select-none z-50 text-[12px]"
       >
-        <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between">
+        <div className="w-full max-w-[1800px] mx-auto flex items-center justify-between">
           {/* Desktop Left: Visit us <addressShort> linking to mapsUrl */}
           <div className="hidden sm:flex items-center gap-1.5 truncate">
             <span className="text-[#A3A3A3]">Visit us:</span>
@@ -257,7 +257,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
           - Bag with count
           ─────────────────────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 w-full bg-[#FAFAF9] border-b border-[#E5E5E3] select-none">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+        <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center justify-between h-[72px] gap-4">
             
             {/* Left: Mobile Menu Trigger + Logo */}
@@ -533,32 +533,13 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                 )}
               </div>
 
-              {/* About Link */}
-              <Link
-                to="/about"
-                className={`text-[14px] transition-colors py-4 ${
-                  location.pathname === '/about' ? 'font-semibold text-[#B0521F]' : 'font-medium text-[#141414] hover:text-[#B0521F]'
-                }`}
-              >
-                About
-              </Link>
-
-              {/* Contact Link */}
-              <Link
-                to="/contact"
-                className={`text-[14px] transition-colors py-4 ${
-                  location.pathname === '/contact' ? 'font-semibold text-[#B0521F]' : 'font-medium text-[#141414] hover:text-[#B0521F]'
-                }`}
-              >
-                Contact
-              </Link>
             </nav>
 
             {/* Right: Search + Account Control + Bag */}
             <div className="flex items-center gap-3 sm:gap-4">
               
               {/* Desktop Visible Search Field */}
-              <div className="relative hidden md:block w-[200px] lg:w-[240px]">
+              <div className="relative hidden md:block w-[200px] lg:w-[260px] xl:w-[300px]">
                 <form onSubmit={handleSearchSubmit}>
                   <Search className="w-4 h-4 text-[#6B6B6B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
@@ -607,7 +588,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
               {/* ─────────────────────────────────────────────────────────────────
                   Account Control (Desktop & Mobile)
                   - Auth loading: neutral placeholder, NEVER "Guest"
-                  - Signed out: "Guest" linking to /login
+                  - Signed out: "Login" linking to /login
                   - Signed in: first name with dropdown menu (Orders, Saved addresses, Profile, Sign out)
                   ───────────────────────────────────────────────────────────────── */}
               <div ref={accountRef} className="relative">
@@ -672,9 +653,9 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                 ) : (
                   <Link
                     to="/login"
-                    className="inline-flex items-center text-[14px] font-normal text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2"
+                    className="inline-flex items-center text-[14px] font-medium text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2"
                   >
-                    Guest
+                    Login
                   </Link>
                 )}
               </div>
@@ -890,7 +871,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block min-h-[44px] px-4 py-2.5 rounded-[6px] bg-white border border-[#E5E5E3] text-[14px] font-medium text-[#141414]"
               >
-                {user ? `Account (${firstName || 'User'})` : 'Guest (Sign in)'}
+                {user ? `Account (${firstName || 'User'})` : 'Login'}
               </Link>
               <Link
                 to="/track-order"

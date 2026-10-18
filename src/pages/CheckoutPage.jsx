@@ -148,8 +148,8 @@ export function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
       {/* Reduced Header: Logo and 'Back to bag' only */}
-      <header className="w-full bg-[#FAFAF9] border-b border-[#E5E5E3] h-[64px] flex items-center px-4 sm:px-6">
-        <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between">
+      <header className="w-full bg-[#FAFAF9] border-b border-[#E5E5E3] h-[64px] flex items-center px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="w-full max-w-[1800px] mx-auto flex items-center justify-between">
           <Link to="/" aria-label="WrapStore Home">
             <Logo size="md" />
           </Link>
@@ -165,7 +165,7 @@ export function CheckoutPage() {
       </header>
 
       {/* Main Checkout Area */}
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
+      <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12 space-y-10">
         
         {/* Mobile Collapsible Order Summary Bar */}
         <div className="lg:hidden bg-white border border-[#E5E5E3] rounded-[6px] p-4">

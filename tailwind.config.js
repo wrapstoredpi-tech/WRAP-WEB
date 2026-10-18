@@ -65,7 +65,8 @@ export default {
         none: 'none',
       },
       maxWidth: {
-        container: '1280px',
+        container: '1800px',
+        'full-container': '1800px',
       },
     },
   },

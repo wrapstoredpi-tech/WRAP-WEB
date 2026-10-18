@@ -6,8 +6,8 @@ export function PhoneBar() {
   const { savedPhone, openPhoneSheet } = usePhoneContext();
 
   return (
-    <div className="w-full bg-[#FAFAF9] text-[#141414] border-b border-[#E5E5E3] h-[36px] flex items-center px-4 sm:px-6 z-30">
-      <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between text-[12px]">
+    <div className="w-full bg-[#FAFAF9] text-[#141414] border-b border-[#E5E5E3] h-[36px] flex items-center px-4 sm:px-6 lg:px-8 xl:px-12 z-30">
+      <div className="w-full max-w-[1800px] mx-auto flex items-center justify-between text-[12px]">
         <div className="flex items-center gap-2 overflow-hidden">
           <Smartphone className="w-3.5 h-3.5 text-[#6B6B6B] shrink-0" />
           {savedPhone && savedPhone.model ? (

@@ -14,7 +14,7 @@ export function AboutPage() {
   }, []);
 
   return (
-    <main className="flex-1 max-w-[960px] w-full mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-10 sm:space-y-12">
+    <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-16 space-y-10 sm:space-y-12">
       
       {/* 1. Header / Intro */}
       <div className="space-y-4 pb-8 border-b border-[#E5E5E3]">

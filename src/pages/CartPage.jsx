@@ -29,7 +29,7 @@ export function CartPage() {
 
   if (items.length === 0) {
     return (
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center space-y-6">
+      <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-16 sm:py-24 text-center space-y-6">
         <div className="max-w-md mx-auto space-y-3 bg-white border border-[#E5E5E3] rounded-[6px] p-8">
           <div className="w-12 h-12 rounded-[6px] bg-[#FAFAF9] border border-[#E5E5E3] flex items-center justify-center mx-auto text-[#6B6B6B]">
             <ShoppingBag className="w-6 h-6" />
@@ -54,7 +54,7 @@ export function CartPage() {
   }
 
   return (
-    <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-12">
+    <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12 space-y-12">
       {/* Page Title */}
       <div className="pb-4 border-b border-[#E5E5E3] flex items-baseline justify-between">
         <div>

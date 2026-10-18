@@ -20,7 +20,7 @@ export function ProductDetailPage({ onAddToCart }) {
 
   if (isLoading) {
     return (
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-20 flex items-center justify-center">
+      <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-20 flex items-center justify-center">
         <p className="text-[14px] text-[#6B6B6B]">Loading product details...</p>
       </main>
     );
@@ -28,7 +28,7 @@ export function ProductDetailPage({ onAddToCart }) {
 
   if (!product) {
     return (
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-20 text-center space-y-4">
+      <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-20 text-center space-y-4">
         <h1 className="text-[28px] font-semibold text-[#141414]">Product Not Found</h1>
         <p className="text-[14px] text-[#6B6B6B]">The product you requested could not be located in our catalog.</p>
         <div className="pt-2">
@@ -44,7 +44,7 @@ export function ProductDetailPage({ onAddToCart }) {
   }
 
   return (
-    <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-12">
+    <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 space-y-12">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="text-[12px] text-[#6B6B6B] flex items-center gap-1.5">
         <Link to="/" className="hover:text-[#141414] transition-colors">

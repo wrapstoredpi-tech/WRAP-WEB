@@ -289,12 +289,12 @@ export function HomePage() {
           <div className="space-y-16 lg:space-y-24">
             
             {/* 1. First Screen: Hero 12-col grid (copy 5 cols left, photo slider 7 cols right) */}
-            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <HeroFirstScreen />
             </div>
 
             {/* 2. Shop by Category: Row directly under first screen */}
-            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <ShopByCategoryRow
                 products={liveProducts}
                 subcategories={liveSubcategories}
@@ -309,13 +309,13 @@ export function HomePage() {
 
             {/* 4. Featured: Plain background, 12-col grid mirrored, hides if no eligible product */}
             {featuredProduct && (
-              <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+              <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
                 <FeaturedProductSection product={featuredProduct} />
               </div>
             )}
 
             {/* 5. New arrivals: Grid of up to 8, excluding Deal and Featured products */}
-            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <NewArrivalsSection
                 products={liveProducts}
                 excludedProductIds={excludedProductIds}
@@ -324,12 +324,12 @@ export function HomePage() {
             </div>
 
             {/* 6. About us: 2-column block */}
-            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <HomeAboutBlock />
             </div>
 
             {/* 7. Contact and store: Store details, hours, map CTA */}
-            <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <StoreDetailsSection />
             </div>
           </div>
@@ -342,7 +342,7 @@ export function HomePage() {
   // VIEW 2: LISTING PAGE (Breadcrumb, Sidebar filters, Sort right, Product Cards grid)
   // ───────────────────────────────────────────────────────────────────────────
   return (
-    <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Sidebar on Desktop */}

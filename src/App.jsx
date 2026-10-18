@@ -29,7 +29,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default:
 
 function RouteFallback() {
   return (
-    <div className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-24 flex items-center justify-center">
+    <div className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-24 flex items-center justify-center">
       <p className="text-[14px] text-[#6B6B6B]">Loading page...</p>
     </div>
   );

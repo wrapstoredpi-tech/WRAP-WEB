@@ -55,6 +55,109 @@ export function AdminPage() {
     return null;
   });
 
+  // Auto-restore admin session from Supabase if active session exists and user has authorized profile
+  useEffect(() => {
+    if (adminUser || !supabaseConfigured || !supabase) return;
+
+    let isMounted = true;
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session }, error }) => {
+        if (error || !session?.user || !isMounted) return;
+
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          const allowedRoles = ['super_admin', 'store_manager', 'admin'];
+          if (
+            profile &&
+            profile.is_active !== false &&
+            allowedRoles.includes((profile.role || '').toLowerCase())
+          ) {
+            const authData = {
+              id: profile.id,
+              email: profile.email || session.user.email,
+              fullName: profile.full_name || 'Admin',
+              role: profile.role || 'store_manager',
+              avatarUrl: profile.avatar_url || null,
+              authenticatedAt: new Date().toISOString(),
+            };
+            localStorage.setItem('wrapstore_admin_auth', JSON.stringify(authData));
+            if (isMounted) {
+              setAdminUser(authData);
+            }
+          }
+        } catch (err) {
+          console.warn('[AdminPage] Auto-restore session check error:', err);
+        }
+      })
+      .catch((err) => {
+        console.warn('[AdminPage] getSession unexpected error:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [adminUser]);
+
+  // Background profile sync: If an admin is logged in with a profile ID, ensure account is still active
+  useEffect(() => {
+    if (!adminUser?.id || !supabaseConfigured || !supabase) return;
+
+    let isMounted = true;
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', adminUser.id)
+      .maybeSingle()
+      .then(({ data: profile, error }) => {
+        if (!isMounted || error || !profile) return;
+
+        // If deactivated in Supabase profiles, immediately revoke access
+        if (profile.is_active === false) {
+          console.warn('[AdminPage] Admin profile deactivated. Revoking session.');
+          localStorage.removeItem('wrapstore_admin_auth');
+          sessionStorage.removeItem('wrapstore_admin_auth');
+          supabase.auth.signOut().catch(() => {});
+          setAdminUser(null);
+          return;
+        }
+
+        // Sync name or role if updated in profiles
+        if (
+          profile.role !== adminUser.role ||
+          profile.full_name !== adminUser.fullName ||
+          profile.email !== adminUser.email
+        ) {
+          const updated = {
+            ...adminUser,
+            role: profile.role || adminUser.role,
+            fullName: profile.full_name || adminUser.fullName,
+            email: profile.email || adminUser.email,
+          };
+          setAdminUser(updated);
+          try {
+            if (localStorage.getItem('wrapstore_admin_auth')) {
+              localStorage.setItem('wrapstore_admin_auth', JSON.stringify(updated));
+            } else if (sessionStorage.getItem('wrapstore_admin_auth')) {
+              sessionStorage.setItem('wrapstore_admin_auth', JSON.stringify(updated));
+            }
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.warn('[AdminPage] Profile sync check error:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [adminUser?.id]);
+
   // Active View Tab
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -256,11 +359,18 @@ export function AdminPage() {
   };
 
   // Logout handler
-  const handleLogout = () => {
+  const handleLogout = useCallback(async () => {
     localStorage.removeItem('wrapstore_admin_auth');
     sessionStorage.removeItem('wrapstore_admin_auth');
+    if (supabaseConfigured && supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn('[AdminPage] Sign out error:', err);
+      }
+    }
     setAdminUser(null);
-  };
+  }, []);
 
   // Update document title for professional admin experience
   useEffect(() => {
@@ -284,6 +394,7 @@ export function AdminPage() {
         onTabChange={setActiveTab}
         onLogout={handleLogout}
         adminEmail={adminUser.email}
+        adminUser={adminUser}
       />
 
       {/* Main Workspace Area */}

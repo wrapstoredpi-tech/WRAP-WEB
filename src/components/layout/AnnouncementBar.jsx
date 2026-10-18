@@ -28,9 +28,9 @@ export function AnnouncementBar() {
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
-      className="w-full h-[36px] bg-[#141414] text-[#FAFAF9] border-b border-[#141414] flex items-center justify-center px-4 overflow-hidden z-50 select-none"
+      className="w-full h-[36px] bg-[#141414] text-[#FAFAF9] border-b border-[#141414] flex items-center justify-center px-4 sm:px-6 lg:px-8 xl:px-12 overflow-hidden z-50 select-none"
     >
-      <div className="max-w-[1280px] w-full mx-auto flex items-center justify-center text-center">
+      <div className="w-full max-w-[1800px] mx-auto flex items-center justify-center text-center">
         <p
           key={currentIndex}
           className="text-[12px] font-normal tracking-normal transition-opacity duration-300 truncate"

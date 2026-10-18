@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 
-export function AdminHeader({ activeTab, onTabChange, onLogout, adminEmail }) {
+export function AdminHeader({ activeTab, onTabChange, onLogout, adminEmail, adminUser }) {
   const tabs = [
     { id: 'overview', label: 'Sales & Overview', icon: LayoutDashboard },
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
@@ -49,10 +49,30 @@ export function AdminHeader({ activeTab, onTabChange, onLogout, adminEmail }) {
             <span>POS & Store Realtime Active</span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-[#E5E5E3]">
-            <span className="text-[13px] font-mono font-medium text-[#141414]">
-              {adminEmail || 'admin@wrapstore.com'}
-            </span>
+          <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-[#E5E5E3]">
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] font-semibold text-[#141414]">
+                  {adminUser?.fullName || adminUser?.full_name || 'Admin'}
+                </span>
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded tracking-wide uppercase ${
+                    (adminUser?.role || '').toLowerCase() === 'super_admin'
+                      ? 'bg-[#141414] text-white'
+                      : 'bg-[#F4F3F0] text-[#141414] border border-[#E5E5E3]'
+                  }`}
+                >
+                  {(adminUser?.role || '').toLowerCase() === 'super_admin'
+                    ? 'Super Admin'
+                    : (adminUser?.role || '').toLowerCase() === 'store_manager'
+                    ? 'Store Manager'
+                    : 'Admin'}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-[#6B6B6B]">
+                {adminEmail || adminUser?.email || 'admin@wrapstore.com'}
+              </span>
+            </div>
           </div>
 
           <button

@@ -257,15 +257,26 @@ export function AdminHeroTab() {
           </div>
 
           <div className="bg-white border border-[#E5E5E3] rounded-[8px] p-4 space-y-3">
-            {/* The 3:2 Hero Frame matching HeroFirstScreen */}
-            <div className="relative aspect-[3/2] w-full rounded-[6px] overflow-hidden border border-[#E5E5E3] bg-[#FAFAF9] shadow-inner">
+            {/* The Full Hero Frame matching HeroFirstScreen */}
+            <div className="relative aspect-[21/9] min-h-[220px] w-full rounded-[6px] overflow-hidden border border-[#E5E5E3] bg-[#FAFAF9] shadow-inner">
               {currentPreviewSlide ? (
                 <>
-                  <img
-                    src={currentPreviewSlide.image}
-                    alt={currentPreviewSlide.alt}
-                    className="w-full h-full object-cover"
-                  />
+                  {currentPreviewSlide.video ? (
+                    <video
+                      src={currentPreviewSlide.video}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={currentPreviewSlide.image}
+                      alt={currentPreviewSlide.alt}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                   {/* Subtle slider indicators overlay */}
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm">
                     {slides.map((_, i) => (

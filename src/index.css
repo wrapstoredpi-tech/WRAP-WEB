@@ -165,4 +165,38 @@
   .subtle-elevation {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   }
+
+  /* Full container utility for modern widescreen layouts */
+  .full-container {
+    width: 100%;
+    max-width: 1800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  @media (min-width: 640px) {
+    .full-container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .full-container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+  @media (min-width: 1280px) {
+    .full-container {
+      padding-left: 2.5rem;
+      padding-right: 2.5rem;
+    }
+  }
+  @media (min-width: 1536px) {
+    .full-container {
+      padding-left: 3rem;
+      padding-right: 3rem;
+    }
+  }
 }

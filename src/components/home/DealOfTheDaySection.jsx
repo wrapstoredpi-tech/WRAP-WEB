@@ -17,7 +17,7 @@ export function DealOfTheDaySection({ dealData }) {
       aria-labelledby="deal-of-the-day-title"
       className="w-full bg-[#F4F3F0] border-y border-[#E5E5E3] py-12 lg:py-16 select-none"
     >
-      <div className="max-w-[1280px] w-full mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
         {/* On Mobile: H2 sits at the top */}
         <h2 className="lg:hidden font-display font-normal text-[30px] leading-[1.1] tracking-[-0.01em] text-[#141414] mb-6">
           {dealConfig.heading || 'Deal of the day'}

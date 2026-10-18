@@ -31,7 +31,7 @@ export function AccountPage() {
 
   if (isLoading || !user) {
     return (
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 py-16 flex items-center justify-center">
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-16 flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-[#141414] border-t-transparent rounded-full animate-spin" />
       </main>
     );
@@ -41,7 +41,7 @@ export function AccountPage() {
   const fullName = meta.full_name || meta.name || firstName || 'User';
 
   return (
-    <main className="flex-1 max-w-[1080px] w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
+    <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-16">
       
       {/* Account Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#E5E5E3] mb-8">
