@@ -1,6 +1,6 @@
 import { homeConfig } from '../config/home';
 
-const STORAGE_KEY = 'wrapstore_hero_slides_v2';
+const STORAGE_KEY = 'wrapstore_hero_slides_v3';
 
 /**
  * Returns the current active hero slider slides.
@@ -10,10 +10,11 @@ const STORAGE_KEY = 'wrapstore_hero_slides_v2';
 export function getHeroSlides() {
   if (typeof window !== 'undefined') {
     try {
+      localStorage.removeItem('wrapstore_hero_slides_v2');
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some((s) => s.video || s.id === 'unlimited-prints-video')) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }

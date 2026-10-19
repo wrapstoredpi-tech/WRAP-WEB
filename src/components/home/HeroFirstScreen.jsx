@@ -167,21 +167,25 @@ export function HeroFirstScreen() {
             Bottom-Left Pill Badge:
             "Unlimited Prints" (Pastel Pink Pill) + "Find your perfect case"
             ───────────────────────────────────────────────────────────────── */}
-        <div className="absolute left-4 bottom-4 sm:left-8 sm:bottom-8 lg:left-10 lg:bottom-10 z-20 pointer-events-auto">
+        {/* ─────────────────────────────────────────────────────────────────
+            Center-Aligned Pill Badge:
+            "Unlimited Prints" (White Pill) + "Find your perfect case"
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-8 sm:bottom-11 lg:bottom-12 z-20 pointer-events-auto max-w-[90%]">
           <Link
             to={currentSlide.link || '/?category=Mobile%20Cases'}
-            className="group/badge inline-flex flex-col items-start transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="group/badge inline-flex flex-col items-center text-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             aria-label={`${currentSlide.tag || 'Unlimited Prints'} - ${currentSlide.tagSubtitle || 'Find your perfect case'}`}
           >
-            {/* Top Pink Pill */}
-            <div className="bg-[#FFD1DC] text-[#1E1B4B] px-4 sm:px-5 py-1.5 sm:py-2 rounded-t-2xl rounded-br-2xl sm:rounded-t-[20px] sm:rounded-br-[20px] shadow-[0_4px_16px_rgba(0,0,0,0.18)] flex items-center gap-2">
-              <span className="font-extrabold text-[18px] sm:text-[22px] lg:text-[25px] tracking-tight leading-none text-[#18182E]">
+            {/* Top White Pill */}
+            <div className="bg-white text-[#141414] px-5 sm:px-6 py-1.5 sm:py-2 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.22)] flex items-center justify-center gap-2 whitespace-nowrap">
+              <span className="font-extrabold text-[17px] sm:text-[22px] lg:text-[25px] tracking-tight leading-none text-[#141414]">
                 {currentSlide.tag || 'Unlimited Prints'}
               </span>
             </div>
 
             {/* Subtitle / CTA Line */}
-            <div className="bg-[#FFD1DC]/90 group-hover/badge:bg-[#FFD1DC] backdrop-blur-md text-[#18182E] px-3.5 sm:px-4 py-1 rounded-b-xl rounded-tr-xl text-[12px] sm:text-[14px] font-semibold tracking-normal transition-colors shadow-sm flex items-center gap-1.5 mt-0.5">
+            <div className="bg-white/95 group-hover/badge:bg-white backdrop-blur-md text-[#141414] px-4 sm:px-5 py-1 rounded-full text-[12px] sm:text-[14px] font-semibold tracking-normal transition-colors shadow-md flex items-center justify-center gap-1.5 mt-1 border border-black/5 whitespace-nowrap">
               <span>{currentSlide.tagSubtitle || 'Find your perfect case'}</span>
               <span className="text-[12px] opacity-75 group-hover/badge:translate-x-1 transition-transform">
                 →
@@ -191,12 +195,11 @@ export function HeroFirstScreen() {
         </div>
 
         {/* ─────────────────────────────────────────────────────────────────
-            Bottom-Right Pagination:
-            Active pill dot + circular white dots matching reference image
+            Pagination Dots: Centered bottom
             ───────────────────────────────────────────────────────────────── */}
         {slides.length > 1 && (
           <div
-            className="absolute right-4 bottom-5 sm:right-8 sm:bottom-8 lg:right-10 lg:bottom-10 z-20 flex items-center gap-2 bg-black/25 backdrop-blur-sm px-3 py-1.5 rounded-full"
+            className="absolute left-1/2 -translate-x-1/2 bottom-2.5 sm:bottom-3.5 z-20 flex items-center gap-2 bg-black/35 backdrop-blur-sm px-3 py-1.5 rounded-full"
             role="tablist"
             aria-label="Slide indicators"
           >
