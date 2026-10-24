@@ -204,8 +204,14 @@ export function normaliseProduct(raw, imagesMap = {}, catMap = {}, subMap = {}) 
   const subcategory = subcategoryObj?.name || 'Other';
 
   // ── Pricing ──────────────────────────────────────────────────────────────────
+  const rawMrp =
+    raw.mrp !== undefined && raw.mrp !== null && raw.mrp !== ''
+      ? Number(raw.mrp)
+      : null;
   const mrp =
-    raw.discount_percentage > 0
+    rawMrp && rawMrp > 0
+      ? rawMrp
+      : raw.discount_percentage > 0
       ? Math.round(raw.selling_price / (1 - raw.discount_percentage / 100))
       : raw.selling_price;
 
@@ -221,6 +227,10 @@ export function normaliseProduct(raw, imagesMap = {}, catMap = {}, subMap = {}) 
     category_id: raw.category_id,        // raw UUID for ID-based filtering
     subcategory_id: raw.subcategory_id,
     product_type: raw.product_type,      // preserved for debugging; do NOT use for display/filtering
+    collection: raw.collection || null,
+    magsafe: raw.magsafe || null,
+    mah: raw.mah || null,
+    strap_mm: raw.strap_mm || null,
     // Compatibility
     mobile_brand: raw.mobile_brand || 'Universal',
     mobile_model: compatible_models[0] || 'Universal',
@@ -230,6 +240,7 @@ export function normaliseProduct(raw, imagesMap = {}, catMap = {}, subMap = {}) 
     // Pricing
     selling_price: raw.selling_price,
     mrp,
+    raw_mrp: rawMrp,
     discount_percentage: raw.discount_percentage || 0,
     gst_percentage: raw.gst_percentage || 18,
     // Stock — view's precomputed fields
@@ -286,15 +297,31 @@ export function useProducts() {
       // ── 1. Products ──────────────────────────────────────────────────────────
       // Visibility: online_visible=true, is_active=true, approval_status != REJECTED
       // (PENDING + APPROVED both appear; do not add more conditions without instruction)
-      const { data: rawProducts, error: prodErr } = await supabase
-        .from('products_with_availability')
-        .select('*')
-        .eq('online_visible', true)
-        .eq('is_active', true)
-        .neq('approval_status', 'REJECTED')
-        .order('created_at', { ascending: false });
+      const [
+        { data: rawProducts, error: prodErr },
+        { data: baseProducts, error: baseErr },
+      ] = await Promise.all([
+        supabase
+          .from('products_with_availability')
+          .select('*')
+          .eq('online_visible', true)
+          .eq('is_active', true)
+          .neq('approval_status', 'REJECTED')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('products')
+          .select('id, mrp, collection, magsafe, mah, strap_mm'),
+      ]);
 
       if (prodErr) throw prodErr;
+      if (baseErr) {
+        console.warn('[useProducts] products table fetch error:', baseErr.message);
+      }
+
+      const metaMap = {};
+      (baseProducts || []).forEach((bp) => {
+        metaMap[bp.id] = bp;
+      });
 
       // ── 2. Active categories — ordered by sort_order (then name as tiebreaker) ──
       // is_active confirmed present on 2026-09-28; never use product_type as fallback
@@ -352,9 +379,22 @@ export function useProducts() {
       }
 
       // ── 5. Normalise — one call per DB row, no merging ───────────────────────
-      const normalised = (rawProducts || []).map((p) =>
-        normaliseProduct(p, imagesMap, catMap, subMap)
-      );
+      const normalised = (rawProducts || []).map((p) => {
+        const meta = metaMap[p.id] || {};
+        return normaliseProduct(
+          {
+            ...p,
+            mrp: meta.mrp !== undefined && meta.mrp !== null ? meta.mrp : p.mrp,
+            collection: meta.collection || p.collection || null,
+            magsafe: meta.magsafe !== undefined ? meta.magsafe : p.magsafe,
+            mah: meta.mah !== undefined ? meta.mah : p.mah,
+            strap_mm: meta.strap_mm !== undefined ? meta.strap_mm : p.strap_mm,
+          },
+          imagesMap,
+          catMap,
+          subMap
+        );
+      });
 
       setProducts(normalised);
       setCategories(catData || []);
@@ -474,14 +514,24 @@ export function useProduct(id) {
       setIsLoading(true);
       try {
         const isUuid = /^[0-9a-f-]{36}$/i.test(id);
-        const { data, error: err } = await supabase
-          .from('products_with_availability')
-          .select('*')
-          .eq(isUuid ? 'id' : 'product_id', id)
-          .eq('online_visible', true)
-          .eq('is_active', true)
-          .neq('approval_status', 'REJECTED')
-          .single();
+        const [
+          { data, error: err },
+          { data: baseData, error: baseErr },
+        ] = await Promise.all([
+          supabase
+            .from('products_with_availability')
+            .select('*')
+            .eq(isUuid ? 'id' : 'product_id', id)
+            .eq('online_visible', true)
+            .eq('is_active', true)
+            .neq('approval_status', 'REJECTED')
+            .single(),
+          supabase
+            .from('products')
+            .select('id, mrp, collection, magsafe, mah, strap_mm')
+            .eq(isUuid ? 'id' : 'product_id', id)
+            .maybeSingle(),
+        ]);
 
         if (err) throw err;
 
@@ -512,7 +562,15 @@ export function useProduct(id) {
         (subRes.data || []).forEach((s) => { subMap[s.id] = s; });
 
         const imagesMap = { [data.id]: imgRes.data || [] };
-        setProduct(normaliseProduct(data, imagesMap, catMap, subMap));
+        const mergedData = {
+          ...data,
+          mrp: baseData?.mrp !== undefined && baseData?.mrp !== null ? baseData.mrp : data.mrp,
+          collection: baseData?.collection || data.collection || null,
+          magsafe: baseData?.magsafe !== undefined ? baseData.magsafe : data.magsafe,
+          mah: baseData?.mah !== undefined ? baseData.mah : data.mah,
+          strap_mm: baseData?.strap_mm !== undefined ? baseData.strap_mm : data.strap_mm,
+        };
+        setProduct(normaliseProduct(mergedData, imagesMap, catMap, subMap));
         setError(null);
       } catch (err) {
         console.error('[useProduct] fetch error:', err);

@@ -153,8 +153,14 @@ export function startIntroAnimation({
 
     scrollLock.unlock();
 
-    if (container && container.parentNode) {
-      container.parentNode.removeChild(container);
+    if (container) {
+      const vid = container.querySelector('#wrapstore-intro-video');
+      if (vid) {
+        try { vid.pause(); } catch(e) {}
+      }
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
     }
 
     document.documentElement.classList.remove('has-intro');
@@ -252,74 +258,17 @@ export function startIntroAnimation({
       return;
     }
 
-    // 2. Blank white phase (50ms)
+    // 2. Logo is still and fully visible in the center (no animation)
     logo.style.visibility = 'visible';
-    const supportsClipPath = !forceFallback && checkClipPathSupport();
+    logo.style.clipPath = 'none';
+    logo.style.webkitClipPath = 'none';
+    logo.style.opacity = '1';
 
-    if (!supportsClipPath) {
-      logo.style.clipPath = 'none';
-      logo.style.webkitClipPath = 'none';
-      logo.style.opacity = '0';
-    } else {
-      logo.style.clipPath = 'inset(0 100% 0 0)';
-      logo.style.webkitClipPath = 'inset(0 100% 0 0)';
-      logo.style.opacity = '1';
-    }
-
-    blankTimer = setTimeout(() => {
+    // 3. Hold phase (still in center) before fading out
+    holdTimer = setTimeout(() => {
       if (isFading || isDone) return;
-
-      // 3. Wipe reveal phase (900ms)
-      if (supportsClipPath) {
-        try {
-          const wipeAnim = logo.animate(
-            [
-              { clipPath: 'inset(0 100% 0 0)', WebkitClipPath: 'inset(0 100% 0 0)' },
-              { clipPath: 'inset(0 0% 0 0)', WebkitClipPath: 'inset(0 0% 0 0)' },
-            ],
-            {
-              duration: timingConfig.wipe,
-              easing: introConfig.easing.wipe,
-              fill: 'forwards',
-            }
-          );
-          currentAnimation = wipeAnim;
-
-          wipeAnim.onfinish = () => {
-            if (isFading || isDone) return;
-            // 4. Hold phase (1000ms)
-            holdTimer = setTimeout(() => {
-              triggerFade();
-            }, timingConfig.hold);
-          };
-          wipeAnim.oncancel = () => {
-            if (!isFading && !isDone) triggerFade();
-          };
-        } catch {
-          // Fallback to opacity
-          logo.style.clipPath = 'none';
-          logo.style.webkitClipPath = 'none';
-          logo.animate([{ opacity: 0 }, { opacity: 1 }], {
-            duration: introConfig.fallbackFadeMs,
-            fill: 'forwards',
-          }).onfinish = () => {
-            holdTimer = setTimeout(triggerFade, timingConfig.hold);
-          };
-        }
-      } else {
-        // Fallback: 600ms opacity fade-in
-        const fallbackAnim = logo.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: introConfig.fallbackFadeMs,
-          fill: 'forwards',
-        });
-        fallbackAnim.onfinish = () => {
-          if (isFading || isDone) return;
-          holdTimer = setTimeout(() => {
-            triggerFade();
-          }, timingConfig.hold);
-        };
-      }
-    }, timingConfig.blank);
+      triggerFade();
+    }, timingConfig.hold);
   })();
 
   return {

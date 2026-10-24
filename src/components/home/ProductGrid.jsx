@@ -95,14 +95,22 @@ export function ProductGrid({
         </nav>
       )}
 
-      {/* Title with product count in plain text & Sort aligned right */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E5E5E3]">
-        <div className="flex items-center gap-3">
+      {/* Title with product count & Controls (Filters and Sort in one row on mobile) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-[#E5E5E3]">
+        {/* Left-aligned Title */}
+        <div>
+          <h1 className="text-[24px] sm:text-[28px] font-semibold text-[#141414] tracking-[-0.01em]">
+            {title} <span className="text-[15px] sm:text-[16px] font-normal text-[#6B6B6B]">({products.length})</span>
+          </h1>
+        </div>
+
+        {/* Filters and Sort in one row */}
+        <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
           {/* Mobile Filter Button */}
           <button
             type="button"
             onClick={onOpenMobileFilters}
-            className="lg:hidden min-h-[44px] px-3.5 rounded-[6px] border border-[#E5E5E3] bg-white text-[14px] font-semibold text-[#141414] flex items-center gap-2"
+            className="lg:hidden min-h-[42px] px-4 rounded-[6px] border border-[#E5E5E3] bg-white text-[14px] font-semibold text-[#141414] flex items-center gap-2 hover:bg-[#F5F4F0] transition-colors cursor-pointer"
             aria-label="Open filters"
           >
             <SlidersHorizontal className="w-4 h-4" />
@@ -112,32 +120,26 @@ export function ProductGrid({
             )}
           </button>
 
-          <div>
-            <h1 className="text-[28px] font-semibold text-[#141414] tracking-[-0.01em]">
-              {title} <span className="text-[16px] font-normal text-[#6B6B6B]">({products.length})</span>
-            </h1>
-          </div>
-        </div>
-
-        {/* Sort aligned right */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <label htmlFor="sort-dropdown" className="text-[14px] text-[#6B6B6B]">
-            Sort:
-          </label>
-          <div className="relative">
-            <select
-              id="sort-dropdown"
-              value={sortBy}
-              onChange={(e) => onSortChange && onSortChange(e.target.value)}
-              className="bg-white border border-[#E5E5E3] rounded-[6px] pl-3 pr-8 py-2 min-h-[40px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] appearance-none cursor-pointer"
-            >
-              <option value="newest">Newest</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-              <option value="discount">Discount</option>
-              <option value="in_stock">In Stock First</option>
-            </select>
-            <ArrowUpDown className="w-3.5 h-3.5 text-[#6B6B6B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Sort Dropdown */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="sort-dropdown" className="text-[13px] sm:text-[14px] text-[#6B6B6B] shrink-0">
+              Sort:
+            </label>
+            <div className="relative">
+              <select
+                id="sort-dropdown"
+                value={sortBy}
+                onChange={(e) => onSortChange && onSortChange(e.target.value)}
+                className="bg-white border border-[#E5E5E3] rounded-[6px] pl-3 pr-8 py-2 min-h-[42px] text-[13px] sm:text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] appearance-none cursor-pointer"
+              >
+                <option value="newest">Newest</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="discount">Discount</option>
+                <option value="in_stock">In Stock First</option>
+              </select>
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#6B6B6B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>

@@ -12,7 +12,8 @@
     <link rel="preload" href="/fonts/poppins-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="preload" href="/fonts/dm-serif-display-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
 
-    <!-- Intro Logo Preload -->
+    <!-- Intro Video & Logo Preload -->
+    <link rel="preload" href="/intro.mp4" as="video" type="video/mp4" />
     <link rel="preload" href="/intro/logo-trimmed.png" as="image" />
 
     <!-- Critical Intro CSS: Inlined for instantaneous zero-flash presentation -->
@@ -20,16 +21,46 @@
       #wrapstore-intro {
         position: fixed;
         inset: 0;
-        z-index: 9999;
-        background-color: #FFFFFF;
-        display: grid;
-        place-items: center;
+        z-index: 99999;
+        background-color: #050505;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         height: 100vh;
         height: 100dvh;
+        width: 100vw;
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         overflow: hidden;
         overscroll-behavior: none;
         touch-action: none;
+        box-sizing: border-box;
+      }
+      #wrapstore-intro-video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 1;
+        pointer-events: none;
+      }
+      #wrapstore-intro-overlay {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.75) 100%);
+        backdrop-filter: blur(1px);
+        -webkit-backdrop-filter: blur(1px);
+        z-index: 2;
+        pointer-events: none;
+      }
+      #wrapstore-intro-content {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
         box-sizing: border-box;
       }
       #wrapstore-intro-logo {
@@ -39,12 +70,13 @@
         max-height: 40vh;
         max-height: 40dvh;
         object-fit: contain;
-        clip-path: inset(0 100% 0 0);
-        -webkit-clip-path: inset(0 100% 0 0);
+        clip-path: none;
+        -webkit-clip-path: none;
         opacity: 1;
         user-select: none;
         -webkit-user-select: none;
         pointer-events: none;
+        filter: drop-shadow(0 10px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.35));
       }
       html.no-intro #wrapstore-intro {
         display: none !important;
@@ -57,32 +89,15 @@
     </noscript>
   </head>
   <body class="bg-[#FAFAF9] text-[#141414] antialiased">
-    <!-- Inline Decision Script: runs synchronously before first paint to prevent any flash -->
+    <!-- Inline Decision Script: checks accessibility preferences -->
     <script>
       (function() {
         try {
-          var p = window.location.pathname;
-          var isHome = p === '/' || p === '' || p === '/index.html';
-          var isIntroTest = p === '/intro-test';
-          var seen = false;
-          try {
-            seen = sessionStorage.getItem('wrapstore_intro_seen') !== null;
-          } catch(e) {}
-          var prefersReduced = false;
-          try {
-            prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          } catch(e) {}
-
-          if ((!isHome && !isIntroTest) || (seen && !isIntroTest) || prefersReduced) {
+          var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (prefersReduced) {
             document.documentElement.classList.add('no-intro');
             window.__WRAPSTORE_INTRO_ELIGIBLE__ = false;
             return;
-          }
-
-          if (!isIntroTest) {
-            try {
-              sessionStorage.setItem('wrapstore_intro_seen', '1');
-            } catch(e) {}
           }
           window.__WRAPSTORE_INTRO_ELIGIBLE__ = true;
           document.documentElement.classList.add('has-intro');
@@ -93,25 +108,108 @@
       })();
     </script>
 
-    <!-- Pre-rendered intro markup: present in DOM if eligible -->
-    <div id="wrapstore-intro" role="dialog" aria-modal="true" aria-label="WrapStore Intro">
-      <img
-        id="wrapstore-intro-logo"
-        src="/intro/logo-trimmed.png"
-        alt="WrapStore"
-        width="572"
-        height="158"
-        loading="eager"
-        decoding="async"
-      />
+    <!-- Pre-rendered intro markup: background video plays from second 4 till React DOM loads -->
+    <div id="wrapstore-intro" role="dialog" aria-modal="true" aria-label="WrapStore Loading">
+      <video
+        id="wrapstore-intro-video"
+        playsinline
+        webkit-playsinline
+        muted
+        autoplay
+        loop
+        preload="auto"
+        aria-hidden="true"
+      >
+        <source src="/intro.mp4#t=4" type="video/mp4" />
+      </video>
+
+      <div id="wrapstore-intro-overlay" aria-hidden="true"></div>
+
+      <div id="wrapstore-intro-content">
+        <img
+          id="wrapstore-intro-logo"
+          src="/intro/logo-trimmed.png"
+          alt="WrapStore"
+          width="572"
+          height="158"
+          loading="eager"
+          decoding="async"
+        />
+      </div>
     </div>
 
-    <!-- Cleanup script immediately following: if not eligible, remove element from DOM instantly -->
+    <!-- Intro Lifecycle Script: Starts video at second 4 & provides dismiss handler when React DOM loads -->
     <script>
-      if (!window.__WRAPSTORE_INTRO_ELIGIBLE__) {
-        var el = document.getElementById('wrapstore-intro');
-        if (el) el.remove();
-      }
+      (function() {
+        if (!window.__WRAPSTORE_INTRO_ELIGIBLE__) {
+          var el = document.getElementById('wrapstore-intro');
+          if (el) el.remove();
+          return;
+        }
+
+        var video = document.getElementById('wrapstore-intro-video');
+        if (video) {
+          function setTimeFour() {
+            try {
+              if (video.currentTime < 4) {
+                video.currentTime = 4;
+              }
+            } catch(e) {}
+            var p = video.play();
+            if (p && typeof p.catch === 'function') p.catch(function() {});
+          }
+
+          setTimeFour();
+          video.addEventListener('loadedmetadata', setTimeFour);
+          video.addEventListener('canplay', setTimeFour);
+          video.addEventListener('loadeddata', setTimeFour);
+
+          // Loop only from second 4 onwards
+          video.addEventListener('timeupdate', function() {
+            if (video.currentTime < 4) {
+              try { video.currentTime = 4; } catch(e) {}
+            }
+          });
+        }
+
+        // Logo remains static and centered in the loading animation (no wipe/slide animation)
+        var logo = document.getElementById('wrapstore-intro-logo');
+        if (logo) {
+          logo.style.clipPath = 'none';
+          logo.style.webkitClipPath = 'none';
+          logo.style.opacity = '1';
+        }
+
+        window.__WRAPSTORE_INTRO_START_TIME__ = performance.now();
+        window.__DISMISS_WRAPSTORE_INTRO__ = function() {
+          var intro = document.getElementById('wrapstore-intro');
+          if (!intro || intro.dataset.dismissed) return;
+          intro.dataset.dismissed = 'true';
+
+          var elapsed = performance.now() - (window.__WRAPSTORE_INTRO_START_TIME__ || 0);
+          // Wait at least 850ms so the initial logo reveal & video start are visibly experienced
+          var minWait = Math.max(0, 850 - elapsed);
+
+          setTimeout(function() {
+            intro.style.transition = 'opacity 450ms cubic-bezier(0.4, 0, 0.2, 1)';
+            intro.style.opacity = '0';
+            intro.style.pointerEvents = 'none';
+
+            setTimeout(function() {
+              var v = document.getElementById('wrapstore-intro-video');
+              if (v) {
+                try { v.pause(); } catch(e) {}
+              }
+              if (intro.parentNode) intro.parentNode.removeChild(intro);
+              document.documentElement.classList.remove('has-intro');
+              document.documentElement.classList.add('no-intro');
+              try {
+                window.dispatchEvent(new CustomEvent('wrapstore:intro:done'));
+              } catch(e) {}
+            }, 470);
+          }, minWait);
+        };
+      })();
     </script>
 
     <div id="root"></div>

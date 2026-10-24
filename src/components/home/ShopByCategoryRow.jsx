@@ -24,12 +24,12 @@ const BENTO_CATEGORIES = [
     link: '/?category=Accessories&subcategory=Tempered%20Glass',
   },
   {
-    id: 'chargers-adapters',
-    title: 'Chargers & Adapters',
-    description: 'Fast charging for your day.',
-    image: '/bento/chargers-adapters.jpg',
-    alt: 'Chargers and Adapters - Dual fast charging wall adapter',
-    link: '/?category=Accessories&subcategory=Adapters',
+    id: 'ipad-case',
+    title: 'iPad Case',
+    description: 'Protection for bigger possibilities.',
+    image: '/bento/ipad-case.jpg',
+    alt: 'iPad Case - Premium tablet with magnetic folio cover and stylus',
+    link: '/?category=Accessories&subcategory=iPad%20Case',
   },
   {
     id: 'cables',
@@ -40,12 +40,12 @@ const BENTO_CATEGORIES = [
     link: '/?category=Accessories&subcategory=Cables',
   },
   {
-    id: 'audio',
-    title: 'Audio',
-    description: 'Immerse in better sound.',
-    image: '/bento/audio.jpg',
-    alt: 'Audio - Wireless earbuds in charging case',
-    link: '/?category=Accessories&subcategory=AirPods%20Cases',
+    id: 'lens-protector',
+    title: 'Lens Protector',
+    description: 'Perfect protection for camera lens.',
+    image: '/bento/lens-protector.jpg',
+    alt: 'Lens Protector - Perfect protection for camera lens',
+    link: '/?category=Accessories&subcategory=Lens%20Protector',
   },
   {
     id: 'power-banks',
@@ -56,12 +56,12 @@ const BENTO_CATEGORIES = [
     link: '/?category=Accessories&subcategory=Power%20Bank',
   },
   {
-    id: 'ipad-case',
-    title: 'iPad Case',
-    description: 'Protection for bigger possibilities.',
-    image: '/bento/ipad-case.jpg',
-    alt: 'iPad Case - Premium tablet with magnetic folio cover and stylus',
-    link: '/?category=Accessories&subcategory=iPad%20Case',
+    id: 'chargers-adapters',
+    title: 'Chargers & Adapters',
+    description: 'Fast charging for your day.',
+    image: '/bento/chargers-adapters.jpg',
+    alt: 'Chargers and Adapters - Dual fast charging wall adapter',
+    link: '/?category=Accessories&subcategory=Adapters',
   },
   {
     id: 'other-accessories',
@@ -149,7 +149,7 @@ export function ShopByCategoryRow() {
   return (
     <section
       aria-label="Shop by Category Bento Grid"
-      className="w-full max-w-[1440px] mx-auto pt-2 pb-4 select-none"
+      className="w-full pt-2 pb-4 select-none"
     >
       {/* ─────────────────────────────────────────────────────────────────
           1. SECTION HEADER
@@ -172,11 +172,11 @@ export function ShopByCategoryRow() {
         {/* Middle / Right: Supporting Text & Pill CTA */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 lg:gap-8">
           <p className="text-[13px] sm:text-[14px] text-[#666666] leading-relaxed max-w-sm">
-            Everything your device needs — cases, protection, chargers, audio and more, all in one place.
+            Everything your device needs — cases, protection, chargers, accessories and more, all in one place.
           </p>
           <Link
             to="/?view=all"
-            className="inline-flex items-center justify-center gap-2 bg-[#141414] hover:bg-black text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-[13px] sm:text-[14px] font-medium transition-all duration-200 shadow-sm shrink-0 group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
+            className="hidden sm:inline-flex items-center justify-center gap-2 bg-[#141414] hover:bg-black text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-[13px] sm:text-[14px] font-medium transition-all duration-200 shadow-sm shrink-0 group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
           >
             <span>View All Categories</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -211,7 +211,7 @@ export function ShopByCategoryRow() {
             />
           </div>
 
-          {/* Right 2x2 Grid on Desktop (Categories 2 to 5: Screen Protectors, Chargers, Cables, Audio) */}
+          {/* Right 2x2 Grid on Desktop (Categories 2 to 5: Screen Protectors, iPad Case, Cables, Lens Protector) */}
           <div className="sm:col-span-2 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             {gridTopRight.map((cat) => (
               <BentoCard
@@ -223,7 +223,7 @@ export function ShopByCategoryRow() {
           </div>
         </div>
 
-        {/* Tier 2: Bottom Bento Section (Categories 6, 7, 8: Power Banks, iPad Case, Other Accessories) */}
+        {/* Tier 2: Bottom Bento Section (Categories 6, 7, 8: Power Banks, Chargers & Adapters, Other Accessories) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 sm:gap-5">
           {/* Category 6: Power Banks */}
           <div className="sm:col-span-1 lg:col-span-3 min-h-[200px] sm:min-h-[220px] lg:min-h-[240px]">
@@ -233,7 +233,7 @@ export function ShopByCategoryRow() {
             />
           </div>
 
-          {/* Category 7: iPad Case (Wide Center Card) */}
+          {/* Category 7: Chargers & Adapters (Wide Center Card) */}
           <div className="sm:col-span-1 lg:col-span-5 min-h-[200px] sm:min-h-[220px] lg:min-h-[240px]">
             <BentoCard
               category={gridBottom[1]}
@@ -250,6 +250,17 @@ export function ShopByCategoryRow() {
           </div>
         </div>
 
+      </div>
+
+      {/* Mobile-only CTA button placed after all cards */}
+      <div className="mt-6 flex sm:hidden justify-center">
+        <Link
+          to="/?view=all"
+          className="w-full inline-flex items-center justify-center gap-2 bg-[#141414] hover:bg-black text-white px-6 py-3 rounded-full text-[14px] font-medium transition-all duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
+        >
+          <span>View All Categories</span>
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+        </Link>
       </div>
     </section>
   );

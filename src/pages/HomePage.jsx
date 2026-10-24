@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
 import { ShopByCategoryRow } from '../components/home/ShopByCategoryRow';
-import { DealOfTheDaySection } from '../components/home/DealOfTheDaySection';
-import { FeaturedProductSection } from '../components/home/FeaturedProductSection';
+import { WhyWrapstore } from '../components/home/WhyWrapstore';
+import { FeaturedProductsSection } from '../components/home/FeaturedProductsSection';
 import { NewArrivalsSection } from '../components/home/NewArrivalsSection';
 import { HomeAboutBlock } from '../components/home/HomeAboutBlock';
 import { StoreDetailsSection } from '../components/home/StoreDetailsSection';
@@ -14,7 +14,6 @@ import { ProductGrid } from '../components/home/ProductGrid';
 import { useProductsContext } from '../context/ProductsContext';
 import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
 import { fetchBestSellersMap } from '../lib/productRowAdapter';
-import { selectDealOfTheDay, selectFeaturedProduct } from '../lib/dealFeaturedAdapter';
 import { ChevronRight } from 'lucide-react';
 
 const INITIAL_FILTERS = {
@@ -53,25 +52,8 @@ export function HomePage() {
     };
   }, []);
 
-  // Compute Deal of the Day product
-  const dealData = useMemo(() => {
-    return selectDealOfTheDay(liveProducts);
-  }, [liveProducts]);
-
-  const dealProductId = dealData?.product?.id || null;
-
-  // Compute Featured product (excluding product used in Deal)
-  const featuredProduct = useMemo(() => {
-    return selectFeaturedProduct(liveProducts, dealProductId, bestSellerMap);
-  }, [liveProducts, dealProductId, bestSellerMap]);
-
-  // Compute excluded product IDs for New Arrivals (strictly exclude products shown above)
-  const excludedProductIds = useMemo(() => {
-    const set = new Set();
-    if (dealProductId) set.add(dealProductId);
-    if (featuredProduct?.id) set.add(featuredProduct.id);
-    return set;
-  }, [dealProductId, featuredProduct]);
+  // Excluded product IDs for New Arrivals
+  const excludedProductIds = useMemo(() => new Set(), []);
 
   const filterOptions = useMemo(
     () => deriveFilterOptions(liveProducts, liveCategories, liveSubcategories),
@@ -302,17 +284,17 @@ export function HomePage() {
               />
             </div>
 
-            {/* 3. Deal of the Day: Full-bleed band #F4F3F0 with 1px borders, hides if no eligible product */}
-            {dealData && (
-              <DealOfTheDaySection dealData={dealData} />
-            )}
+            {/* Featured Products: Handpicked for a Better Everyday */}
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+              <FeaturedProductsSection />
+            </div>
 
-            {/* 4. Featured: Plain background, 12-col grid mirrored, hides if no eligible product */}
-            {featuredProduct && (
-              <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-                <FeaturedProductSection product={featuredProduct} />
-              </div>
-            )}
+            {/* 2.5 Why WrapStore: Editorial 4-card feature row */}
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+              <WhyWrapstore />
+            </div>
+
+
 
             {/* 5. New arrivals: Grid of up to 8, excluding Deal and Featured products */}
             <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">

@@ -75,12 +75,39 @@ export function IntroProvider({ children }) {
     setIsRevealing(false);
     setIntroPlayed(true);
 
-    // Create fresh intro container and logo elements
+    // Create fresh intro container with video, overlay, and logo
     const container = document.createElement('div');
     container.id = 'wrapstore-intro';
     container.setAttribute('role', 'dialog');
     container.setAttribute('aria-modal', 'true');
     container.setAttribute('aria-label', 'WrapStore Intro');
+
+    const video = document.createElement('video');
+    video.id = 'wrapstore-intro-video';
+    video.playsInline = true;
+    video.muted = true;
+    video.autoplay = true;
+    video.loop = true;
+    video.preload = 'auto';
+    video.src = '/intro.mp4#t=4';
+    video.currentTime = 4;
+    video.addEventListener('loadedmetadata', () => {
+      if (video.currentTime < 4) video.currentTime = 4;
+      video.play().catch(() => {});
+    });
+    video.addEventListener('timeupdate', () => {
+      if (video.currentTime < 4) {
+        try { video.currentTime = 4; } catch(e) {}
+      }
+    });
+    container.appendChild(video);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'wrapstore-intro-overlay';
+    container.appendChild(overlay);
+
+    const content = document.createElement('div');
+    content.id = 'wrapstore-intro-content';
 
     const logo = document.createElement('img');
     logo.id = 'wrapstore-intro-logo';
@@ -91,8 +118,10 @@ export function IntroProvider({ children }) {
     logo.loading = 'eager';
     logo.decoding = 'async';
 
-    container.appendChild(logo);
+    content.appendChild(logo);
+    container.appendChild(content);
     document.body.appendChild(container);
+    document.documentElement.classList.remove('no-intro');
     document.documentElement.classList.add('has-intro');
 
     activeControllerRef.current = startIntroAnimation({

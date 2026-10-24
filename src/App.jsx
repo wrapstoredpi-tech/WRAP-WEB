@@ -41,6 +41,12 @@ function AppContent() {
   const isAdmin = location.pathname.startsWith('/wrapwebadmin');
   const isReduced = isCheckout || isAdmin;
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.__DISMISS_WRAPSTORE_INTRO__ === 'function') {
+      window.__DISMISS_WRAPSTORE_INTRO__();
+    }
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#141414] font-sans antialiased">
       {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout or admin flows) */}

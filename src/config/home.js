@@ -77,7 +77,7 @@ export const homeConfig = {
     heading: 'New arrivals',
     viewAllText: 'View all',
     viewAllLink: '/?view=all',
-    limit: 8,
+    limit: 4,
     minProductsToShow: 4,
     newTagThresholdDays: 14,
   },

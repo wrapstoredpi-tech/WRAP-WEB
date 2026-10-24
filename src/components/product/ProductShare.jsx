@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 
-// Official WhatsApp brand icon
+// Official WhatsApp icon
 function WhatsAppIcon({ className = 'w-4 h-4' }) {
   return (
     <svg
@@ -16,7 +16,7 @@ function WhatsAppIcon({ className = 'w-4 h-4' }) {
   );
 }
 
-// Official Instagram brand icon
+// Official Instagram icon
 function InstagramIcon({ className = 'w-4 h-4' }) {
   return (
     <svg
@@ -35,7 +35,7 @@ function InstagramIcon({ className = 'w-4 h-4' }) {
   );
 }
 
-export function ProductShare({ product, selectedModel = null }) {
+export function ProductShare({ product, selectedModel = null, className = '' }) {
   const [copied, setCopied] = useState(false);
 
   if (!product) return null;
@@ -63,7 +63,6 @@ export function ProductShare({ product, selectedModel = null }) {
     const shareUrl = getShareUrl();
     const shareText = getShareText();
 
-    // 1. Copy link to clipboard
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(shareUrl);
@@ -74,7 +73,6 @@ export function ProductShare({ product, selectedModel = null }) {
       console.warn('Clipboard write failed:', e);
     }
 
-    // 2. If navigator.share supported (Mobile iOS/Android browsers), open native share sheet
     if (navigator.share) {
       try {
         await navigator.share({
@@ -84,55 +82,51 @@ export function ProductShare({ product, selectedModel = null }) {
         });
         return;
       } catch (err) {
-        // User cancelled or unsupported share target
         if (err.name !== 'AbortError') {
           console.warn('Navigator share error:', err);
         }
       }
     }
 
-    // 3. Fallback: Open Instagram
     window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="pt-3 border-t border-[#E5E5E3]">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <span className="text-[13px] font-medium text-[#141414]">
-          Share the product:
-        </span>
-        <div className="flex items-center gap-2">
-          {/* WhatsApp Share */}
-          <button
-            type="button"
-            onClick={handleWhatsAppShare}
-            aria-label="Share product on WhatsApp"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-[#E5E5E3] hover:border-[#25D366] hover:bg-[#25D366]/5 text-[#141414] hover:text-[#25D366] text-[12px] font-medium transition-colors cursor-pointer"
-          >
-            <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-            <span>WhatsApp</span>
-          </button>
+    <div className={`flex items-center justify-between gap-3 flex-wrap pt-2 ${className}`}>
+      <span className="text-[13px] sm:text-[14px] font-medium text-[#141414]">
+        Share this product
+      </span>
+      <div className="flex items-center gap-2.5">
+        {/* WhatsApp Share */}
+        <button
+          type="button"
+          onClick={handleWhatsAppShare}
+          aria-label="Share product on WhatsApp"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E3] hover:border-[#25D366] text-[#141414] text-[13px] font-medium shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+        >
+          <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+          <span>WhatsApp</span>
+        </button>
 
-          {/* Instagram Share */}
-          <button
-            type="button"
-            onClick={handleInstagramShare}
-            aria-label="Share product on Instagram"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-[#E5E5E3] hover:border-[#E1306C] hover:bg-[#E1306C]/5 text-[#141414] hover:text-[#E1306C] text-[12px] font-medium transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 text-[#E1306C]" />
-                <span className="text-[#E1306C]">Link copied!</span>
-              </>
-            ) : (
-              <>
-                <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
-                <span>Instagram</span>
-              </>
-            )}
-          </button>
-        </div>
+        {/* Instagram Share */}
+        <button
+          type="button"
+          onClick={handleInstagramShare}
+          aria-label="Share product on Instagram"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E3] hover:border-[#E1306C] text-[#141414] text-[13px] font-medium shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+        >
+          {copied ? (
+            <>
+              <Check className="w-4 h-4 text-[#E1306C]" />
+              <span className="text-[#E1306C]">Copied!</span>
+            </>
+          ) : (
+            <>
+              <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
+              <span>Instagram</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

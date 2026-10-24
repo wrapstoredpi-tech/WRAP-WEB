@@ -162,6 +162,14 @@ export const EXTENSIVE_COLOR_MAP = {
   plum: '#581C87',
   magenta: '#C026D3',
   berry: '#831843',
+
+  // Neons
+  neon: '#39FF14',
+  'neon green': '#39FF14',
+  'neon yellow': '#CCFF00',
+  'neon orange': '#FF5F1F',
+  'neon pink': '#FF10F0',
+  'neon blue': '#00FFFF',
 };
 
 /**
@@ -174,7 +182,8 @@ export const PRIMARY_COLOR_KEYWORDS = new Set([
   'teal', 'violet', 'indigo', 'cream', 'beige', 'tan', 'khaki', 'starlight', 'frost',
   'copper', 'bronze', 'platinum', 'graphite', 'emerald', 'amber', 'ruby', 'lavender',
   'lilac', 'peach', 'plum', 'magenta', 'ochre', 'rust', 'caramel', 'espresso', 'coffee',
-  'chocolate', 'taupe', 'ash', 'smoke', 'sand', 'saddle',
+  'chocolate', 'taupe', 'ash', 'smoke', 'sand', 'saddle', 'neon', 'lime', 'turquoise',
+  'aquamarine', 'crimson', 'scarlet',
 ]);
 
 /**
