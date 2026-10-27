@@ -270,10 +270,8 @@ export function HomePage() {
         <main className="flex-1 w-full bg-[#FAFAF9] pb-16 sm:pb-24">
           <div className="space-y-16 lg:space-y-24">
             
-            {/* 1. First Screen: Hero 12-col grid (copy 5 cols left, photo slider 7 cols right) */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <HeroFirstScreen />
-            </div>
+            {/* 1. First Screen: Hero Full-Width Banner Slider (Completely hidden if no slides) */}
+            <HeroFirstScreen />
 
             {/* 2. Shop by Category: Row directly under first screen */}
             <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">

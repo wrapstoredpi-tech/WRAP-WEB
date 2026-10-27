@@ -35,28 +35,7 @@ export const homeConfig = {
   heroSlider: {
     autoplayIntervalMs: 6000,
     aspectRatio: '21/9',
-    slides: [
-      {
-        id: 'unlimited-prints-video',
-        type: 'video',
-        video: '/video_demo1.mp4',
-        image: '/hero/slide-2.webp',
-        alt: 'Unlimited Prints - Find your perfect case',
-        tag: 'Unlimited Prints',
-        tagSubtitle: 'Find your perfect case',
-        link: '/?category=Mobile%20Cases',
-      },
-      {
-        id: 'demo-2-video',
-        type: 'video',
-        video: '/demo2.mp4',
-        image: '/hero/slide-1.webp',
-        alt: 'Signature Cases - Explore Apple & Samsung designs',
-        tag: 'Signature Cases',
-        tagSubtitle: 'Explore Apple & Samsung',
-        link: '/?category=Mobile%20Cases',
-      },
-    ],
+    slides: [],
   },
 
   // Deal of the Day configuration (imported from src/config/deal.js)

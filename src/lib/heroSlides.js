@@ -1,6 +1,6 @@
 import { homeConfig } from '../config/home';
 
-const STORAGE_KEY = 'wrapstore_hero_slides_v3';
+const STORAGE_KEY = 'wrapstore_hero_slides_v4';
 
 /**
  * Returns the current active hero slider slides.
@@ -11,10 +11,11 @@ export function getHeroSlides() {
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem('wrapstore_hero_slides_v2');
+      localStorage.removeItem('wrapstore_hero_slides_v3');
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
@@ -31,18 +32,19 @@ export function getHeroSlides() {
 export function saveHeroSlides(slides) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(slides));
-    window.dispatchEvent(new CustomEvent('wrapstore:hero_slides_updated', { detail: slides }));
+    const list = Array.isArray(slides) ? slides : [];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('wrapstore:hero_slides_updated', { detail: list }));
   } catch (e) {
     console.warn('Error saving hero slides:', e);
   }
 }
 
 /**
- * Resets hero slides back to default storefront slides.
+ * Resets hero slides back to default storefront slides (empty array).
  */
 export function resetHeroSlides() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return [];
   try {
     localStorage.removeItem(STORAGE_KEY);
     const defaults = homeConfig.heroSlider?.slides || [];
