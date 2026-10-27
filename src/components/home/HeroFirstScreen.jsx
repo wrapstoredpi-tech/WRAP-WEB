@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { homeConfig } from '../../config/home';
 import { useIntro } from '../../context/IntroContext';
 import { useIntroReveal } from '../../hooks/useIntroReveal';
-import { getHeroSlides } from '../../lib/heroSlides';
+import { getHeroSlides, fetchHeroSlides } from '../../lib/heroSlides';
 
 export function HeroFirstScreen() {
   const { isIntroDone } = useIntro();
@@ -15,8 +15,15 @@ export function HeroFirstScreen() {
   const [paused, setPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
 
-  // Sync slides if updated via admin or custom/storage events
+  // Sync slides from DB on mount and listen to updates
   useEffect(() => {
+    let isMounted = true;
+    fetchHeroSlides().then((dbSlides) => {
+      if (isMounted && Array.isArray(dbSlides)) {
+        setSlides(dbSlides);
+      }
+    });
+
     const handleUpdate = (e) => {
       if (Array.isArray(e.detail)) {
         setSlides(e.detail);
@@ -37,6 +44,7 @@ export function HeroFirstScreen() {
     window.addEventListener('wrapstore:hero_slides_updated', handleUpdate);
     window.addEventListener('storage', handleStorage);
     return () => {
+      isMounted = false;
       window.removeEventListener('wrapstore:hero_slides_updated', handleUpdate);
       window.removeEventListener('storage', handleStorage);
     };

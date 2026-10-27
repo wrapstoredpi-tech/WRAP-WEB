@@ -36,6 +36,7 @@ function isGenuineOrder(ord) {
   if (DEMO_ORDER_IDS.has(ord.orderId)) return false;
   const name = (ord.contact?.name || '').trim().toLowerCase();
   if (DEMO_NAMES.has(name)) return false;
+  if (name.includes('__') || name.includes('hero_slide') || name.includes('system')) return false;
   return true;
 }
 

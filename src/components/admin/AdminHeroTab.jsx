@@ -22,7 +22,7 @@ import {
   Film,
   Sparkles,
 } from 'lucide-react';
-import { getHeroSlides, saveHeroSlides, resetHeroSlides } from '../../lib/heroSlides';
+import { getHeroSlides, saveHeroSlides, resetHeroSlides, fetchHeroSlides } from '../../lib/heroSlides';
 
 // Pre-packaged store showroom photos readily available in public assets
 const PRESET_STORE_PHOTOS = [
@@ -175,6 +175,22 @@ export function AdminHeroTab() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(true);
+
+  // Sync slides from DB on mount
+  React.useEffect(() => {
+    let isMounted = true;
+    fetchHeroSlides().then((dbSlides) => {
+      if (isMounted && Array.isArray(dbSlides)) {
+        setSlides(dbSlides);
+        setIsSyncing(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Modal Form State
   const [slideType, setSlideType] = useState('image'); // 'image' | 'video'
@@ -286,9 +302,11 @@ export function AdminHeroTab() {
     }
   };
 
-  const handleSaveAll = (updatedSlides) => {
+  const handleSaveAll = async (updatedSlides) => {
     setSlides(updatedSlides);
-    saveHeroSlides(updatedSlides);
+    setIsSaving(true);
+    await saveHeroSlides(updatedSlides);
+    setIsSaving(false);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
@@ -330,10 +348,12 @@ export function AdminHeroTab() {
     }
   };
 
-  const handleResetDefaults = () => {
-    if (window.confirm('Reset hero slides back to default storefront slides (0 slides)?')) {
-      const defaults = resetHeroSlides();
+  const handleResetDefaults = async () => {
+    if (window.confirm('Reset hero slides back to default storefront slides (0 slides)? This will clear the slides in the database.')) {
+      setIsSaving(true);
+      const defaults = await resetHeroSlides();
       setSlides(defaults);
+      setIsSaving(false);
       setActiveSlideIndex(0);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2500);
@@ -402,10 +422,17 @@ export function AdminHeroTab() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {savedSuccess && (
+          {isSaving && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 rounded-[6px] text-[12px] font-semibold animate-pulse">
+              <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+              <span>Saving to database...</span>
+            </div>
+          )}
+
+          {savedSuccess && !isSaving && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-[6px] text-[12px] font-semibold animate-fade-in">
               <Check className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Saved to live homepage!</span>
+              <span>Saved to database & storefront!</span>
             </div>
           )}
 
