@@ -19,7 +19,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpenMobile, setIsSearchOpenMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeDropdown, setActiveDropdown] = useState(null); // 'iphone' | 'samsung' | 'accessories' | 'account' | null
+  const [activeDropdown, setActiveDropdown] = useState(null); // 'mobile-cases' | 'accessories' | 'account' | null
   const [mobileAccordion, setMobileAccordion] = useState(null);
 
   const navRef = useRef(null);
@@ -307,35 +307,36 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
               className="hidden md:flex items-center space-x-7 lg:space-x-8"
               aria-label="Main Navigation"
             >
-              {/* iPhone Cases Dropdown */}
+              {/* Mobile Cases Dropdown */}
               <div
                 className="relative"
-                onMouseEnter={() => setActiveDropdown('iphone')}
+                onMouseEnter={() => setActiveDropdown('mobile-cases')}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
                 <button
                   type="button"
-                  onClick={() => handleNavigateToListing({ brand: 'Apple', category: 'Mobile Cases' })}
+                  onClick={() => handleNavigateToListing({ category: 'Mobile Cases' })}
                   className={`flex items-center gap-1 text-[14px] py-4 transition-colors cursor-pointer ${
-                    activeDropdown === 'iphone' ? 'font-semibold text-[#B0521F]' : 'font-medium text-[#141414] hover:text-[#B0521F]'
+                    activeDropdown === 'mobile-cases' ? 'font-semibold text-[#B0521F]' : 'font-medium text-[#141414] hover:text-[#B0521F]'
                   }`}
                 >
-                  <span>iPhone Cases</span>
+                  <span>Mobile Cases</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
 
-                {activeDropdown === 'iphone' && (
-                  <div className="absolute top-full left-0 w-[440px] bg-white border border-[#E5E5E3] rounded-[6px] shadow-lg p-4 grid grid-cols-2 gap-4 animate-fade-in z-50">
+                {activeDropdown === 'mobile-cases' && (
+                  <div className="absolute top-full left-0 w-[520px] bg-white border border-[#E5E5E3] rounded-[6px] shadow-lg p-5 grid grid-cols-2 gap-6 animate-fade-in z-50">
+                    {/* Apple / iPhone Column */}
                     <div>
-                      <p className="text-[12px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-1.5 mb-2">
-                        By Model Series
+                      <p className="text-[12px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-1.5 mb-2.5">
+                        Apple (iPhone)
                       </p>
                       <ul className="space-y-1.5">
                         {iphoneSeries.map((s) => (
                           <li key={s.title}>
                             <button
                               type="button"
-                              onClick={() => handleNavigateToListing({ brand: 'Apple', series: s.title })}
+                              onClick={() => handleNavigateToListing({ brand: 'Apple', series: s.title, category: 'Mobile Cases' })}
                               className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
                             >
                               {s.title}
@@ -354,80 +355,17 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                       </ul>
                     </div>
 
+                    {/* Samsung Column */}
                     <div>
-                      <p className="text-[12px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-1.5 mb-2">
-                        Types &amp; Styles
-                      </p>
-                      <ul className="space-y-1.5">
-                        {iphoneSubcategories.length > 0 ? (
-                          iphoneSubcategories.map((sub) => (
-                            <li key={sub.id}>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigateToListing({ subcategory: sub.name, category: 'Mobile Cases' })}
-                                className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
-                              >
-                                {sub.name}
-                              </button>
-                            </li>
-                          ))
-                        ) : (
-                          <>
-                            <li>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigateToListing({ brand: 'Apple' })}
-                                className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
-                              >
-                                Protective Cases
-                              </button>
-                            </li>
-                            <li>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigateToListing({ brand: 'Apple' })}
-                                className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
-                              >
-                                Leather Cases
-                              </button>
-                            </li>
-                          </>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Samsung Cases Dropdown */}
-              <div
-                className="relative"
-                onMouseEnter={() => setActiveDropdown('samsung')}
-                onMouseLeave={() => setActiveDropdown(null)}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleNavigateToListing({ brand: 'Samsung', category: 'Mobile Cases' })}
-                  className={`flex items-center gap-1 text-[14px] py-4 transition-colors cursor-pointer ${
-                    activeDropdown === 'samsung' ? 'font-semibold text-[#B0521F]' : 'font-medium text-[#141414] hover:text-[#B0521F]'
-                  }`}
-                >
-                  <span>Samsung Cases</span>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-
-                {activeDropdown === 'samsung' && (
-                  <div className="absolute top-full left-0 w-[440px] bg-white border border-[#E5E5E3] rounded-[6px] shadow-lg p-4 grid grid-cols-2 gap-4 animate-fade-in z-50">
-                    <div>
-                      <p className="text-[12px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-1.5 mb-2">
-                        By Model Series
+                      <p className="text-[12px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-1.5 mb-2.5">
+                        Samsung Cases
                       </p>
                       <ul className="space-y-1.5">
                         {samsungSeries.map((s) => (
                           <li key={s.title}>
                             <button
                               type="button"
-                              onClick={() => handleNavigateToListing({ brand: 'Samsung', series: s.title })}
+                              onClick={() => handleNavigateToListing({ brand: 'Samsung', series: s.title, category: 'Mobile Cases' })}
                               className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
                             >
                               {s.title}
@@ -446,46 +384,15 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                       </ul>
                     </div>
 
-                    <div>
-                      <p className="text-[12px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-1.5 mb-2">
-                        Types &amp; Styles
-                      </p>
-                      <ul className="space-y-1.5">
-                        {samsungSubcategories.length > 0 ? (
-                          samsungSubcategories.map((sub) => (
-                            <li key={sub.id}>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigateToListing({ subcategory: sub.name, category: 'Mobile Cases' })}
-                                className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
-                              >
-                                {sub.name}
-                              </button>
-                            </li>
-                          ))
-                        ) : (
-                          <>
-                            <li>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigateToListing({ brand: 'Samsung' })}
-                                className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
-                              >
-                                Armor Cases
-                              </button>
-                            </li>
-                            <li>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigateToListing({ brand: 'Samsung' })}
-                                className="text-[14px] text-[#6B6B6B] hover:text-[#141414] transition-colors w-full text-left py-1 cursor-pointer"
-                              >
-                                Clear Hybrid Cases
-                              </button>
-                            </li>
-                          </>
-                        )}
-                      </ul>
+                    {/* Bottom Strip */}
+                    <div className="col-span-2 pt-3 border-t border-[#E5E5E3] flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToListing({ category: 'Mobile Cases' })}
+                        className="text-[12px] font-semibold text-[#B0521F] hover:underline cursor-pointer"
+                      >
+                        Browse all mobile cases →
+                      </button>
                     </div>
                   </div>
                 )}
@@ -611,21 +518,21 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                   - Signed out: "Login" linking to /login
                   - Signed in: first name with dropdown menu (Orders, Saved addresses, Profile, Sign out)
                   ───────────────────────────────────────────────────────────────── */}
+              {/* Account / Profile Icon Button */}
               <div ref={accountRef} className="relative">
                 {isAuthLoading ? (
-                  <div className="w-12 h-5 bg-[#E5E5E3] rounded animate-pulse" aria-hidden="true" />
+                  <div className="w-10 h-10 rounded-full bg-[#E5E5E3] animate-pulse" aria-hidden="true" />
                 ) : user ? (
                   <div>
                     <button
                       type="button"
                       onClick={() => setActiveDropdown(activeDropdown === 'account' ? null : 'account')}
-                      className="inline-flex items-center gap-1 text-[14px] font-medium text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2 rounded-[6px] cursor-pointer"
+                      className="w-10 h-10 flex items-center justify-center text-[#141414] hover:text-[#B0521F] hover:bg-[#EFEFEB]/80 transition-colors rounded-full cursor-pointer"
                       aria-label="Account menu"
                       aria-expanded={activeDropdown === 'account'}
+                      title={firstName ? `Account (${firstName})` : 'Account'}
                     >
-                      <User className="w-4 h-4 text-[#6B6B6B]" />
-                      <span className="hidden sm:inline">{firstName || 'Account'}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                      <User className="w-5 h-5" />
                     </button>
 
                     {activeDropdown === 'account' && (
@@ -673,21 +580,30 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                 ) : (
                   <Link
                     to="/login"
-                    className="inline-flex items-center text-[14px] font-medium text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2"
+                    className="w-10 h-10 flex items-center justify-center text-[#141414] hover:text-[#B0521F] hover:bg-[#EFEFEB]/80 transition-colors rounded-full"
+                    aria-label="Profile / Login"
+                    title="Profile / Login"
                   >
-                    Login
+                    <User className="w-5 h-5" />
                   </Link>
                 )}
               </div>
 
-              {/* Bag with Count */}
+              {/* Bag Icon (only bag icon; with red circle badge if items added) */}
               <Link
                 to="/cart"
-                className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2 rounded-[6px]"
+                className="relative w-10 h-10 flex items-center justify-center text-[#141414] hover:text-[#B0521F] hover:bg-[#EFEFEB]/80 transition-colors rounded-full"
                 aria-label={`Shopping bag with ${itemCount} items`}
+                title={itemCount > 0 ? `${itemCount} items in bag` : 'Shopping bag'}
               >
-                <ShoppingBag className="w-5 h-5" />
-                <span className="tabular-nums">Bag ({itemCount})</span>
+                <div className="relative flex items-center justify-center">
+                  <ShoppingBag className="w-5 h-5" />
+                  {itemCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center tabular-nums leading-none shadow-sm pointer-events-none">
+                      {itemCount > 99 ? '99+' : itemCount}
+                    </span>
+                  )}
+                </div>
               </Link>
             </div>
           </div>
@@ -737,84 +653,76 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
           {/* Mobile Accordions & Links */}
           <div className="p-4 space-y-3 flex-1">
             
-            {/* Accordion: iPhone Cases */}
+            {/* Accordion: Mobile Cases */}
             <div className="border border-[#E5E5E3] rounded-[6px] bg-white overflow-hidden">
               <button
                 type="button"
-                onClick={() => setMobileAccordion(mobileAccordion === 'iphone' ? null : 'iphone')}
+                onClick={() => setMobileAccordion(mobileAccordion === 'mobile-cases' ? null : 'mobile-cases')}
                 className="w-full min-h-[48px] px-4 flex items-center justify-between text-[16px] font-semibold text-[#141414] cursor-pointer"
               >
-                <span>iPhone Cases</span>
+                <span>Mobile Cases</span>
                 <ChevronDown
                   className={`w-4 h-4 text-[#6B6B6B] transition-transform ${
-                    mobileAccordion === 'iphone' ? 'rotate-180' : ''
+                    mobileAccordion === 'mobile-cases' ? 'rotate-180' : ''
                   }`}
                 />
               </button>
 
-              {mobileAccordion === 'iphone' && (
-                <div className="px-4 pb-4 pt-1 border-t border-[#E5E5E3] space-y-3">
+              {mobileAccordion === 'mobile-cases' && (
+                <div className="px-4 pb-4 pt-1 border-t border-[#E5E5E3] space-y-4">
+                  {/* Apple / iPhone Series */}
                   <div className="space-y-1.5">
-                    <p className="text-[12px] font-semibold text-[#6B6B6B]">Series</p>
+                    <p className="text-[12px] font-semibold text-[#6B6B6B]">Apple (iPhone)</p>
                     {iphoneSeries.map((s) => (
                       <button
                         key={s.title}
                         type="button"
-                        onClick={() => handleNavigateToListing({ brand: 'Apple', series: s.title })}
+                        onClick={() => handleNavigateToListing({ brand: 'Apple', series: s.title, category: 'Mobile Cases' })}
                         className="block w-full text-left py-1 text-[14px] text-[#141414] cursor-pointer"
                       >
                         {s.title}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => handleNavigateToListing({ brand: 'Apple', category: 'Mobile Cases' })}
+                      className="text-[12px] font-semibold text-[#B0521F] underline block pt-0.5 cursor-pointer"
+                    >
+                      View All iPhone Cases →
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleNavigateToListing({ brand: 'Apple', category: 'Mobile Cases' })}
-                    className="text-[12px] font-semibold text-[#B0521F] underline block pt-1 cursor-pointer"
-                  >
-                    View All iPhone Cases →
-                  </button>
-                </div>
-              )}
-            </div>
 
-            {/* Accordion: Samsung Cases */}
-            <div className="border border-[#E5E5E3] rounded-[6px] bg-white overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setMobileAccordion(mobileAccordion === 'samsung' ? null : 'samsung')}
-                className="w-full min-h-[48px] px-4 flex items-center justify-between text-[16px] font-semibold text-[#141414] cursor-pointer"
-              >
-                <span>Samsung Cases</span>
-                <ChevronDown
-                  className={`w-4 h-4 text-[#6B6B6B] transition-transform ${
-                    mobileAccordion === 'samsung' ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {mobileAccordion === 'samsung' && (
-                <div className="px-4 pb-4 pt-1 border-t border-[#E5E5E3] space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="text-[12px] font-semibold text-[#6B6B6B]">Series</p>
+                  {/* Samsung Series */}
+                  <div className="space-y-1.5 pt-2 border-t border-[#E5E5E3]">
+                    <p className="text-[12px] font-semibold text-[#6B6B6B]">Samsung</p>
                     {samsungSeries.map((s) => (
                       <button
                         key={s.title}
                         type="button"
-                        onClick={() => handleNavigateToListing({ brand: 'Samsung', series: s.title })}
+                        onClick={() => handleNavigateToListing({ brand: 'Samsung', series: s.title, category: 'Mobile Cases' })}
                         className="block w-full text-left py-1 text-[14px] text-[#141414] cursor-pointer"
                       >
                         {s.title}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => handleNavigateToListing({ brand: 'Samsung', category: 'Mobile Cases' })}
+                      className="text-[12px] font-semibold text-[#B0521F] underline block pt-0.5 cursor-pointer"
+                    >
+                      View All Samsung Cases →
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleNavigateToListing({ brand: 'Samsung', category: 'Mobile Cases' })}
-                    className="text-[12px] font-semibold text-[#B0521F] underline block pt-1 cursor-pointer"
-                  >
-                    View All Samsung Cases →
-                  </button>
+
+                  <div className="pt-2 border-t border-[#E5E5E3]">
+                    <button
+                      type="button"
+                      onClick={() => handleNavigateToListing({ category: 'Mobile Cases' })}
+                      className="text-[13px] font-semibold text-[#B0521F] underline block cursor-pointer"
+                    >
+                      View All Mobile Cases →
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
