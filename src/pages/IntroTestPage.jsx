@@ -254,13 +254,13 @@ export function IntroTestPage() {
           {/* Logo Asset Inspector */}
           <div className="bg-[#FFFFFF] p-6 rounded-[6px] border border-[#E5E5E3] space-y-4">
             <h2 className="font-sans font-semibold text-[16px] text-[#141414]">
-              Trimmed Asset Preview (public/intro/logo-trimmed.png)
+              Logo Asset Preview (public/logo.png)
             </h2>
             <div className="p-8 bg-[#FAFAF9] border border-dashed border-[#D4D4D0] rounded-[6px] flex flex-col items-center justify-center">
               <div className="p-4 bg-white border border-[#E5E5E3] shadow-sm">
                 <img
-                  src="/intro/logo-trimmed.png"
-                  alt="Trimmed Logo Preview"
+                  src="/logo.png"
+                  alt="Logo Preview"
                   className="w-[280px] sm:w-[360px] h-auto object-contain"
                 />
               </div>

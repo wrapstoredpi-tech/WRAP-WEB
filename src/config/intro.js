@@ -17,9 +17,9 @@ export const introConfig = {
   hardCapMs: 4000,      // Maximum safety time the layer can remain visible
   decodeTimeoutMs: 1000,// Maximum time to wait for image decode before skipping
   sessionKey: 'wrapstore_intro_seen',
-  logoSrc: '/intro/logo-trimmed.png',
-  logoWidth: 572,
-  logoHeight: 158,
+  logoSrc: '/logo.png',
+  logoWidth: 349,
+  logoHeight: 96,
 };
 
 export default introConfig;
