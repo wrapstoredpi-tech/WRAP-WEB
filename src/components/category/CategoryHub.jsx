@@ -21,16 +21,24 @@ export function CategoryHub({
       return (a.name || '').localeCompare(b.name || '');
     });
 
-  // Find products belonging to this category
+  // Find products belonging to this category (including combos matching this category)
   const categoryProducts = products.filter(
-    (p) => p.category_id === category.id || p.category === category.name
+    (p) =>
+      p.category_id === category.id ||
+      p.category === category.name ||
+      (Array.isArray(p.category_ids) && p.category_ids.includes(category.id)) ||
+      (Array.isArray(p.categories) && p.categories.includes(category.name))
   );
 
   // Map subcategories to tile data
   const subcategoryTiles = categorySubcategories.map((sub) => {
     // Products belonging to this subcategory
     const subProducts = categoryProducts.filter(
-      (p) => p.subcategory_id === sub.id || p.subcategory === sub.name
+      (p) =>
+        p.subcategory_id === sub.id ||
+        p.subcategory === sub.name ||
+        (Array.isArray(p.subcategory_ids) && p.subcategory_ids.includes(sub.id)) ||
+        (Array.isArray(p.subcategories) && p.subcategories.includes(sub.name))
     );
 
     // Rule: Prefer real uploaded product images from DB over generated placeholder

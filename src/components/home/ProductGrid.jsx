@@ -26,7 +26,7 @@ export function ProductGrid({
       label: `Brand: ${filters.brand}`,
       onRemove: () => {
         onFilterChange('brand', 'All Brands');
-        onFilterChange('selectedModel', '');
+        onFilterChange('selectedModel', []);
       },
     });
   }
@@ -39,13 +39,24 @@ export function ProductGrid({
     });
   }
 
-  if (filters.selectedModel) {
+  const activeModels = Array.isArray(filters.selectedModel)
+    ? filters.selectedModel
+    : filters.selectedModel
+    ? filters.selectedModel.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  activeModels.forEach((m) => {
     activeTags.push({
-      key: 'selectedModel',
-      label: `Model: ${filters.selectedModel}`,
-      onRemove: () => onFilterChange('selectedModel', ''),
+      key: `model-${m}`,
+      label: `Model: ${m}`,
+      onRemove: () => {
+        const updated = activeModels.filter((item) => item !== m);
+        onFilterChange('selectedModel', updated);
+      },
     });
-  }
+  });
+
+  const activeCount = activeFilterCount || activeTags.length;
 
   if (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All') {
     activeTags.push({
@@ -95,17 +106,23 @@ export function ProductGrid({
         </nav>
       )}
 
-      {/* Title with product count & Controls (Filters and Sort in one row on mobile) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-[#E5E5E3]">
-        {/* Left-aligned Title */}
-        <div>
-          <h1 className="text-[24px] sm:text-[28px] font-semibold text-[#141414] tracking-[-0.01em]">
-            {title} <span className="text-[15px] sm:text-[16px] font-normal text-[#6B6B6B]">({products.length})</span>
-          </h1>
-        </div>
+      {/* Page Title (Mobile: displayed naturally above the sticky bar) */}
+      <div className="lg:hidden pb-1">
+        <h1 className="text-[24px] sm:text-[28px] font-semibold text-[#141414] tracking-[-0.01em]">
+          {title} <span className="text-[15px] sm:text-[16px] font-normal text-[#6B6B6B]">({products.length})</span>
+        </h1>
+      </div>
 
-        {/* Filters and Sort in one row */}
-        <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
+      {/* Sticky Filters & Sort Controls Bar (Keeps fixed at the top when scrolling) */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2 sm:py-2.5 bg-[#FAFAF9]/95 backdrop-blur-md transition-shadow">
+        <div className="flex items-center justify-between gap-3 w-full bg-white border border-[#E5E5E3] rounded-[8px] p-2.5 sm:p-3 shadow-2xs">
+          {/* Desktop Left: Title with product count */}
+          <div className="hidden lg:block">
+            <h1 className="text-[20px] xl:text-[22px] font-semibold text-[#141414] tracking-[-0.01em]">
+              {title} <span className="text-[14px] font-normal text-[#6B6B6B]">({products.length})</span>
+            </h1>
+          </div>
+
           {/* Mobile Filter Button */}
           <button
             type="button"
@@ -113,16 +130,18 @@ export function ProductGrid({
             className="lg:hidden min-h-[42px] px-4 rounded-[6px] border border-[#E5E5E3] bg-white text-[14px] font-semibold text-[#141414] flex items-center gap-2 hover:bg-[#F5F4F0] transition-colors cursor-pointer"
             aria-label="Open filters"
           >
-            <SlidersHorizontal className="w-4 h-4" />
+            <SlidersHorizontal className="w-4 h-4 text-[#141414]" />
             <span>Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="text-[12px] text-[#B0521F]">({activeFilterCount})</span>
+            {activeCount > 0 && (
+              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-[#B0521F] text-white leading-none">
+                {activeCount}
+              </span>
             )}
           </button>
 
           {/* Sort Dropdown */}
           <div className="flex items-center gap-2">
-            <label htmlFor="sort-dropdown" className="text-[13px] sm:text-[14px] text-[#6B6B6B] shrink-0">
+            <label htmlFor="sort-dropdown" className="text-[13px] sm:text-[14px] text-[#6B6B6B] shrink-0 font-medium">
               Sort:
             </label>
             <div className="relative">
@@ -130,7 +149,7 @@ export function ProductGrid({
                 id="sort-dropdown"
                 value={sortBy}
                 onChange={(e) => onSortChange && onSortChange(e.target.value)}
-                className="bg-white border border-[#E5E5E3] rounded-[6px] pl-3 pr-8 py-2 min-h-[42px] text-[13px] sm:text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] appearance-none cursor-pointer"
+                className="bg-white border border-[#E5E5E3] rounded-[6px] pl-3 pr-8 py-2 min-h-[42px] text-[13px] sm:text-[14px] font-medium text-[#141414] focus:outline-none focus:border-[#141414] appearance-none cursor-pointer"
               >
                 <option value="newest">Newest</option>
                 <option value="price_asc">Price: Low to High</option>

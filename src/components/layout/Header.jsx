@@ -65,6 +65,16 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
       if (p.subcategory) {
         counts[p.subcategory] = (counts[p.subcategory] || 0) + 1;
       }
+      if (Array.isArray(p.subcategory_ids)) {
+        p.subcategory_ids.forEach((id) => {
+          counts[id] = (counts[id] || 0) + 1;
+        });
+      }
+      if (Array.isArray(p.subcategories)) {
+        p.subcategories.forEach((name) => {
+          counts[name] = (counts[name] || 0) + 1;
+        });
+      }
     }
     return counts;
   }, [products]);
@@ -81,7 +91,9 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
     const liveSeries = [];
     for (const [title, models] of Object.entries(seriesMap)) {
       const hasProducts = products.some((p) => {
-        const isCase = (p.category || '').toLowerCase().includes('case');
+        const isCase =
+          (p.category || '').toLowerCase().includes('case') ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes('case')));
         const pModels = p.compatible_models || [];
         return isCase && models.some((m) => pModels.some((pm) => pm.toLowerCase().includes(m.toLowerCase())));
       });
@@ -102,7 +114,9 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
     const liveSeries = [];
     for (const [title, models] of Object.entries(seriesMap)) {
       const hasProducts = products.some((p) => {
-        const isCase = (p.category || '').toLowerCase().includes('case');
+        const isCase =
+          (p.category || '').toLowerCase().includes('case') ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes('case')));
         const pModels = p.compatible_models || [];
         return isCase && models.some((m) => pModels.some((pm) => pm.toLowerCase().includes(m.toLowerCase())));
       });
@@ -150,9 +164,15 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
     return products
       .filter((p) => {
         const nameMatch = p.name.toLowerCase().includes(q);
-        const catMatch = (p.category || '').toLowerCase().includes(q);
+        const catMatch =
+          (p.category || '').toLowerCase().includes(q) ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes(q)));
+        const subMatch =
+          (p.subcategory || '').toLowerCase().includes(q) ||
+          (Array.isArray(p.subcategories) && p.subcategories.some((s) => s.toLowerCase().includes(q)));
         const modelMatch = (p.compatible_models || []).some((m) => m.toLowerCase().includes(q));
-        return nameMatch || catMatch || modelMatch;
+        const comboMatch = p.is_combo && 'combo'.includes(q);
+        return nameMatch || catMatch || subMatch || modelMatch || comboMatch;
       })
       .slice(0, 6);
   }, [searchQuery, products]);

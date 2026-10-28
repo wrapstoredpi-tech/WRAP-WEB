@@ -21,7 +21,7 @@ const INITIAL_FILTERS = {
   subcategory: 'All Types',
   brand: 'All Brands',
   series: '',
-  selectedModel: '',
+  selectedModel: [],
   priceRange: 'All Prices',
   selectedColor: '',
   inStockOnly: false,
@@ -69,41 +69,56 @@ export function HomePage() {
   const subQuery = searchParams.get('subcategory');
   const brandQuery = searchParams.get('brand');
   const seriesQuery = searchParams.get('series');
+  const modelQuery = searchParams.get('model');
   const searchQuery = searchParams.get('search');
   const viewQuery = searchParams.get('view');
   const featuredQuery = searchParams.get('featured') === '1';
 
   // Determine if we should show Listing mode instead of Home mode
   const isListingMode = Boolean(
-    catQuery || subQuery || brandQuery || seriesQuery || searchQuery || viewQuery === 'all' || featuredQuery
+    catQuery || subQuery || brandQuery || seriesQuery || modelQuery || searchQuery || viewQuery === 'all' || featuredQuery
   );
 
   // Sync state from URL params
   useEffect(() => {
+    const modelParam = searchParams.get('model');
+    const selectedModel = modelParam
+      ? modelParam.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+
     setFilters((prev) => ({
       ...prev,
       category: catQuery || 'All',
       subcategory: subQuery || 'All Types',
       brand: brandQuery || (seriesQuery?.toLowerCase().includes('galaxy') ? 'Samsung' : seriesQuery?.toLowerCase().includes('iphone') ? 'Apple' : 'All Brands'),
       series: seriesQuery || '',
-      selectedModel: searchParams.get('model') || '',
+      selectedModel,
     }));
   }, [catQuery, subQuery, brandQuery, seriesQuery, searchParams]);
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => {
-      const next = { ...prev, [key]: value };
+    setFilters((prev) => ({ ...prev, [key]: value }));
 
-      // Update URL search parameters
-      const params = new URLSearchParams(searchParams);
-      if (value && value !== 'All' && value !== 'All Types' && value !== 'All Brands' && value !== 'All Prices') {
+    // Update URL search parameters
+    setSearchParams((prevParams) => {
+      const params = new URLSearchParams(prevParams);
+
+      if (key === 'selectedModel') {
+        const arr = Array.isArray(value)
+          ? value
+          : (typeof value === 'string' && value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []);
+        if (arr.length > 0) {
+          params.set('model', arr.join(','));
+        } else {
+          params.delete('model');
+        }
+      } else if (value && value !== 'All' && value !== 'All Types' && value !== 'All Brands' && value !== 'All Prices') {
         params.set(key, value);
       } else {
         params.delete(key);
       }
 
-      setSearchParams(params);
-      return next;
+      return params;
     });
   };
 
@@ -123,32 +138,51 @@ export function HomePage() {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           (p.category || '').toLowerCase().includes(q) ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes(q))) ||
           (p.subcategory || '').toLowerCase().includes(q) ||
+          (Array.isArray(p.subcategories) && p.subcategories.some((s) => s.toLowerCase().includes(q))) ||
           (p.mobile_brand || '').toLowerCase().includes(q) ||
-          (p.compatible_models || []).some((m) => m.toLowerCase().includes(q))
+          (Array.isArray(p.brands) && p.brands.some((b) => b.toLowerCase().includes(q))) ||
+          (p.compatible_models || []).some((m) => m.toLowerCase().includes(q)) ||
+          (p.is_combo && 'combo'.includes(q))
       );
     }
 
-    // Category filter
+    // Category filter (combos appear in all constituent categories)
     if (filters.category && filters.category !== 'All' && filters.category !== 'All Categories') {
-      result = result.filter((p) => p.category?.toLowerCase() === filters.category.toLowerCase());
+      const targetCat = filters.category.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.category?.toLowerCase() === targetCat ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase() === targetCat))
+      );
     }
 
-    // Subcategory filter
+    // Subcategory filter (combos appear in all constituent subcategories)
     if (filters.subcategory && filters.subcategory !== 'All Types' && filters.subcategory !== 'All') {
+      const targetSub = filters.subcategory.toLowerCase();
       result = result.filter(
-        (p) => p.subcategory?.toLowerCase() === filters.subcategory.toLowerCase()
+        (p) =>
+          p.subcategory?.toLowerCase() === targetSub ||
+          (Array.isArray(p.subcategories) && p.subcategories.some((s) => s.toLowerCase() === targetSub))
       );
     }
 
     // Brand filter
     if (filters.brand && filters.brand !== 'All Brands') {
       result = result.filter((p) => {
-        const isCase = (p.category || '').toLowerCase().includes('case');
+        const isCase =
+          (p.category || '').toLowerCase().includes('case') ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes('case')));
         if (!isCase) return true; // Accessories remain visible
         const pBrand = (p.mobile_brand || '').toLowerCase();
+        const pBrands = (p.brands || []).map((b) => b.toLowerCase());
         const targetB = filters.brand.toLowerCase();
-        return pBrand.includes(targetB) || (p.compatible_models || []).some((m) => m.toLowerCase().includes(targetB));
+        return (
+          pBrand.includes(targetB) ||
+          pBrands.some((b) => b.includes(targetB)) ||
+          (p.compatible_models || []).some((m) => m.toLowerCase().includes(targetB))
+        );
       });
     }
 
@@ -159,7 +193,9 @@ export function HomePage() {
       const number = numMatch ? numMatch[0] : '';
 
       result = result.filter((p) => {
-        const isCase = (p.category || '').toLowerCase().includes('case');
+        const isCase =
+          (p.category || '').toLowerCase().includes('case') ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes('case')));
         if (!isCase) return true;
         const models = p.compatible_models || [];
         return models.some((m) => {
@@ -175,14 +211,22 @@ export function HomePage() {
       });
     }
 
-    // Selected model filter
-    if (filters.selectedModel) {
-      const targetM = filters.selectedModel.toLowerCase().trim();
+    // Selected model filter (supports multiple selected models)
+    const activeModels = Array.isArray(filters.selectedModel)
+      ? filters.selectedModel
+      : filters.selectedModel
+      ? filters.selectedModel.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    if (activeModels.length > 0) {
+      const targetModels = activeModels.map((m) => m.toLowerCase().trim());
       result = result.filter((p) => {
-        const isCase = (p.category || '').toLowerCase().includes('case');
+        const isCase =
+          (p.category || '').toLowerCase().includes('case') ||
+          (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes('case')));
         if (!isCase) return true;
-        const models = p.compatible_models || [];
-        return models.some((m) => m.toLowerCase().trim() === targetM);
+        const models = (p.compatible_models || []).map((m) => m.toLowerCase().trim());
+        return targetModels.some((tm) => models.includes(tm));
       });
     }
 
@@ -244,6 +288,17 @@ export function HomePage() {
     if (searchQuery) return `Search results for "${searchQuery}"`;
     if (featuredQuery) return 'Featured Products';
     if (filters.series) return filters.series;
+    const activeModels = Array.isArray(filters.selectedModel)
+      ? filters.selectedModel
+      : filters.selectedModel
+      ? filters.selectedModel.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (activeModels.length === 1) {
+      return activeModels[0];
+    }
+    if (activeModels.length > 1) {
+      return `${activeModels.length} Models Selected`;
+    }
     if (filters.brand && filters.brand !== 'All Brands') {
       return filters.brand === 'Apple' ? 'iPhone Cases' : `${filters.brand} Cases`;
     }
@@ -273,7 +328,12 @@ export function HomePage() {
             {/* 1. First Screen: Hero Full-Width Banner Slider (Completely hidden if no slides) */}
             <HeroFirstScreen />
 
-            {/* 2. Shop by Category: Row directly under first screen */}
+            {/* 2. Featured Products: Handpicked for a Better Everyday (directly next to banner) */}
+            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+              <FeaturedProductsSection />
+            </div>
+
+            {/* 3. Shop by Category: Bento grid below featured products */}
             <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <ShopByCategoryRow
                 products={liveProducts}
@@ -282,12 +342,7 @@ export function HomePage() {
               />
             </div>
 
-            {/* Featured Products: Handpicked for a Better Everyday */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <FeaturedProductsSection />
-            </div>
-
-            {/* 2.5 Why WrapStore: Editorial 4-card feature row */}
+            {/* 4. Why WrapStore: Editorial 4-card feature row */}
             <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
               <WhyWrapstore />
             </div>

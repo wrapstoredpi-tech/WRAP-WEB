@@ -14,7 +14,7 @@ export function NewArrivalsSection({
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef(null);
 
-  const { addItem } = useCart();
+  const { cartItems, addItem } = useCart();
   const [addedIds, setAddedIds] = useState(new Set());
   const [wishlistIds, setWishlistIds] = useState(() => {
     try {
@@ -26,6 +26,13 @@ export function NewArrivalsSection({
   });
   const [toastMessage, setToastMessage] = useState(null);
   const toastTimeoutRef = useRef(null);
+
+  // Sync addedIds with cartItems
+  useEffect(() => {
+    if (Array.isArray(cartItems)) {
+      setAddedIds(new Set(cartItems.map((item) => item.productId).filter(Boolean)));
+    }
+  }, [cartItems]);
 
   const showToast = useCallback((msg) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -47,14 +54,6 @@ export function NewArrivalsSection({
         actionText: 'View Cart',
         actionHref: '/cart',
       });
-
-      setTimeout(() => {
-        setAddedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(product.id);
-          return next;
-        });
-      }, 2000);
     }
   };
 
@@ -163,7 +162,13 @@ export function NewArrivalsSection({
             product={product}
             isWishlisted={wishlistIds.has(product.id)}
             onToggleWishlist={handleToggleWishlist}
-            isAdded={addedIds.has(product.id)}
+            isAdded={
+              addedIds.has(product.id) ||
+              (Array.isArray(cartItems) &&
+                cartItems.some(
+                  (item) => String(item.productId) === String(product.id)
+                ))
+            }
             onAddToCart={handleAddToCart}
           />
         ))}

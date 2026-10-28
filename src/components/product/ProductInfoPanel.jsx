@@ -39,7 +39,9 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const hasDiscount = mrp > sellingPrice;
 
   const compatibleModels = product.compatible_models || [];
-  const isCase = (product.category || '').toLowerCase().includes('case');
+  const isCase =
+    (product.category || '').toLowerCase().includes('case') ||
+    (Array.isArray(product.categories) && product.categories.some((c) => c.toLowerCase().includes('case')));
   const needsModelSelection = isCase || compatibleModels.length > 0;
 
   // Selected phone model state: starts unselected by default per specification
@@ -218,10 +220,17 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   return (
     <div className="flex flex-col space-y-6">
       {/* 1. Category Pill */}
-      <div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {product.is_combo && (
+          <span className="inline-flex items-center px-3.5 py-1 rounded-full text-[12px] font-semibold bg-[#B0521F] text-white tracking-wide">
+            Combo Bundle
+          </span>
+        )}
         <span className="inline-flex items-center px-3.5 py-1 rounded-full text-[12px] font-medium bg-[#F2F1ED] text-[#737373] tracking-wide">
-          {product.category || 'Mobile Cases'}
-          {product.subcategory ? ` / ${product.subcategory}` : ''}
+          {Array.isArray(product.categories) && product.categories.length > 1
+            ? product.categories.join(' + ')
+            : product.category || 'Mobile Cases'}
+          {product.subcategory && (!product.categories || product.categories.length <= 1) ? ` / ${product.subcategory}` : ''}
         </span>
       </div>
 
@@ -256,6 +265,46 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
           </div>
         )}
       </div>
+
+      {/* Combo Breakdown */}
+      {product.is_combo && Array.isArray(product.combo_items) && product.combo_items.length > 0 && (
+        <div className="p-4 rounded-xl bg-[#FAFAF9] border border-[#E5E5E3] space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-[#141414] uppercase tracking-wider">
+              Combo Includes ({product.combo_items.length} Items)
+            </span>
+            {hasDiscount && (
+              <span className="text-[12px] font-semibold text-[#B0521F]">
+                Save {formatINR(mrp - sellingPrice)}
+              </span>
+            )}
+          </div>
+          <div className="divide-y divide-[#E5E5E3]">
+            {product.combo_items.map((item, idx) => (
+              <div key={idx} className="py-2.5 flex items-center justify-between gap-3 text-[13px]">
+                <div className="flex items-center gap-3 min-w-0">
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.product_name}
+                      className="w-10 h-10 object-cover rounded-md border border-[#E5E5E3] shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#141414] truncate">{item.product_name}</p>
+                    <p className="text-[11px] text-[#737373]">
+                      {item.category} {item.subcategory ? `· ${item.subcategory}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="font-medium text-[#141414]">{formatINR(item.unit_price)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 5. Phone Model Selector (When required) */}
       {needsModelSelection && (

@@ -122,7 +122,7 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
               className="bg-white border border-[#E5E5E3] rounded-[6px] p-3 flex flex-col justify-between hover:border-[#141414] transition-colors"
             >
               <Link to={`/product/${p.id}`} className="space-y-2.5 block">
-                <div className="aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden">
+                <div className="aspect-[4/5] bg-white rounded-[6px] overflow-hidden">
                   <img
                     src={p.image_url}
                     alt={p.name}

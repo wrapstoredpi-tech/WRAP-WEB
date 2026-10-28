@@ -14,12 +14,30 @@ export function FilterBottomSheet({
   const {
     brand = 'All Brands',
     series = '',
-    selectedModel = '',
+    selectedModel = [],
     priceRange = 'All Prices',
     inStockOnly = false,
   } = filters || {};
 
   const [modelSearch, setModelSearch] = useState('');
+
+  const selectedModels = useMemo(() => {
+    if (Array.isArray(selectedModel)) return selectedModel;
+    if (typeof selectedModel === 'string' && selectedModel.trim()) {
+      return selectedModel.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [selectedModel]);
+
+  const toggleModel = (m) => {
+    let next;
+    if (selectedModels.includes(m)) {
+      next = selectedModels.filter((item) => item !== m);
+    } else {
+      next = [...selectedModels, m];
+    }
+    onFilterChange('selectedModel', next);
+  };
 
   const {
     brands = ['All Brands', 'Apple', 'Samsung'],
@@ -97,7 +115,7 @@ export function FilterBottomSheet({
                   type="button"
                   onClick={() => {
                     onFilterChange('brand', b);
-                    onFilterChange('selectedModel', '');
+                    onFilterChange('selectedModel', []);
                   }}
                   className={`flex-1 min-h-[44px] px-3 text-[14px] font-semibold rounded-[6px] border transition-colors ${
                     brand === b || (b === 'All Brands' && (!brand || brand === 'All Brands'))
@@ -111,11 +129,22 @@ export function FilterBottomSheet({
             </div>
           </div>
 
-          {/* Model search */}
+          {/* Model search (Multi-Select Radio Button) */}
           <div className="space-y-2">
-            <h3 className="text-[14px] font-semibold text-[#141414]">
-              Compatible Model
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-[14px] font-semibold text-[#141414]">
+                Compatible Model {selectedModels.length > 0 && `(${selectedModels.length})`}
+              </h3>
+              {selectedModels.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onFilterChange('selectedModel', [])}
+                  className="text-[12px] text-[#B0521F] hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Search className="w-4 h-4 text-[#6B6B6B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -127,22 +156,33 @@ export function FilterBottomSheet({
               />
             </div>
 
-            <div className="max-h-[160px] overflow-y-auto space-y-1">
-              {filteredModels.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => onFilterChange('selectedModel', selectedModel === m ? '' : m)}
-                  className={`w-full min-h-[44px] px-3 text-left rounded-[6px] text-[14px] flex items-center justify-between border ${
-                    selectedModel === m
-                      ? 'bg-white border-[#141414] font-semibold text-[#141414]'
-                      : 'bg-white border-[#E5E5E3] text-[#141414]'
-                  }`}
-                >
-                  <span>{m}</span>
-                  {selectedModel === m && <Check className="w-4 h-4 text-[#B0521F]" />}
-                </button>
-              ))}
+            <div className="max-h-[190px] overflow-y-auto space-y-1">
+              {filteredModels.map((m) => {
+                const isSelected = selectedModels.includes(m);
+                return (
+                  <label
+                    key={m}
+                    className="flex items-center gap-3 py-2 px-2 text-[14px] text-[#141414] rounded-[6px] cursor-pointer hover:bg-white transition-colors select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleModel(m)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                        isSelected
+                          ? 'border-[#B0521F] bg-white ring-1 ring-[#B0521F]'
+                          : 'border-[#767676] bg-white hover:border-[#141414]'
+                      }`}
+                    >
+                      {isSelected && <span className="w-2 h-2 rounded-full bg-[#B0521F]" />}
+                    </span>
+                    <span className="truncate">{m}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

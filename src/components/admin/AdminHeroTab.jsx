@@ -21,6 +21,7 @@ import {
   Play,
   Film,
   Sparkles,
+  Pencil,
 } from 'lucide-react';
 import { getHeroSlides, saveHeroSlides, resetHeroSlides, fetchHeroSlides } from '../../lib/heroSlides';
 
@@ -193,6 +194,7 @@ export function AdminHeroTab() {
   }, []);
 
   // Modal Form State
+  const [editingSlideIndex, setEditingSlideIndex] = useState(null);
   const [slideType, setSlideType] = useState('image'); // 'image' | 'video'
   const [activeSourceTab, setActiveSourceTab] = useState('upload'); // 'upload' | 'url'
   const [newMediaUrl, setNewMediaUrl] = useState('');
@@ -211,6 +213,7 @@ export function AdminHeroTab() {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleOpenAddModal = (defaultType = 'image') => {
+    setEditingSlideIndex(null);
     setSlideType(defaultType);
     setActiveSourceTab('upload');
     setNewMediaUrl('');
@@ -227,8 +230,30 @@ export function AdminHeroTab() {
     setShowAddModal(true);
   };
 
+  const handleOpenEditModal = (index) => {
+    const slide = slides[index];
+    if (!slide) return;
+    setEditingSlideIndex(index);
+    const isVideo = slide.type === 'video' || Boolean(slide.video);
+    setSlideType(isVideo ? 'video' : 'image');
+    setActiveSourceTab('url');
+    setNewMediaUrl(isVideo ? (slide.video || slide.image || '') : (slide.image || ''));
+    setNewPosterUrl(slide.image || '');
+    setNewTag(slide.tag || '');
+    setNewSubtitle(slide.tagSubtitle || '');
+    setNewLink(slide.link || '/?category=Mobile%20Cases');
+    setNewAlt(slide.alt || '');
+    setUploadState('idle');
+    setUploadProgress(0);
+    setUploadedFileInfo(null);
+    setUploadError(null);
+    setIsDragging(false);
+    setShowAddModal(true);
+  };
+
   const handleCloseAddModal = () => {
     setShowAddModal(false);
+    setEditingSlideIndex(null);
     setUploadState('idle');
     setUploadProgress(0);
     setUploadedFileInfo(null);
@@ -368,6 +393,35 @@ export function AdminHeroTab() {
     }
 
     const isVideo = slideType === 'video';
+
+    if (editingSlideIndex !== null && slides[editingSlideIndex]) {
+      const existing = slides[editingSlideIndex];
+      const updatedSlide = {
+        ...existing,
+        type: isVideo ? 'video' : 'image',
+        ...(isVideo
+          ? {
+              video: newMediaUrl.trim(),
+              image: newPosterUrl.trim() || existing.image || '/hero/slide-1.webp',
+            }
+          : {
+              image: newMediaUrl.trim(),
+              video: undefined,
+            }),
+        tag: newTag.trim(),
+        tagSubtitle: newSubtitle.trim(),
+        link: newLink.trim() || '/?category=Mobile%20Cases',
+        alt: newAlt.trim() || newTag.trim() || 'WrapStore Hero Banner',
+      };
+
+      const copy = [...slides];
+      copy[editingSlideIndex] = updatedSlide;
+      handleSaveAll(copy);
+      setActiveSlideIndex(editingSlideIndex);
+      handleCloseAddModal();
+      return;
+    }
+
     const newSlide = {
       id: `hero-${Date.now()}`,
       type: isVideo ? 'video' : 'image',
@@ -585,9 +639,18 @@ export function AdminHeroTab() {
 
                     {/* Controls */}
                     <div
-                      className="flex items-center gap-1 shrink-0"
+                      className="flex items-center gap-1.5 shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(index)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[5px] border border-[#E5E5E3] hover:border-[#141414] bg-white text-[12px] font-semibold text-[#141414] transition-colors cursor-pointer hover:bg-[#FAF8F5]"
+                        title="Edit slide"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-[#B0521F]" />
+                        <span>Edit</span>
+                      </button>
                       <button
                         type="button"
                         disabled={index === 0}
@@ -609,7 +672,7 @@ export function AdminHeroTab() {
                       <button
                         type="button"
                         onClick={() => handleDeleteSlide(index)}
-                        className="p-1.5 rounded-[4px] hover:bg-red-50 text-[#6B6B6B] hover:text-red-600 transition-colors cursor-pointer ml-1"
+                        className="p-1.5 rounded-[4px] hover:bg-red-50 text-[#6B6B6B] hover:text-red-600 transition-colors cursor-pointer ml-0.5"
                         title="Delete slide"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -629,9 +692,20 @@ export function AdminHeroTab() {
               Live Storefront Preview
             </h2>
             {slides.length > 0 && (
-              <span className="text-[12px] text-[#6B6B6B]">
-                Slide #{activeSlideIndex + 1} of {slides.length}
-              </span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-[12px] text-[#6B6B6B]">
+                  Slide #{activeSlideIndex + 1} of {slides.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditModal(activeSlideIndex)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-[#E5E5E3] hover:border-[#141414] bg-white text-[11px] font-semibold text-[#141414] transition-colors cursor-pointer hover:bg-[#FAF8F5]"
+                  title="Edit current preview slide"
+                >
+                  <Pencil className="w-3 h-3 text-[#B0521F]" />
+                  <span>Edit Slide</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -709,13 +783,24 @@ export function AdminHeroTab() {
               </div>
             )}
 
-            <div className="pt-2 text-[12px] text-[#6B6B6B] flex items-center justify-between border-t border-[#F5F2EB]">
-              <span>Banner: Full-width responsive frame</span>
+            <div className="pt-2 text-[12px] text-[#6B6B6B] flex items-center justify-between gap-3 border-t border-[#F5F2EB]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="shrink-0 text-[#6B6B6B]">Link:</span>
+                <a
+                  href={currentPreviewSlide?.link || '/?category=Mobile%20Cases'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#141414] font-mono text-[11px] hover:text-[#B0521F] underline truncate"
+                  title="Click to test destination link"
+                >
+                  {currentPreviewSlide?.link || '/?category=Mobile%20Cases'}
+                </a>
+              </div>
               <a
                 href="/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[#B0521F] font-semibold hover:underline"
+                className="inline-flex items-center gap-1 text-[#B0521F] font-semibold hover:underline shrink-0"
               >
                 <span>View Live Store</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -725,17 +810,19 @@ export function AdminHeroTab() {
         </div>
       </div>
 
-      {/* Add Slide Modal */}
+      {/* Add / Edit Slide Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-[12px] max-w-xl w-full p-6 border border-[#E5E5E3] shadow-2xl space-y-5 my-8">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-[18px] font-semibold text-[#141414]">
-                  Add Hero Slide
+                  {editingSlideIndex !== null ? 'Edit Hero Slide' : 'Add Hero Slide'}
                 </h3>
                 <p className="text-[13px] text-[#6B6B6B] mt-0.5">
-                  Choose media type, upload high-resolution media, and customize badge text.
+                  {editingSlideIndex !== null
+                    ? 'Update media, destination link, and banner badge texts.'
+                    : 'Choose media type, upload high-resolution media, and customize badge text.'}
                 </p>
               </div>
               <button
@@ -1138,9 +1225,19 @@ export function AdminHeroTab() {
                 <button
                   type="submit"
                   disabled={uploadState === 'uploading' || !newMediaUrl.trim()}
-                  className="px-4 py-2 rounded-[6px] bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[6px] bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  Save & Add to Hero
+                  {editingSlideIndex !== null ? (
+                    <>
+                      <Check className="w-4 h-4 text-[#B0521F]" />
+                      <span>Save Changes</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 text-[#B0521F]" />
+                      <span>Save & Add to Hero</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

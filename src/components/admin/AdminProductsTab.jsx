@@ -26,6 +26,9 @@ export function AdminProductsTab({ products = [] }) {
     products.forEach((p) => {
       const cat = p.category_name || p.category?.name || (typeof p.category === 'string' ? p.category : null);
       if (cat) set.add(cat);
+      if (Array.isArray(p.categories)) {
+        p.categories.forEach((c) => set.add(c));
+      }
     });
     return Array.from(set).sort();
   }, [products]);
@@ -59,9 +62,11 @@ export function AdminProductsTab({ products = [] }) {
 
     // Category filter
     if (selectedCategory !== 'ALL') {
+      const targetCat = selectedCategory.toLowerCase();
       list = list.filter((p) => {
         const cat = p.category_name || p.category?.name || (typeof p.category === 'string' ? p.category : '');
-        return cat.toLowerCase() === selectedCategory.toLowerCase();
+        const allCats = Array.isArray(p.categories) ? p.categories : [];
+        return cat.toLowerCase() === targetCat || allCats.some((c) => c.toLowerCase() === targetCat);
       });
     }
 
@@ -301,8 +306,13 @@ export function AdminProductsTab({ products = [] }) {
                             loading="lazy"
                           />
                           <div className="min-w-0 max-w-[280px]">
-                            <div className="font-medium text-[#141414] truncate" title={p.name}>
-                              {p.name}
+                            <div className="font-medium text-[#141414] truncate flex items-center gap-1.5" title={p.name}>
+                              <span>{p.name}</span>
+                              {p.is_combo && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#B0521F] text-white shrink-0">
+                                  Combo
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-[#6B6B6B] flex items-center gap-1.5 mt-0.5">
                               {p.mobile_brand && (
@@ -322,11 +332,15 @@ export function AdminProductsTab({ products = [] }) {
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
                           <span className="font-medium text-[#141414]">
-                            {p.category_name || p.category?.name || 'Accessories'}
+                            {Array.isArray(p.categories) && p.categories.length > 1
+                              ? p.categories.join(' + ')
+                              : p.category_name || p.category?.name || (typeof p.category === 'string' ? p.category : 'Accessories')}
                           </span>
-                          {p.subcategory_name && (
+                          {(p.subcategory_name || p.subcategory) && (
                             <span className="text-[11px] text-[#6B6B6B]">
-                              {p.subcategory_name}
+                              {Array.isArray(p.subcategories) && p.subcategories.length > 1
+                                ? p.subcategories.join(' + ')
+                                : p.subcategory_name || p.subcategory}
                             </span>
                           )}
                         </div>

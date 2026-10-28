@@ -13,7 +13,7 @@ export function FilterSidebar({
     category = 'All',
     subcategory = 'All Types',
     brand = 'All Brands',
-    selectedModel = '',
+    selectedModel = [],
     series = '',
     priceRange = 'All Prices',
     selectedColor = '',
@@ -21,6 +21,24 @@ export function FilterSidebar({
   } = filters;
 
   const [modelSearch, setModelSearch] = useState('');
+
+  const selectedModels = useMemo(() => {
+    if (Array.isArray(selectedModel)) return selectedModel;
+    if (typeof selectedModel === 'string' && selectedModel.trim()) {
+      return selectedModel.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [selectedModel]);
+
+  const toggleModel = (m) => {
+    let next;
+    if (selectedModels.includes(m)) {
+      next = selectedModels.filter((item) => item !== m);
+    } else {
+      next = [...selectedModels, m];
+    }
+    onFilterChange('selectedModel', next);
+  };
 
   const {
     categories = ['All Categories'],
@@ -37,12 +55,12 @@ export function FilterSidebar({
       subcategory !== 'All Types' && subcategory !== 'All',
       brand !== 'All Brands' && brand !== '',
       Boolean(series),
-      Boolean(selectedModel),
+      selectedModels.length > 0,
       priceRange !== 'All Prices',
       Boolean(selectedColor),
       inStockOnly,
     ].filter(Boolean).length;
-  }, [category, subcategory, brand, series, selectedModel, priceRange, selectedColor, inStockOnly]);
+  }, [category, subcategory, brand, series, selectedModels, priceRange, selectedColor, inStockOnly]);
 
   // Models available based on selected brand
   const availableModels = useMemo(() => {
@@ -108,7 +126,7 @@ export function FilterSidebar({
                 checked={brand === b || (b === 'All Brands' && (!brand || brand === 'All Brands'))}
                 onChange={() => {
                   onFilterChange('brand', b);
-                  onFilterChange('selectedModel', '');
+                  onFilterChange('selectedModel', []);
                 }}
                 className="w-4 h-4 accent-[#B0521F]"
               />
@@ -118,17 +136,17 @@ export function FilterSidebar({
         </div>
       </div>
 
-      {/* Phone Model Search & List */}
+      {/* Phone Model Search & List (Multi-Select Radio Button) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-[14px] font-semibold text-[#141414]">
-            Compatible Model
+            Compatible Model {selectedModels.length > 0 && `(${selectedModels.length})`}
           </h3>
-          {selectedModel && (
+          {selectedModels.length > 0 && (
             <button
               type="button"
-              onClick={() => onFilterChange('selectedModel', '')}
-              className="text-[12px] text-[#B0521F] hover:underline"
+              onClick={() => onFilterChange('selectedModel', [])}
+              className="text-[12px] text-[#B0521F] hover:underline cursor-pointer"
             >
               Clear
             </button>
@@ -146,22 +164,33 @@ export function FilterSidebar({
           />
         </div>
 
-        <div className="max-h-[160px] overflow-y-auto space-y-1 pr-1">
-          {filteredModels.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => onFilterChange('selectedModel', selectedModel === m ? '' : m)}
-              className={`w-full text-left px-2.5 py-1.5 rounded-[6px] text-[12px] flex items-center justify-between transition-colors ${
-                selectedModel === m
-                  ? 'bg-white border border-[#141414] font-semibold text-[#141414]'
-                  : 'hover:bg-white text-[#6B6B6B] hover:text-[#141414]'
-              }`}
-            >
-              <span className="truncate">{m}</span>
-              {selectedModel === m && <Check className="w-3.5 h-3.5 text-[#B0521F]" />}
-            </button>
-          ))}
+        <div className="max-h-[190px] overflow-y-auto space-y-1 pr-1">
+          {filteredModels.map((m) => {
+            const isSelected = selectedModels.includes(m);
+            return (
+              <label
+                key={m}
+                className="flex items-center gap-2.5 py-1 text-[13px] text-[#141414] cursor-pointer hover:text-[#B0521F] select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleModel(m)}
+                  className="sr-only"
+                />
+                <span
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                    isSelected
+                      ? 'border-[#B0521F] bg-white ring-1 ring-[#B0521F]'
+                      : 'border-[#767676] bg-white hover:border-[#141414]'
+                  }`}
+                >
+                  {isSelected && <span className="w-2 h-2 rounded-full bg-[#B0521F]" />}
+                </span>
+                <span className="truncate">{m}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 

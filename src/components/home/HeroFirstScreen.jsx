@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { homeConfig } from '../../config/home';
 import { useIntro } from '../../context/IntroContext';
@@ -50,6 +50,8 @@ export function HeroFirstScreen() {
     };
   }, []);
 
+  const navigate = useNavigate();
+
   // Video element refs
   const videoRefs = useRef({});
 
@@ -96,11 +98,13 @@ export function HeroFirstScreen() {
     setActiveIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
 
-  // Touch swipe handling
+  // Touch swipe handling & tap navigation guards
+  const isSwipingRef = useRef(false);
   const touchStartXRef = useRef(0);
   const touchEndXRef = useRef(0);
 
   const handleTouchStart = (e) => {
+    isSwipingRef.current = false;
     setPaused(true);
     touchStartXRef.current = e.touches[0].clientX;
     touchEndXRef.current = e.touches[0].clientX;
@@ -108,6 +112,9 @@ export function HeroFirstScreen() {
 
   const handleTouchMove = (e) => {
     touchEndXRef.current = e.touches[0].clientX;
+    if (Math.abs(touchStartXRef.current - touchEndXRef.current) > 10) {
+      isSwipingRef.current = true;
+    }
   };
 
   const handleTouchEnd = () => {
@@ -119,7 +126,38 @@ export function HeroFirstScreen() {
       } else {
         handlePrev();
       }
+      setTimeout(() => {
+        isSwipingRef.current = false;
+      }, 150);
+    } else {
+      isSwipingRef.current = false;
     }
+  };
+
+  const handleLinkNavigation = (e, targetUrl) => {
+    if (isSwipingRef.current) {
+      e?.preventDefault?.();
+      return;
+    }
+    const url = targetUrl || '/?category=Mobile%20Cases';
+    if (!url) return;
+
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.origin === window.location.origin) {
+          e?.preventDefault?.();
+          navigate(parsed.pathname + parsed.search + parsed.hash);
+          return;
+        }
+      } catch {}
+      // External link - allow native browser navigation
+      return;
+    }
+
+    // Relative internal link
+    e?.preventDefault?.();
+    navigate(url);
   };
 
   // If there are no slides configured, completely hide the hero section!
@@ -160,8 +198,16 @@ export function HeroFirstScreen() {
           >
             {slides.map((slide, idx) => {
               const isVideo = slide.type === 'video' || Boolean(slide.video);
+              const destination = slide.link || '/?category=Mobile%20Cases';
               return (
-                <div key={slide.id || idx} className="w-full h-full shrink-0 relative bg-neutral-900">
+                <a
+                  key={slide.id || idx}
+                  href={destination}
+                  onClick={(e) => handleLinkNavigation(e, destination)}
+                  className="w-full h-full shrink-0 relative bg-neutral-900 block cursor-pointer select-none group/slide"
+                  aria-label={`${slide.tag || slide.alt || 'Hero banner slide'} - click to explore`}
+                  tabIndex={safeIndex === idx ? 0 : -1}
+                >
                   {isVideo ? (
                     <video
                       ref={(el) => {
@@ -184,7 +230,7 @@ export function HeroFirstScreen() {
                       height={slide.height || 1200}
                       loading={idx === 0 ? 'eager' : 'lazy'}
                       fetchpriority={idx === 0 ? 'high' : 'auto'}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover/slide:scale-[1.01]"
                     />
                   )}
 
@@ -193,7 +239,7 @@ export function HeroFirstScreen() {
                     className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"
                     aria-hidden="true"
                   />
-                </div>
+                </a>
               );
             })}
           </div>
@@ -203,8 +249,9 @@ export function HeroFirstScreen() {
               ───────────────────────────────────────────────────────────────── */}
           {(currentSlide.tag || currentSlide.tagSubtitle) && (
             <div className="absolute left-1/2 -translate-x-1/2 bottom-8 sm:bottom-11 lg:bottom-12 z-20 pointer-events-auto max-w-[90%]">
-              <Link
-                to={currentSlide.link || '/?category=Mobile%20Cases'}
+              <a
+                href={currentSlide.link || '/?category=Mobile%20Cases'}
+                onClick={(e) => handleLinkNavigation(e, currentSlide.link)}
                 className="group/badge inline-flex flex-col items-center text-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 aria-label={`${currentSlide.tag || 'Hero slide'} - ${currentSlide.tagSubtitle || 'Explore'}`}
               >
@@ -226,7 +273,7 @@ export function HeroFirstScreen() {
                     </span>
                   </div>
                 )}
-              </Link>
+              </a>
             </div>
           )}
 
