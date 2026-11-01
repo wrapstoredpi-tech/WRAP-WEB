@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Check, AlertCircle, Truck, PackageCheck, RotateCcw } from 'lucide-react';
 import { trackOrder, ORDER_STATUS_STEPS } from '../lib/checkout';
 import { formatINR } from '../lib/currency';
 import { supabase } from '../lib/supabase';
+
+const OrderConfirmedScene = lazy(() => import('../components/order/OrderConfirmedScene'));
 
 export function TrackOrderPage() {
   const { state } = useLocation();
@@ -157,6 +159,16 @@ export function TrackOrderPage() {
       {/* Result Status */}
       {result && result.order && (
         <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 space-y-6">
+          {/* Status-matching Delivery Scene */}
+          <Suspense fallback={<div className="w-full aspect-[16/9] bg-[#F4F3F0] rounded-[6px] animate-pulse" />}>
+            <OrderConfirmedScene
+              mode="tracking"
+              orderStatus={result.order.status}
+              orderNumber={result.order.orderId || result.order.order_number}
+              className="border border-[#E5E5E3]"
+            />
+          </Suspense>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E5E5E3] gap-2">
             <div>
               <div className="flex items-center gap-2">
