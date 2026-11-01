@@ -25,7 +25,7 @@ export function mapDbStatusToDisplay(dbStatus, paymentStatus) {
   if (s === 'RETURNED') return 'Returned';
   if (s === 'DELIVERED') return 'Delivered';
   if (s === 'SHIPPED') return 'Shipped';
-  if (s === 'PACKED') return 'Packed';
+  if (s === 'PACKED' || s === 'READY_FOR_PICKUP') return 'Packed';
   if (s === 'PROCESSING') return 'Processing';
   if (s === 'CONFIRMED' || paymentStatus === 'PAID') return 'Payment received';
   return 'Awaiting payment';
@@ -276,6 +276,15 @@ export async function trackOrder(orderId, phone) {
 
       const displayStatus = mapDbStatusToDisplay(matched.order_status, matched.payment_status);
 
+      let trackingNumber = matched.tracking_number || null;
+      let courierName = matched.courier_name || null;
+      if (!trackingNumber && matched.notes) {
+        const trkMatch = matched.notes.match(/Tracking:\s*([^)\s·]+)/i);
+        const courMatch = matched.notes.match(/Dispatched via\s+([^(]+)/i);
+        if (trkMatch) trackingNumber = trkMatch[1].trim();
+        if (courMatch) courierName = courMatch[1].trim();
+      }
+
       const items = (matched.online_order_items || []).map((it) => ({
         name: it.product_name,
         selected_model: it.mobile_model || 'Universal',
@@ -294,8 +303,8 @@ export async function trackOrder(orderId, phone) {
         order_status: matched.order_status,
         payment_status: matched.payment_status,
         payment_reference: matched.payment_reference,
-        tracking_number: matched.tracking_number || null,
-        courier_name: matched.courier_name || null,
+        tracking_number: trackingNumber,
+        courier_name: courierName,
         cancelled_reason: matched.cancelled_reason || null,
         refund_status: matched.refund_status || null,
         items,

@@ -52,18 +52,22 @@ export function TrackOrderPage() {
   // Realtime subscription on the viewed order
   useEffect(() => {
     if (!result?.order?.id) return;
+    const targetOrderId = result.order.id;
+    const orderNum = result.order.orderId || result.order.order_number;
+
     const channel = supabase
-      .channel(`tracking-order-${result.order.id}`)
+      .channel(`tracking-order-${targetOrderId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'online_orders',
-          filter: `id=eq.${result.order.id}`,
         },
-        () => {
-          handleSearch(null, result.order.orderId || result.order.order_number, phoneInput);
+        (payload) => {
+          if (payload?.new && (payload.new.id === targetOrderId || payload.new.order_number === orderNum)) {
+            handleSearch(null, orderNum, phoneInput);
+          }
         }
       )
       .subscribe();
@@ -155,7 +159,12 @@ export function TrackOrderPage() {
         <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E5E5E3] gap-2">
             <div>
-              <span className="text-[12px] text-[#6B6B6B]">Order #{result.order.orderId || result.order.order_number}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-[#6B6B6B]">Order #{result.order.orderId || result.order.order_number}</span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Tracking
+                </span>
+              </div>
               <h2 className="text-[20px] font-semibold text-[#141414] flex items-center gap-3">
                 Status:{' '}
                 <span
