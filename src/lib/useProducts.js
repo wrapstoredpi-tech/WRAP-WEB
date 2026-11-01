@@ -356,6 +356,7 @@ export function normaliseCombo(
     });
   });
 
+  categoryNameSet.add('Combos');
   const categories = Array.from(categoryNameSet);
   const category_ids = Array.from(categoryIdSet);
   const subcategories = Array.from(subcategoryNameSet);
@@ -365,10 +366,7 @@ export function normaliseCombo(
 
   const primaryBrand = brands.includes('Apple') ? 'Apple' : brands[0] || 'Universal';
 
-  const primaryCategory =
-    categories.find((c) => c.toLowerCase().includes('case')) ||
-    categories[0] ||
-    'Mobile Cases';
+  const primaryCategory = 'Combos';
   const primaryCategoryId =
     category_ids.find((id) => catMap[id]?.name?.toLowerCase().includes('case')) ||
     category_ids[0] ||
@@ -386,19 +384,66 @@ export function normaliseCombo(
     subcategory_ids[0] ||
     null;
 
-  const images = [];
+  // ── Dedicated Combo Image Resolution ───────────────────────────────────────
+  // Prioritise custom uploaded combo image(s) from admin over generic constituent item images
+  const dedicatedComboImages = [];
+
+  // 1. Check direct columns on rawCombo
+  if (rawCombo.image_url) {
+    dedicatedComboImages.push(rawCombo.image_url);
+  }
+  if (rawCombo.image && !dedicatedComboImages.includes(rawCombo.image)) {
+    dedicatedComboImages.push(rawCombo.image);
+  }
+
+  // 2. Check direct images array on rawCombo
+  if (Array.isArray(rawCombo.images)) {
+    rawCombo.images.forEach((img) => {
+      const url = typeof img === 'string' ? img : (img?.public_url || img?.url);
+      if (url && !dedicatedComboImages.includes(url)) dedicatedComboImages.push(url);
+    });
+  }
+
+  // 3. Check embedded combo_image / combo_images in items metadata
+  const embeddedComboImg =
+    rawCombo.combo_image ||
+    rawItems.find((it) => it?.combo_image)?.combo_image ||
+    (Array.isArray(rawCombo.items) && rawCombo.items[0]?.combo_image);
+  if (embeddedComboImg && !dedicatedComboImages.includes(embeddedComboImg)) {
+    dedicatedComboImages.push(embeddedComboImg);
+  }
+
+  const embeddedComboImgs =
+    rawCombo.combo_images ||
+    rawItems.find((it) => Array.isArray(it?.combo_images))?.combo_images ||
+    (Array.isArray(rawCombo.items) && rawCombo.items[0]?.combo_images);
+  if (Array.isArray(embeddedComboImgs)) {
+    embeddedComboImgs.forEach((img) => {
+      const url = typeof img === 'string' ? img : (img?.public_url || img?.url);
+      if (url && !dedicatedComboImages.includes(url)) dedicatedComboImages.push(url);
+    });
+  }
+
+  // 4. Collect constituent item images as gallery thumbnails
+  const constituentImages = [];
   items.forEach((it) => {
-    if (it.image && !images.includes(it.image)) images.push(it.image);
+    if (it.image && !constituentImages.includes(it.image) && !dedicatedComboImages.includes(it.image)) {
+      constituentImages.push(it.image);
+    }
     if (Array.isArray(it.images)) {
       it.images.forEach((img) => {
-        if (img && !images.includes(img)) images.push(img);
+        if (img && !constituentImages.includes(img) && !dedicatedComboImages.includes(img)) {
+          constituentImages.push(img);
+        }
       });
     }
   });
 
-  const primaryImg = images[0] || null;
+  // Dedicated combo images always take top priority
+  const images = [...dedicatedComboImages, ...constituentImages];
+  const primaryImg = dedicatedComboImages[0] || constituentImages[0] || null;
   const image_url = primaryImg || PLACEHOLDER_IMG;
-  const sortedImages = images.map((url, idx) => ({
+  const sortedImages = (images.length > 0 ? images : [image_url]).map((url, idx) => ({
     public_url: url,
     sort_order: idx,
     is_primary: idx === 0,
@@ -951,6 +996,12 @@ export function deriveFilterOptions(products, categories = [], subcategories = [
   );
   if (hasOther && !categoryList.includes('Other')) {
     categoryList.push('Other');
+  }
+
+  // Append 'Combos' if any product is a combo
+  const hasCombos = products.some((p) => p.is_combo || p.product_type === 'combo');
+  if (hasCombos && !categoryList.includes('Combos')) {
+    categoryList.push('Combos');
   }
 
   // Subcategories grouped by category_id (already ordered by sort_order from DB)

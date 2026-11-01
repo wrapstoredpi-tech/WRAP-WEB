@@ -2,10 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
+import { saveAuthIntent, sanitizeReturnTo } from '../lib/authRedirect';
 
 const FavoritesContext = createContext(null);
 
 const STORAGE_KEY_PENDING = 'wrapstore_pending_favorite';
+const GUEST_FAVORITES_KEY = 'wrapstore_guest_favorites';
 const LEGACY_WISHLIST_KEY = 'wrapstore_wishlist_ids';
 
 export function FavoritesProvider({ children }) {
@@ -17,19 +19,17 @@ export function FavoritesProvider({ children }) {
     return user ? `wrapstore_favorites_${user.id}` : null;
   }, [user]);
 
-  // Load initial favorites from localStorage (user-specific or fallback)
+  // Load initial favorites from localStorage (user-specific or guest device)
   const [favoriteIds, setFavoriteIds] = useState(() => {
     try {
       if (user) {
         const saved = localStorage.getItem(`wrapstore_favorites_${user.id}`);
         if (saved) return new Set(JSON.parse(saved));
-      }
-      // Also check legacy wishlist key
-      const legacy = localStorage.getItem(LEGACY_WISHLIST_KEY);
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return new Set(parsed);
+      } else {
+        const guest = localStorage.getItem(GUEST_FAVORITES_KEY) || localStorage.getItem(LEGACY_WISHLIST_KEY);
+        if (guest) {
+          const parsed = JSON.parse(guest);
+          if (Array.isArray(parsed)) return new Set(parsed);
         }
       }
     } catch (e) {
@@ -41,6 +41,7 @@ export function FavoritesProvider({ children }) {
   const [toastMessage, setToastMessage] = useState(null);
 
   const showToast = useCallback((message) => {
+    if (!message) return;
     setToastMessage(message);
     const timer = setTimeout(() => {
       setToastMessage(null);
@@ -48,11 +49,30 @@ export function FavoritesProvider({ children }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // When user signs in or changes, load user favorites from Supabase metadata + localStorage
+  // Global listener for custom toast events (e.g. from auth callback)
+  useEffect(() => {
+    const handleCustomToast = (e) => {
+      if (e.detail) showToast(e.detail);
+    };
+    window.addEventListener('wrapstore_toast', handleCustomToast);
+    return () => window.removeEventListener('wrapstore_toast', handleCustomToast);
+  }, [showToast]);
+
+  // When user signs in or changes, load and merge favorites
   useEffect(() => {
     if (!user) {
-      // Guest: clear favorites state so one user's favorites don't bleed into another
-      setFavoriteIds(new Set());
+      // Guest mode: load device favorites
+      try {
+        const guest = localStorage.getItem(GUEST_FAVORITES_KEY) || localStorage.getItem(LEGACY_WISHLIST_KEY);
+        if (guest) {
+          const parsed = JSON.parse(guest);
+          setFavoriteIds(new Set(Array.isArray(parsed) ? parsed : []));
+        } else {
+          setFavoriteIds(new Set());
+        }
+      } catch {
+        setFavoriteIds(new Set());
+      }
       return;
     }
 
@@ -66,7 +86,7 @@ export function FavoritesProvider({ children }) {
         const local = localStorage.getItem(`wrapstore_favorites_${user.id}`);
         if (local) {
           const arr = JSON.parse(local);
-          if (Array.isArray(arr)) arr.forEach((id) => mergedSet.add(id));
+          if (Array.isArray(arr)) arr.forEach((id) => mergedSet.add(String(id)));
         }
       } catch (e) {
         console.warn('Error reading local user favorites:', e);
@@ -75,47 +95,93 @@ export function FavoritesProvider({ children }) {
       // 2. Check Supabase user_metadata
       const metaFavorites = user.user_metadata?.favorites;
       if (Array.isArray(metaFavorites)) {
-        metaFavorites.forEach((id) => mergedSet.add(id));
+        metaFavorites.forEach((id) => mergedSet.add(String(id)));
       }
 
-      // 3. Check for any pending favorite from before signin/registration
+      // 3. Try to fetch from customer_favourites table if it exists
+      if (supabase) {
+        try {
+          const { data: dbFavs } = await supabase
+            .from('customer_favourites')
+            .select('product_id')
+            .eq('user_id', user.id);
+          if (Array.isArray(dbFavs)) {
+            dbFavs.forEach((row) => {
+              if (row.product_id) mergedSet.add(String(row.product_id));
+            });
+          }
+        } catch (e) {
+          // Table may not be created yet, non-fatal
+        }
+      }
+
+      // 4. Merge any guest favorites saved on this device without duplicates
+      try {
+        const guestRaw = localStorage.getItem(GUEST_FAVORITES_KEY);
+        const legacyRaw = localStorage.getItem(LEGACY_WISHLIST_KEY);
+        const guestArr = [
+          ...(guestRaw ? JSON.parse(guestRaw) : []),
+          ...(legacyRaw ? JSON.parse(legacyRaw) : []),
+        ];
+        if (Array.isArray(guestArr)) {
+          guestArr.forEach((id) => mergedSet.add(String(id)));
+        }
+      } catch {}
+
+      // 5. Check for any pending favorite from before signin/registration
       let pendingId = null;
       try {
         pendingId = sessionStorage.getItem(STORAGE_KEY_PENDING) || localStorage.getItem(STORAGE_KEY_PENDING);
       } catch {}
 
       if (pendingId) {
-        mergedSet.add(pendingId);
+        mergedSet.add(String(pendingId));
         try {
           sessionStorage.removeItem(STORAGE_KEY_PENDING);
           localStorage.removeItem(STORAGE_KEY_PENDING);
         } catch {}
         if (isMounted) {
-          showToast('Product automatically added to your favourites!');
+          showToast('Saved to your favourites');
         }
       }
 
-      // Update state
+      // Update in-memory state
       if (isMounted) {
         setFavoriteIds(new Set(mergedSet));
       }
 
-      // Persist merged favorites to localStorage
+      const finalArray = Array.from(mergedSet);
+
+      // Persist to user localStorage and legacy key
       try {
-        const arrayVal = Array.from(mergedSet);
-        localStorage.setItem(`wrapstore_favorites_${user.id}`, JSON.stringify(arrayVal));
-        localStorage.setItem(LEGACY_WISHLIST_KEY, JSON.stringify(arrayVal));
+        localStorage.setItem(`wrapstore_favorites_${user.id}`, JSON.stringify(finalArray));
+        localStorage.setItem(LEGACY_WISHLIST_KEY, JSON.stringify(finalArray));
+        // Clear guest device favorites so they don't linger for other users
+        localStorage.removeItem(GUEST_FAVORITES_KEY);
         window.dispatchEvent(new Event('wrapstore_wishlist_updated'));
       } catch {}
 
-      // Sync back to Supabase user metadata if changed
+      // Sync to Supabase user metadata
       if (supabase && (!Array.isArray(metaFavorites) || metaFavorites.length !== mergedSet.size)) {
         try {
           await supabase.auth.updateUser({
-            data: { favorites: Array.from(mergedSet) },
+            data: { favorites: finalArray },
           });
         } catch (err) {
-          console.warn('Could not sync favorites to Supabase user metadata:', err);
+          console.warn('Could not sync favorites to user metadata:', err);
+        }
+      }
+
+      // Sync to customer_favourites table if exists
+      if (supabase && finalArray.length > 0) {
+        try {
+          const rows = finalArray.map((pid) => ({
+            user_id: user.id,
+            product_id: pid,
+          }));
+          await supabase.from('customer_favourites').upsert(rows, { onConflict: 'user_id,product_id' });
+        } catch (err) {
+          // Table may not be created yet, non-fatal
         }
       }
     }
@@ -136,6 +202,11 @@ export function FavoritesProvider({ children }) {
         try {
           localStorage.setItem(userStorageKey, JSON.stringify(arrayVal));
         } catch {}
+      } else {
+        // Guest mode: save to guest storage
+        try {
+          localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(arrayVal));
+        } catch {}
       }
 
       try {
@@ -143,14 +214,24 @@ export function FavoritesProvider({ children }) {
         window.dispatchEvent(new Event('wrapstore_wishlist_updated'));
       } catch {}
 
-      // Sync to Supabase user metadata if user is logged in
+      // Sync to Supabase if user is logged in
       if (user && supabase) {
         try {
           await supabase.auth.updateUser({
             data: { favorites: arrayVal },
           });
         } catch (e) {
-          console.warn('Could not update favorites in Supabase:', e);
+          console.warn('Could not update favorites in user metadata:', e);
+        }
+
+        try {
+          const rows = arrayVal.map((pid) => ({
+            user_id: user.id,
+            product_id: pid,
+          }));
+          await supabase.from('customer_favourites').upsert(rows, { onConflict: 'user_id,product_id' });
+        } catch (e) {
+          // Non-fatal if table does not exist
         }
       }
     },
@@ -166,8 +247,27 @@ export function FavoritesProvider({ children }) {
   );
 
   /**
+   * Helper to merge and add a favorite item programmatically (e.g. from OAuth callback or post-auth continuation)
+   */
+  const mergeAndAddFavorite = useCallback(
+    (productId) => {
+      if (!productId) return;
+      const idStr = String(productId);
+      setFavoriteIds((prev) => {
+        const nextSet = new Set(prev);
+        nextSet.add(idStr);
+        persistFavorites(nextSet);
+        return nextSet;
+      });
+      showToast('Saved to your favourites');
+    },
+    [persistFavorites, showToast]
+  );
+
+  /**
    * Toggle favorite:
-   * - If user is NOT logged in: prompts login/signin page with pending favorite stored.
+   * - If user is NOT logged in: saves auth intent with pendingAction { type: 'favourite', productId }
+   *   and redirects to /login.
    * - If user IS logged in: automatically adds or removes product from favorites.
    */
   const toggleFavorite = useCallback(
@@ -180,22 +280,26 @@ export function FavoritesProvider({ children }) {
 
       if (!productId) return false;
 
-      // 1. If user is NOT logged in -> prompt login/signin page
+      // 1. If user is NOT logged in -> save intent and prompt signin
       if (!user) {
+        const returnUrl = sanitizeReturnTo(options.returnUrl || window.location.pathname);
         try {
           sessionStorage.setItem(STORAGE_KEY_PENDING, productId);
           localStorage.setItem(STORAGE_KEY_PENDING, productId);
         } catch {}
 
-        const returnUrl = options.returnUrl || window.location.pathname;
-        const loginUrl = `/login?returnTo=${encodeURIComponent(returnUrl)}&pendingFavorite=${encodeURIComponent(productId)}`;
+        saveAuthIntent({
+          returnTo: returnUrl,
+          pendingAction: { type: 'favourite', productId },
+        });
 
+        const loginUrl = `/login?returnTo=${encodeURIComponent(returnUrl)}&pendingFavorite=${encodeURIComponent(productId)}`;
         showToast('Please sign in or create an account to add to favourites.');
         navigate(loginUrl);
         return false;
       }
 
-      // 2. User IS logged in -> add/remove automatically
+      // 2. User IS logged in -> add/remove
       const nextSet = new Set(favoriteIds);
       let isNowFav = false;
 
@@ -203,10 +307,15 @@ export function FavoritesProvider({ children }) {
         nextSet.delete(productId);
         isNowFav = false;
         showToast('Removed from your favourites');
+
+        // Delete from DB table if exists
+        if (supabase) {
+          supabase.from('customer_favourites').delete().eq('user_id', user.id).eq('product_id', productId).catch(() => {});
+        }
       } else {
         nextSet.add(productId);
         isNowFav = true;
-        showToast('Added to your favourites!');
+        showToast('Saved to your favourites');
       }
 
       setFavoriteIds(nextSet);
@@ -222,11 +331,16 @@ export function FavoritesProvider({ children }) {
       const idStr = String(productId);
 
       if (!user) {
+        const returnUrl = sanitizeReturnTo(window.location.pathname);
         try {
           sessionStorage.setItem(STORAGE_KEY_PENDING, idStr);
           localStorage.setItem(STORAGE_KEY_PENDING, idStr);
         } catch {}
-        navigate(`/login?returnTo=${encodeURIComponent(window.location.pathname)}&pendingFavorite=${encodeURIComponent(idStr)}`);
+        saveAuthIntent({
+          returnTo: returnUrl,
+          pendingAction: { type: 'favourite', productId: idStr },
+        });
+        navigate(`/login?returnTo=${encodeURIComponent(returnUrl)}&pendingFavorite=${encodeURIComponent(idStr)}`);
         return;
       }
 
@@ -235,7 +349,7 @@ export function FavoritesProvider({ children }) {
         nextSet.add(idStr);
         setFavoriteIds(nextSet);
         persistFavorites(nextSet);
-        showToast('Added to your favourites!');
+        showToast('Saved to your favourites');
       }
     },
     [user, favoriteIds, navigate, persistFavorites, showToast]
@@ -251,9 +365,13 @@ export function FavoritesProvider({ children }) {
         setFavoriteIds(nextSet);
         persistFavorites(nextSet);
         showToast('Removed from your favourites');
+
+        if (user && supabase) {
+          supabase.from('customer_favourites').delete().eq('user_id', user.id).eq('product_id', idStr).catch(() => {});
+        }
       }
     },
-    [favoriteIds, persistFavorites, showToast]
+    [user, favoriteIds, persistFavorites, showToast]
   );
 
   const value = {
@@ -263,6 +381,8 @@ export function FavoritesProvider({ children }) {
     toggleFavorite,
     addToFavorites,
     removeFromFavorites,
+    mergeAndAddFavorite,
+    showToast,
     toastMessage,
   };
 
@@ -291,7 +411,6 @@ export function useFavorites() {
   return ctx;
 }
 
-// Alias for backwards compatibility with any existing useWishlist references
 export const useWishlist = useFavorites;
 
 export default FavoritesContext;

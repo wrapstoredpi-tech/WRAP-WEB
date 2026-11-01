@@ -20,6 +20,7 @@ const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ de
 const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })));
 const TrackOrderPage = lazy(() => import('./pages/TrackOrderPage').then((m) => ({ default: m.TrackOrderPage })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then((m) => ({ default: m.AuthCallbackPage })));
 const AccountPage = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
@@ -40,8 +41,9 @@ function RouteFallback() {
 function AppContent() {
   const location = useLocation();
   const isCheckout = location.pathname === '/checkout';
+  const isCallback = location.pathname === '/auth/callback';
   const isAdmin = location.pathname.startsWith('/wrapwebadmin');
-  const isReduced = isCheckout || isAdmin;
+  const isReduced = isCheckout || isCallback || isAdmin;
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && typeof window.__DISMISS_WRAPSTORE_INTRO__ === 'function') {
@@ -51,7 +53,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#141414] font-sans antialiased">
-      {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout or admin flows) */}
+      {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout, callback, or admin flows) */}
       {!isReduced && <Header />}
 
       {/* Global Phone Selection Modal (Hidden on admin) */}
@@ -61,6 +63,7 @@ function AppContent() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/combos" element={<HomePage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
@@ -74,6 +77,7 @@ function AppContent() {
 
           {/* Auth & Account Routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -97,10 +101,10 @@ function AppContent() {
         </Routes>
       </Suspense>
 
-      {/* Footer (Hidden on reduced checkout or admin flows) */}
+      {/* Footer (Hidden on reduced checkout, callback, or admin flows) */}
       {!isReduced && <Footer />}
 
-      {/* Floating WhatsApp fixed bottom-left (Hidden on reduced checkout or admin flows) */}
+      {/* Floating WhatsApp fixed bottom-left (Hidden on reduced checkout, callback, or admin flows) */}
       {!isReduced && <FloatingWhatsApp />}
     </div>
   );

@@ -42,6 +42,22 @@ export function CheckoutPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { user } = useAuth();
 
+  // Prefill Google name and email if signed in, keeping typed details intact
+  useEffect(() => {
+    if (user) {
+      setFields((prev) => {
+        const meta = user.user_metadata || {};
+        const googleName = meta.full_name || meta.name || '';
+        const userEmail = user.email || '';
+        return {
+          ...prev,
+          name: prev.name.trim() ? prev.name : googleName,
+          email: prev.email.trim() ? prev.email : userEmail,
+        };
+      });
+    }
+  }, [user]);
+
   // Remember details for returning visitors
   useEffect(() => {
     try {
@@ -503,6 +519,7 @@ export function CheckoutPage() {
                 setIsAuthModalOpen(false);
               }}
               returnTo="/checkout"
+              pendingAction={{ type: 'checkout' }}
             />
           </div>
         </div>

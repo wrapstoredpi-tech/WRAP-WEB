@@ -4,14 +4,23 @@ import { Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthForm } from '../components/auth/AuthForm';
 import { homeConfig } from '../config/home';
+import { sanitizeReturnTo } from '../lib/authRedirect';
 
 export function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
 
-  const returnTo = searchParams.get('returnTo') || '/';
+  const rawReturnTo = searchParams.get('returnTo') || '/';
+  const returnTo = sanitizeReturnTo(rawReturnTo);
   const pendingFavorite = searchParams.get('pendingFavorite');
+  const authNote = searchParams.get('authNote') || '';
+
+  const pendingAction = pendingFavorite
+    ? { type: 'favourite', productId: pendingFavorite }
+    : returnTo === '/checkout'
+    ? { type: 'checkout' }
+    : null;
 
   // Signed-in visitors who open /login go to returnTo or /account
   useEffect(() => {
@@ -21,8 +30,8 @@ export function LoginPage() {
     }
   }, [user, isLoading, navigate, returnTo]);
 
-  const handleAuthSuccess = () => {
-    const destination = returnTo && returnTo !== '/' ? returnTo : '/account';
+  const handleAuthSuccess = (targetDestination) => {
+    const destination = targetDestination || (returnTo && returnTo !== '/' ? returnTo : '/account');
     navigate(destination, { replace: true });
   };
 
@@ -59,7 +68,6 @@ export function LoginPage() {
 
   return (
     <main className="flex-1 max-w-[1080px] w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
-      
       {/* Breadcrumb back to store */}
       <div className="mb-6">
         <Link to="/" className="text-[13px] text-[#6B6B6B] hover:text-[#141414] transition-colors">
@@ -69,7 +77,6 @@ export function LoginPage() {
 
       {/* Two columns on desktop: Left Form, Right Benefits Panel. Single column on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        
         {/* Left Column: Form */}
         <div className="lg:col-span-7 bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 shadow-sm">
           <div className="mb-6">
@@ -96,7 +103,12 @@ export function LoginPage() {
             </div>
           )}
 
-          <AuthForm onSuccess={handleAuthSuccess} returnTo={returnTo} />
+          <AuthForm
+            onSuccess={handleAuthSuccess}
+            returnTo={returnTo}
+            pendingAction={pendingAction}
+            authNote={authNote}
+          />
         </div>
 
         {/* Right Column: Plain Benefits Panel */}
@@ -108,12 +120,8 @@ export function LoginPage() {
           <div className="space-y-5">
             {benefits.map((b) => (
               <div key={b.id} className="space-y-1">
-                <h3 className="text-[15px] font-semibold text-[#141414]">
-                  {b.title}
-                </h3>
-                <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
-                  {b.description}
-                </p>
+                <h3 className="text-[15px] font-semibold text-[#141414]">{b.title}</h3>
+                <p className="text-[14px] text-[#6B6B6B] leading-relaxed">{b.description}</p>
               </div>
             ))}
           </div>

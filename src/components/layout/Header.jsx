@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingBag, Menu, X, ChevronDown, User, LogOut, Package, MapPin, Heart } from 'lucide-react';
+import { Search, ShoppingBag, Menu, X, ChevronDown, ChevronRight, User, LogOut, Package, MapPin, Heart } from 'lucide-react';
+import { BuildYourOwnCaseModal } from '../ui/BuildYourOwnCaseModal';
 import { Logo } from '../ui/Logo';
 import { useCart } from '../../context/CartContext';
 import { useProductsContext } from '../../context/ProductsContext';
@@ -23,6 +24,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null); // 'mobile-cases' | 'accessories' | 'account' | null
   const [mobileAccordion, setMobileAccordion] = useState(null);
+  const [isCustomCaseModalOpen, setIsCustomCaseModalOpen] = useState(false);
 
   const navRef = useRef(null);
   const accountRef = useRef(null);
@@ -306,7 +308,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
             {/* Centre Nav (Desktop Only) */}
             <nav
               ref={navRef}
-              className="hidden md:flex items-center space-x-7 lg:space-x-8"
+              className="hidden md:flex items-center space-x-5 lg:space-x-7 xl:space-x-8"
               aria-label="Main Navigation"
             >
               {/* Mobile Cases Dropdown */}
@@ -462,6 +464,27 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                 )}
               </div>
 
+              {/* Combos Nav */}
+              <button
+                type="button"
+                onClick={() => handleNavigateToListing({ category: 'Combos' })}
+                className={`text-[14px] py-4 transition-colors cursor-pointer whitespace-nowrap ${
+                  (location.pathname === '/combos' || location.search.toLowerCase().includes('category=combos'))
+                    ? 'font-semibold text-[#B0521F]'
+                    : 'font-medium text-[#141414] hover:text-[#B0521F]'
+                }`}
+              >
+                Combos
+              </button>
+
+              {/* Build Your Own Case Nav */}
+              <button
+                type="button"
+                onClick={() => setIsCustomCaseModalOpen(true)}
+                className="text-[14px] py-4 font-medium text-[#141414] hover:text-[#B0521F] transition-colors cursor-pointer whitespace-nowrap"
+              >
+                Build Your Own Case
+              </button>
             </nav>
 
             {/* Right: Search + Account Control + Bag */}
@@ -805,6 +828,33 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
               )}
             </div>
 
+                        {/* Combos Mobile Button */}
+            <button
+              type="button"
+              onClick={() => handleNavigateToListing({ category: 'Combos' })}
+              className={`w-full min-h-[48px] px-4 rounded-[6px] bg-white border flex items-center justify-between text-[16px] font-semibold transition-colors cursor-pointer ${
+                (location.pathname === '/combos' || location.search.toLowerCase().includes('category=combos'))
+                  ? 'border-[#B0521F] text-[#B0521F]'
+                  : 'border-[#E5E5E3] text-[#141414] hover:border-[#B0521F]'
+              }`}
+            >
+              <span>Combos</span>
+              <ChevronRight className="w-4 h-4 text-[#6B6B6B]" />
+            </button>
+
+            {/* Build Your Own Case Mobile Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsCustomCaseModalOpen(true);
+              }}
+              className="w-full min-h-[48px] px-4 rounded-[6px] bg-white border border-[#E5E5E3] flex items-center justify-between text-[16px] font-semibold text-[#141414] hover:border-[#B0521F] transition-colors cursor-pointer"
+            >
+              <span>Build Your Own Case</span>
+              <ChevronRight className="w-4 h-4 text-[#6B6B6B]" />
+            </button>
+
             {/* Direct Links: About, Contact, Favourites, Account, Track order */}
             <div className="pt-2 space-y-2">
               <Link
@@ -854,6 +904,12 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
           </div>
         </div>
       )}
+
+      {/* Minimal Build Your Own Case Modal */}
+      <BuildYourOwnCaseModal
+        isOpen={isCustomCaseModalOpen}
+        onClose={() => setIsCustomCaseModalOpen(false)}
+      />
     </div>
   );
 }

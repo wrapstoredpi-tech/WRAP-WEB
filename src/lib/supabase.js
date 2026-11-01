@@ -49,6 +49,8 @@ export const supabase = supabaseConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        flowType: 'pkce',
+        detectSessionInUrl: true,
       },
       realtime: {
         params: {

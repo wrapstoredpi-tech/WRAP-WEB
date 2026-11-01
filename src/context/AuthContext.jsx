@@ -90,10 +90,10 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  // Sign In with Google
-  const signInWithGoogle = useCallback(async (returnTo = '/') => {
+  // Sign In with Google (Redirects to /auth/callback via PKCE)
+  const signInWithGoogle = useCallback(async () => {
     if (!supabase) throw new Error('Supabase client not initialized');
-    const redirectTo = `${window.location.origin}${returnTo}`;
+    const redirectTo = `${window.location.origin}/auth/callback`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

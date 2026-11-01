@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
 import { ShopByCategoryRow } from '../components/home/ShopByCategoryRow';
 import { WhyWrapstore } from '../components/home/WhyWrapstore';
@@ -65,7 +65,9 @@ export function HomePage() {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // URL query parameters
-  const catQuery = searchParams.get('category');
+  const location = useLocation();
+  const isCombosRoute = location.pathname === '/combos';
+  const catQuery = searchParams.get('category') || (isCombosRoute ? 'Combos' : null);
   const subQuery = searchParams.get('subcategory');
   const brandQuery = searchParams.get('brand');
   const seriesQuery = searchParams.get('series');
@@ -76,6 +78,7 @@ export function HomePage() {
 
   // Determine if we should show Listing mode instead of Home mode
   const isListingMode = Boolean(
+    isCombosRoute ||
     catQuery || subQuery || brandQuery || seriesQuery || modelQuery || searchQuery || viewQuery === 'all' || featuredQuery
   );
 
@@ -151,9 +154,10 @@ export function HomePage() {
     // Category filter (combos appear in all constituent categories)
     if (filters.category && filters.category !== 'All' && filters.category !== 'All Categories') {
       const targetCat = filters.category.toLowerCase();
+      const isCombosFilter = targetCat === 'combos' || targetCat === 'combo';
       result = result.filter(
         (p) =>
-          p.category?.toLowerCase() === targetCat ||
+          (isCombosFilter ? (p.is_combo || p.product_type === 'combo') : p.category?.toLowerCase() === targetCat) ||
           (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase() === targetCat))
       );
     }
