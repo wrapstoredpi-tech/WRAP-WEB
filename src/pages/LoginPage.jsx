@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthForm } from '../components/auth/AuthForm';
 import { homeConfig } from '../config/home';
@@ -10,19 +11,27 @@ export function LoginPage() {
   const { user, isLoading } = useAuth();
 
   const returnTo = searchParams.get('returnTo') || '/';
+  const pendingFavorite = searchParams.get('pendingFavorite');
 
-  // Signed-in visitors who open /login go to /account
+  // Signed-in visitors who open /login go to returnTo or /account
   useEffect(() => {
     if (!isLoading && user) {
-      navigate('/account', { replace: true });
+      const destination = returnTo && returnTo !== '/' ? returnTo : '/account';
+      navigate(destination, { replace: true });
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, returnTo]);
 
   const handleAuthSuccess = () => {
-    navigate(returnTo, { replace: true });
+    const destination = returnTo && returnTo !== '/' ? returnTo : '/account';
+    navigate(destination, { replace: true });
   };
 
   const benefits = homeConfig.accountBenefits || [
+    {
+      id: 'saved-favourites',
+      title: 'Save your favourites',
+      description: 'Bookmark phone cases and accessories you love to easily view and buy them anytime.',
+    },
     {
       id: 'track-orders',
       title: 'Track your orders',
@@ -68,9 +77,24 @@ export function LoginPage() {
               Welcome to WrapStore
             </h1>
             <p className="font-sans text-[14px] text-[#6B6B6B] mt-1">
-              Sign in to manage your orders, delivery addresses, and account.
+              Sign in to manage your orders, saved favourites, and account.
             </p>
           </div>
+
+          {/* Pending Favourite Callout Banner */}
+          {pendingFavorite && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-[#141414] flex items-center gap-3 animate-fade-in">
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
+                <Heart className="w-4 h-4 fill-red-600" />
+              </div>
+              <div className="text-[13px] leading-snug">
+                <strong className="block font-semibold text-red-700">Save to your favourites</strong>
+                <span className="text-[#404040]">
+                  Sign in or create an account to save this item. It will be added to your favourites automatically!
+                </span>
+              </div>
+            </div>
+          )}
 
           <AuthForm onSuccess={handleAuthSuccess} returnTo={returnTo} />
         </div>

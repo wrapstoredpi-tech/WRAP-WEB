@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useProductsContext } from '../../context/ProductsContext';
+import { useFavorites } from '../../context/FavoritesContext';
 import { formatINR } from '../../lib/currency';
 import { resolveColorStyle, getValidColors } from '../../lib/colors';
 import { ProductShare } from './ProductShare';
@@ -146,34 +147,12 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
 
-  // Wishlist state persisted in localStorage
-  const [isWishlisted, setIsWishlisted] = useState(() => {
-    try {
-      const saved = localStorage.getItem('wrapstore_wishlist_ids');
-      if (saved) {
-        const ids = JSON.parse(saved);
-        return Array.isArray(ids) && ids.includes(product.id);
-      }
-    } catch {}
-    return false;
-  });
+  // Favorites state from FavoritesContext
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const isWishlisted = isFavorite(product.id);
 
   const handleToggleWishlist = () => {
-    setIsWishlisted((prev) => {
-      const nextVal = !prev;
-      try {
-        const saved = localStorage.getItem('wrapstore_wishlist_ids');
-        const set = new Set(saved ? JSON.parse(saved) : []);
-        if (nextVal) {
-          set.add(product.id);
-        } else {
-          set.delete(product.id);
-        }
-        localStorage.setItem('wrapstore_wishlist_ids', JSON.stringify(Array.from(set)));
-        window.dispatchEvent(new Event('wrapstore_wishlist_updated'));
-      } catch {}
-      return nextVal;
-    });
+    toggleFavorite(product.id, { returnUrl: `/product/${product.id}` });
   };
 
   const handleDecrement = () => {
@@ -488,8 +467,8 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
           <div className="flex items-center gap-3 sm:px-3">
             <ShieldCheck className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
             <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Secure</p>
-              <p className="text-[11px] text-[#737373]">payments</p>
+              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Razorpay</p>
+              <p className="text-[11px] text-[#737373]">Prepaid • No COD</p>
             </div>
           </div>
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Check, AlertCircle } from 'lucide-react';
+import { Search, Check, AlertCircle, Truck, PackageCheck, RotateCcw } from 'lucide-react';
 import { trackOrder, ORDER_STATUS_STEPS } from '../lib/checkout';
 import { formatINR } from '../lib/currency';
+import { supabase } from '../lib/supabase';
 
 export function TrackOrderPage() {
   const { state } = useLocation();
@@ -26,19 +27,19 @@ export function TrackOrderPage() {
     const targetPhone = forcePhone !== null ? forcePhone : phoneInput;
 
     if (!targetId.trim()) {
-      setErrorMessage('Please enter an order number (e.g. WS-123456).');
+      setErrorMessage('Please enter an order number (e.g. WS-ONL-000001).');
       return;
     }
 
     setErrorMessage('');
     setIsSearching(true);
-    setResult(null);
 
     try {
       const res = await trackOrder(targetId, targetPhone);
       if (res.success) {
         setResult(res);
       } else {
+        setResult(null);
         setErrorMessage(res.message || 'No order found with this order number and phone.');
       }
     } catch (err) {
@@ -48,12 +49,37 @@ export function TrackOrderPage() {
     }
   };
 
+  // Realtime subscription on the viewed order
+  useEffect(() => {
+    if (!result?.order?.id) return;
+    const channel = supabase
+      .channel(`tracking-order-${result.order.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'online_orders',
+          filter: `id=eq.${result.order.id}`,
+        },
+        () => {
+          handleSearch(null, result.order.orderId || result.order.order_number, phoneInput);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [result?.order?.id]);
+
   const getStatusIndex = (currentStatus) => {
     const idx = ORDER_STATUS_STEPS.indexOf(currentStatus);
     return idx >= 0 ? idx : 1; // Default to Payment received
   };
 
-  const isCancelledOrRefunded = result?.status === 'Cancelled' || result?.status === 'Refunded';
+  const isCancelledOrRefunded =
+    result?.status === 'Cancelled' || result?.order?.order_status === 'CANCELLED';
 
   return (
     <main className="flex-1 max-w-[800px] w-full mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-8">
@@ -78,7 +104,7 @@ export function TrackOrderPage() {
               id="orderId"
               type="text"
               required
-              placeholder="WS-123456"
+              placeholder="WS-ONL-000001"
               value={orderIdInput}
               onChange={(e) => setOrderIdInput(e.target.value)}
               className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
@@ -129,9 +155,16 @@ export function TrackOrderPage() {
         <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E5E5E3] gap-2">
             <div>
-              <span className="text-[12px] text-[#6B6B6B]">Order #{result.order.orderId}</span>
-              <h2 className="text-[20px] font-semibold text-[#141414]">
-                Status: <span className="text-[#B0521F]">{result.order.status}</span>
+              <span className="text-[12px] text-[#6B6B6B]">Order #{result.order.orderId || result.order.order_number}</span>
+              <h2 className="text-[20px] font-semibold text-[#141414] flex items-center gap-3">
+                Status:{' '}
+                <span
+                  className={
+                    isCancelledOrRefunded ? 'text-red-600 font-bold' : 'text-[#B0521F]'
+                  }
+                >
+                  {result.order.status}
+                </span>
               </h2>
             </div>
             <span className="text-[12px] text-[#6B6B6B]">
@@ -143,8 +176,8 @@ export function TrackOrderPage() {
           {!isCancelledOrRefunded ? (
             <div className="py-4 space-y-4">
               <h3 className="text-[14px] font-semibold text-[#141414]">Fulfillment Progress</h3>
-              
-              <div className="grid grid-cols-5 gap-2 text-center">
+
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center">
                 {ORDER_STATUS_STEPS.map((stage, idx) => {
                   const currentIdx = getStatusIndex(result.order.status);
                   const isDone = idx <= currentIdx;
@@ -172,10 +205,39 @@ export function TrackOrderPage() {
                   );
                 })}
               </div>
+
+              {/* Tracking number banner if shipped */}
+              {(result.order.tracking_number || result.order.courier_name) && (
+                <div className="mt-4 p-4 bg-[#eff6ff] border border-[#bfdbfe] rounded-[6px] flex items-start gap-3">
+                  <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-[14px] font-semibold text-blue-900">
+                      Dispatched via {result.order.courier_name || 'Courier'}
+                    </h4>
+                    <p className="text-[13px] text-blue-800 mt-0.5">
+                      Tracking Number:{' '}
+                      <strong className="font-mono">{result.order.tracking_number}</strong>
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="p-4 bg-[#F9EDE7] border border-[#B0521F] rounded-[6px] text-[14px] text-[#B0521F]">
-              This order has been {result.order.status.toLowerCase()}. Please contact WhatsApp support if you have questions.
+            <div className="p-4 bg-red-50 border border-red-200 rounded-[6px] text-[14px] text-red-800 space-y-2">
+              <div className="flex items-center gap-2 font-semibold">
+                <RotateCcw className="w-4 h-4 text-red-600" />
+                <span>This order was cancelled.</span>
+              </div>
+              {result.order.cancelled_reason && (
+                <p className="text-[13px] text-red-700">
+                  Reason: <em>{result.order.cancelled_reason}</em>
+                </p>
+              )}
+              {result.order.refund_status && result.order.refund_status !== 'NONE' && (
+                <p className="text-[12px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 inline-block">
+                  Refund Status: {result.order.refund_status}
+                </p>
+              )}
             </div>
           )}
 
@@ -188,7 +250,8 @@ export function TrackOrderPage() {
                   <div>
                     <span className="font-semibold text-[#141414]">{item.name}</span>
                     <span className="text-[12px] text-[#6B6B6B] block">
-                      Model: {item.selected_model || item.mobile_model || 'Universal'} • Qty: {item.quantity}
+                      Model: {item.selected_model || item.mobile_model || 'Universal'}
+                      {item.color ? ` · Color: ${item.color}` : ''} • Qty: {item.quantity}
                     </span>
                   </div>
                   <span className="font-semibold text-[#141414]">

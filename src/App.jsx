@@ -9,10 +9,12 @@ import { CartProvider } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { PhoneProvider } from './context/PhoneContext';
 import { IntroProvider } from './context/IntroContext';
+import { FavoritesProvider } from './context/FavoritesContext';
 
 // Route-level code splitting
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
 const CartPage = lazy(() => import('./pages/CartPage').then((m) => ({ default: m.CartPage })));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
 const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })));
@@ -61,6 +63,8 @@ function AppContent() {
           <Route path="/" element={<HomePage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
+          <Route path="/wishlist" element={<FavoritesPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
           <Route path="/track-order" element={<TrackOrderPage />} />
@@ -146,9 +150,11 @@ export function App() {
           <AuthProvider>
             <CartProvider>
               <ProductsProvider>
-                <PhoneProvider>
-                  <AppContent />
-                </PhoneProvider>
+                <FavoritesProvider>
+                  <PhoneProvider>
+                    <AppContent />
+                  </PhoneProvider>
+                </FavoritesProvider>
               </ProductsProvider>
             </CartProvider>
           </AuthProvider>

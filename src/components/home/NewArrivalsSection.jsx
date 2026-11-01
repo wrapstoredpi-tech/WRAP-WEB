@@ -5,6 +5,7 @@ import { homeConfig } from '../../config/home';
 import { FeaturedProductCard, FeaturedProductSkeleton } from './FeaturedProductsSection';
 import { buildNewArrivalsRow } from '../../lib/productRowAdapter';
 import { useCart } from '../../context/CartContext';
+import { useFavorites } from '../../context/FavoritesContext';
 
 export function NewArrivalsSection({
   products = [],
@@ -15,15 +16,8 @@ export function NewArrivalsSection({
   const containerRef = useRef(null);
 
   const { cartItems, addItem } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const [addedIds, setAddedIds] = useState(new Set());
-  const [wishlistIds, setWishlistIds] = useState(() => {
-    try {
-      const saved = localStorage.getItem('wrapstore_wishlist_ids');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
   const [toastMessage, setToastMessage] = useState(null);
   const toastTimeoutRef = useRef(null);
 
@@ -58,25 +52,7 @@ export function NewArrivalsSection({
   };
 
   const handleToggleWishlist = (productId) => {
-    setWishlistIds((prev) => {
-      const next = new Set(prev);
-      const isCurrentlyWishlisted = next.has(productId);
-      if (isCurrentlyWishlisted) {
-        next.delete(productId);
-        showToast({ title: 'Removed from favorites' });
-      } else {
-        next.add(productId);
-        showToast({ title: 'Saved to favorites' });
-      }
-
-      try {
-        localStorage.setItem('wrapstore_wishlist_ids', JSON.stringify(Array.from(next)));
-      } catch {
-        // LocalStorage fallback handled silently
-      }
-
-      return next;
-    });
+    toggleFavorite(productId, { returnUrl: '/' });
   };
 
   const config = homeConfig.newArrivals || {};
@@ -160,7 +136,7 @@ export function NewArrivalsSection({
           <FeaturedProductCard
             key={product.id}
             product={product}
-            isWishlisted={wishlistIds.has(product.id)}
+            isWishlisted={isFavorite(product.id)}
             onToggleWishlist={handleToggleWishlist}
             isAdded={
               addedIds.has(product.id) ||

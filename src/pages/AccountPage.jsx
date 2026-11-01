@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, MapPin, User, LogOut, ArrowRight } from 'lucide-react';
+import { Package, MapPin, User, LogOut, ArrowRight, Heart } from 'lucide-react';
 
 export function AccountPage() {
   const { user, firstName, isLoading, signOut } = useAuth();
@@ -81,6 +81,17 @@ export function AccountPage() {
             <Package className="w-4 h-4" />
             <span>Orders</span>
           </button>
+
+          <Link
+            to="/favorites"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-[4px] text-[14px] font-medium transition-colors text-left text-[#141414] hover:bg-[#FAFAF9]"
+          >
+            <div className="flex items-center gap-3">
+              <Heart className="w-4 h-4 text-[#DC2626]" />
+              <span>My Favourites</span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-[#6B6B6B]" />
+          </Link>
 
           <button
             type="button"

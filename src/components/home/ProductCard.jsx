@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
 import { ColorSwatch, getValidColors } from '../ui/ColorSwatch';
+import { useFavorites } from '../../context/FavoritesContext';
 
 export function ProductCard({ product }) {
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   if (!product) return null;
 
@@ -12,6 +15,13 @@ export function ProductCard({ product }) {
   const isLowStock = !isOutOfStock && (product.available_stock <= 5 || product.stock_status === 'LOW_STOCK');
   const hasDiscount = product.mrp > product.selling_price;
   const validColors = getValidColors(product);
+  const isFav = isFavorite(product.id);
+
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    toggleFavorite(product.id, { returnUrl: `/product/${product.id}` });
+  };
 
   // Extract all distinct images for this product
   const images = useMemo(() => {
@@ -93,6 +103,24 @@ export function ProductCard({ product }) {
             </span>
           </div>
         ) : null}
+
+        {/* Favourite Heart Button */}
+        <button
+          type="button"
+          onClick={handleFavoriteClick}
+          aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+          title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+          className="absolute top-2.5 right-2.5 z-20 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#141414] flex items-center justify-center border border-[#ECEAE5] shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-md transition-all duration-200 active:scale-90 cursor-pointer focus:outline-none"
+        >
+          <Heart
+            className={`w-4 h-4 transition-all duration-200 ${
+              isFav
+                ? 'fill-red-500 text-red-500 scale-110'
+                : 'text-[#4A4A4A] group-hover:text-[#141414]'
+            }`}
+            strokeWidth={isFav ? 2.2 : 1.8}
+          />
+        </button>
 
         {images.length > 1 ? (
           <div className="relative w-full h-full overflow-hidden">

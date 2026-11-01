@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingBag, Menu, X, ChevronDown, User, LogOut, Package, MapPin } from 'lucide-react';
+import { Search, ShoppingBag, Menu, X, ChevronDown, User, LogOut, Package, MapPin, Heart } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { useCart } from '../../context/CartContext';
 import { useProductsContext } from '../../context/ProductsContext';
 import { useAuth } from '../../context/AuthContext';
+import { useFavorites } from '../../context/FavoritesContext';
 import { store } from '../../config/store';
 import { formatINR } from '../../lib/currency';
 import { useIntroReveal } from '../../hooks/useIntroReveal';
 
 export function Header({ _activeCategory = 'All', onCategorySelect }) {
   const { itemCount } = useCart();
+  const { favoriteCount } = useFavorites();
   const { products, categories, subcategories } = useProductsContext();
   const { user, firstName, isLoading: isAuthLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -550,6 +552,14 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                           <span>Orders</span>
                         </Link>
                         <Link
+                          to="/favorites"
+                          onClick={() => setActiveDropdown(null)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-[14px] text-[#141414] hover:bg-[#FAFAF9] transition-colors"
+                        >
+                          <Heart className="w-4 h-4 text-[#DC2626]" />
+                          <span>Favourites ({favoriteCount})</span>
+                        </Link>
+                        <Link
                           to="/account?tab=addresses"
                           onClick={() => setActiveDropdown(null)}
                           className="flex items-center gap-2.5 px-3 py-2 text-[14px] text-[#141414] hover:bg-[#FAFAF9] transition-colors"
@@ -588,6 +598,23 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                   </Link>
                 )}
               </div>
+
+              {/* Favourites / Wishlist Button (placed near user login) */}
+              <Link
+                to={user ? "/favorites" : "/login?returnTo=/favorites"}
+                className="relative w-10 h-10 flex items-center justify-center text-[#141414] hover:text-[#DC2626] hover:bg-[#EFEFEB]/80 transition-colors rounded-full"
+                aria-label={favoriteCount > 0 ? `Favourites with ${favoriteCount} items` : 'Favourites'}
+                title={favoriteCount > 0 ? `${favoriteCount} saved favourites` : 'Favourites'}
+              >
+                <div className="relative flex items-center justify-center">
+                  <Heart className={`w-5 h-5 transition-colors ${favoriteCount > 0 ? 'fill-red-50 text-[#DC2626]' : ''}`} />
+                  {favoriteCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center tabular-nums leading-none shadow-sm pointer-events-none">
+                      {favoriteCount > 99 ? '99+' : favoriteCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
 
               {/* Bag Icon (only bag icon; with red circle badge if items added) */}
               <Link
@@ -778,8 +805,23 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
               )}
             </div>
 
-            {/* Direct Links: About, Contact, Account, Track order */}
+            {/* Direct Links: About, Contact, Favourites, Account, Track order */}
             <div className="pt-2 space-y-2">
+              <Link
+                to={user ? '/favorites' : '/login?returnTo=/favorites'}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between min-h-[44px] px-4 py-2.5 rounded-[6px] bg-white border border-[#E5E5E3] text-[14px] font-medium text-[#141414]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Heart className="w-4 h-4 text-[#DC2626]" />
+                  <span>My Favourites</span>
+                </div>
+                {favoriteCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[12px] font-semibold tabular-nums">
+                    {favoriteCount}
+                  </span>
+                )}
+              </Link>
               <Link
                 to="/about"
                 onClick={() => setIsMobileMenuOpen(false)}

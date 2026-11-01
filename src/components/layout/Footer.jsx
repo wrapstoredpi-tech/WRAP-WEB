@@ -22,7 +22,7 @@ export function Footer() {
             <div className="pt-2">
               <span className="block text-[12px] font-semibold text-[#141414]">Online Payment</span>
               <p className="text-[12px] text-[#6B6B6B] mt-0.5 leading-normal">
-                Secure online payment by Razorpay (UPI, Cards, Net Banking, Wallets).
+                100% Prepaid online via Razorpay (UPI, Cards, Net Banking, Wallets). Cash on Delivery (COD) is not available.
               </p>
             </div>
           </div>
@@ -70,6 +70,11 @@ export function Footer() {
               <li>
                 <Link to="/contact" className="hover:text-[#141414] transition-colors">
                   Contact &amp; Store details
+                </Link>
+              </li>
+              <li>
+                <Link to="/favorites" className="hover:text-[#141414] transition-colors">
+                  My Favourites
                 </Link>
               </li>
               <li>
@@ -154,7 +159,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-[#6B6B6B]">
           <p>© {new Date().getFullYear()} WrapStore. All rights reserved.</p>
-          <p>Online payment only via Razorpay. Dharmapuri, Tamil Nadu.</p>
+          <p>Online payment only via Razorpay • No Cash on Delivery. Dharmapuri, Tamil Nadu.</p>
         </div>
       </div>
     </footer>

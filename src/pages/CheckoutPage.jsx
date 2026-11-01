@@ -126,6 +126,9 @@ export function CheckoutPage() {
           price: line.product.selling_price,
           quantity: line.quantity,
           image: line.product.image_url,
+          is_combo: line.product.is_combo || false,
+          combo_items: line.product.combo_items || [],
+          product: line.product,
         })),
         subtotal,
         shippingFee,
@@ -363,16 +366,35 @@ export function CheckoutPage() {
               </div>
             </section>
 
-            {/* Payment Section: One Plain Line Only */}
-            <section className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 space-y-3">
-              <h2 className="text-[20px] font-semibold text-[#141414]">
-                Payment
-              </h2>
-              <div className="p-4 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] flex items-center gap-3">
-                <Lock className="w-5 h-5 text-[#6B6B6B] shrink-0" />
-                <p className="text-[14px] text-[#141414] font-normal leading-normal">
-                  Pay securely online by UPI, card, net banking or wallet
+            {/* Payment Section: Razorpay Online Prepaid Only */}
+            <section className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[20px] font-semibold text-[#141414]">
+                  Payment Method
+                </h2>
+                <span className="text-[12px] font-semibold text-[#16A34A] bg-[#DCFCE7] px-2.5 py-0.5 rounded-full">
+                  100% Prepaid
+                </span>
+              </div>
+
+              <div className="p-4 bg-[#FAFAF9] border-2 border-[#141414] rounded-[6px] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full border-4 border-[#141414] bg-white flex items-center justify-center shrink-0" />
+                    <span className="text-[15px] font-semibold text-[#141414]">
+                      Razorpay Secure Payment
+                    </span>
+                  </div>
+                  <Lock className="w-4 h-4 text-[#6B6B6B]" />
+                </div>
+                <p className="text-[13px] text-[#6B6B6B] pl-6.5 leading-normal">
+                  UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards, Net Banking &amp; Wallets.
                 </p>
+                <div className="pl-6.5 pt-1">
+                  <p className="text-[12px] font-medium text-[#B0521F]">
+                    ⚠️ Note: Cash on Delivery (COD) is not available. All orders are safely prepaid online.
+                  </p>
+                </div>
               </div>
             </section>
 
@@ -384,9 +406,9 @@ export function CheckoutPage() {
                 className="w-full min-h-[48px] px-6 py-3 bg-[#B0521F] hover:bg-[#994518] text-white text-[16px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? (
-                  <span>Processing online payment...</span>
+                  <span>Connecting to Razorpay...</span>
                 ) : (
-                  <span>Pay {formatINR(estimatedTotal)} Online</span>
+                  <span>Pay {formatINR(estimatedTotal)} via Razorpay</span>
                 )}
               </button>
             </div>
