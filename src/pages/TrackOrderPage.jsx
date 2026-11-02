@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
+import { policies, getDeliveryLine } from '../config/policies';
 import { Search, Check, AlertCircle, Truck, PackageCheck, RotateCcw } from 'lucide-react';
 import { trackOrder, ORDER_STATUS_STEPS } from '../lib/checkout';
 import { formatINR } from '../lib/currency';
@@ -83,6 +84,12 @@ export function TrackOrderPage() {
     const idx = ORDER_STATUS_STEPS.indexOf(currentStatus);
     return idx >= 0 ? idx : 1; // Default to Payment received
   };
+
+  const trackOrderState = result?.order?.shipping_state || result?.order?.delivery?.state || (() => {
+    const addr = result?.order?.delivery?.address || '';
+    if (addr.toLowerCase().includes('tamil nadu')) return 'Tamil Nadu';
+    return null;
+  })();
 
   const isCancelledOrRefunded =
     result?.status === 'Cancelled' || result?.order?.order_status === 'CANCELLED';
@@ -233,7 +240,7 @@ export function TrackOrderPage() {
                   <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-[14px] font-semibold text-blue-900">
-                      Dispatched via {result.order.courier_name || 'Courier'}
+                      Dispatched for delivery
                     </h4>
                     <p className="text-[13px] text-blue-800 mt-0.5">
                       Tracking Number:{' '}
@@ -259,6 +266,29 @@ export function TrackOrderPage() {
                   Refund Status: {result.order.refund_status}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Estimated Delivery */}
+          {!isCancelledOrRefunded && (
+            <div className="p-4 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#6B6B6B] space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-[#141414]">Estimated Delivery</p>
+                
+              </div>
+              {trackOrderState ? (
+                <p>{getDeliveryLine(trackOrderState)}</p>
+              ) : (
+                <div className="space-y-0.5">
+                  <p>Orders delivered within {policies.delivery.tn.label}: {policies.delivery.tn.text}.</p>
+                  <p>Orders delivered to {policies.delivery.other.label.toLowerCase()}: {policies.delivery.other.text.toLowerCase()}.</p>
+                </div>
+              )}
+              <p className="pt-1">
+                <Link to="/shipping-policy" className="text-[#B0521F] hover:underline font-medium inline-flex items-center gap-1">
+                  View shipping policy →
+                </Link>
+              </p>
             </div>
           )}
 

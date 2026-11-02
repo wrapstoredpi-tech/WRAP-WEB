@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { isRealColor, getValidColors } from '../lib/colors';
+import { getShippingFee } from '../config/policies';
 
 const CartContext = createContext(undefined);
 const LOCAL_STORAGE_KEY = 'wrapstore_cart_items_v4';
@@ -186,21 +187,27 @@ export function useHydratedCart(products = []) {
     [items]
   );
 
-  const FREE_SHIPPING_THRESHOLD = 1000; // ₹1,000
-  const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD || items.length === 0;
-  const shippingFee = items.length === 0 ? 0 : isFreeShipping ? 0 : 99;
-  const estimatedTotal = subtotal + shippingFee;
-  const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+  // Default base shipping fee based on user's saved state or Tamil Nadu (₹55)
+  const defaultSavedState = (() => {
+    try {
+      const stored = localStorage.getItem('wrapstore_checkout_user_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.state) return parsed.state;
+      }
+    } catch {}
+    return 'Tamil Nadu';
+  })();
+
+  const baseShippingFee = items.length === 0 ? 0 : getShippingFee(defaultSavedState);
+  const estimatedTotal = subtotal + baseShippingFee;
   const hasStockWarnings = items.some((item) => item.stockWarning);
 
   return {
     items,
     subtotal,
-    shippingFee,
-    isFreeShipping,
+    shippingFee: baseShippingFee,
     estimatedTotal,
-    amountToFreeShipping,
-    freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
     hasStockWarnings,
   };
 }

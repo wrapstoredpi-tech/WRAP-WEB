@@ -7,6 +7,7 @@
  */
 
 import { supabase } from './supabase';
+import { INDIAN_STATES, getShippingFee, getCourierPartner } from '../config/policies';
 
 const LOCAL_STORAGE_ORDERS_KEY = 'wrapstore_orders_v2';
 
@@ -38,16 +39,25 @@ export async function submitOrder(orderInput) {
     'pay_test_' + Math.random().toString(36).substring(2, 10);
 
   const cleanPhone = (orderInput.contact?.phone || '').replace(/\D/g, '');
+  
+  // Validate shipping state against INDIAN_STATES
+  const rawState = (orderInput.shipping_state || orderInput.delivery?.state || '').trim();
+  const validatedState = INDIAN_STATES.includes(rawState) ? rawState : 'Tamil Nadu';
+  const calculatedShippingFee = getShippingFee(validatedState);
+  const calculatedCourier = getCourierPartner(validatedState);
+  const shippingFee = Number(orderInput.shippingFee) >= 0 ? Number(orderInput.shippingFee) : calculatedShippingFee;
+  const courierPartner = orderInput.courier_partner || calculatedCourier;
+
   const shippingAddress = [
     orderInput.delivery?.address,
     orderInput.delivery?.city,
+    validatedState,
     orderInput.delivery?.pincode ? `PIN: ${orderInput.delivery.pincode}` : '',
   ]
     .filter(Boolean)
     .join(', ');
 
   const subtotal = Number(orderInput.subtotal) || 0;
-  const shippingFee = Number(orderInput.shippingFee) || 0;
   const total = Number(orderInput.total) || subtotal + shippingFee;
   const gstAmount = Math.round((subtotal * 0.18) / 1.18);
 
@@ -58,6 +68,7 @@ export async function submitOrder(orderInput) {
     customer_email: orderInput.contact?.email || null,
     shipping_address: shippingAddress,
     billing_address: shippingAddress,
+    shipping_state: validatedState,
     subtotal,
     discount_amount: 0,
     gst_amount: gstAmount,
@@ -71,11 +82,25 @@ export async function submitOrder(orderInput) {
   };
 
   let dbOrder = null;
-  const { data: createdOrder, error: orderErr } = await supabase
+  let { data: createdOrder, error: orderErr } = await supabase
     .from('online_orders')
     .insert(orderInsertPayload)
     .select()
     .single();
+
+  // Graceful fallback if shipping_state column has not been added to Supabase table yet
+  if (orderErr && (orderErr.message?.includes('shipping_state') || orderErr.code === 'PGRST204' || orderErr.code === '42703')) {
+    console.warn('shipping_state column not yet present in online_orders schema, retrying without column:', orderErr.message);
+    const fallbackPayload = { ...orderInsertPayload };
+    delete fallbackPayload.shipping_state;
+    const retry = await supabase
+      .from('online_orders')
+      .insert(fallbackPayload)
+      .select()
+      .single();
+    createdOrder = retry.data;
+    orderErr = retry.error;
+  }
 
   if (orderErr) {
     console.error('Failed to create online order in Supabase:', orderErr);
@@ -212,9 +237,15 @@ export async function submitOrder(orderInput) {
     items: normalizedItems,
     subtotal,
     shippingFee,
+    courier_partner: courierPartner,
     total,
     contact: orderInput.contact || {},
-    delivery: orderInput.delivery || {},
+    shipping_state: validatedState,
+    delivery: {
+      ...(orderInput.delivery || {}),
+      state: validatedState,
+      courier: courierPartner,
+    },
     payment: 'Online Payment (Razorpay: UPI, Card, Net Banking)',
     payment_reference: paymentRef,
   };
@@ -316,8 +347,10 @@ export async function trackOrder(orderId, phone) {
           phone: matched.customer_phone,
           email: matched.customer_email,
         },
+        shipping_state: matched.shipping_state || (matched.shipping_address?.includes('Tamil Nadu') ? 'Tamil Nadu' : null),
         delivery: {
           address: matched.shipping_address,
+          state: matched.shipping_state || null,
         },
       };
 

@@ -35,7 +35,7 @@ const WHY_CARDS = [
     iconLabel: 'Fast & Reliable Delivery',
     image: '/why/fast-delivery.jpg',
     imageAlt: 'Kraft shipping box with WRAPSTORE branding on natural stone with white background',
-    link: '/shipping-returns',
+    link: '/shipping-policy',
     bg: '#FFFFFF',
     imageOffset: '-right-10 sm:-right-14',
   },

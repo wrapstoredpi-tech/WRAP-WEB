@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { PhoneSelectionModal } from './components/layout/PhoneSelectionModal';
@@ -28,6 +28,8 @@ const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ defa
 const TypeTestPage = lazy(() => import('./pages/TypeTestPage').then((m) => ({ default: m.TypeTestPage })));
 const IntroTestPage = lazy(() => import('./pages/IntroTestPage').then((m) => ({ default: m.IntroTestPage })));
 const StaticPage = lazy(() => import('./pages/StaticPage').then((m) => ({ default: m.StaticPage })));
+const ShippingPolicyPage = lazy(() => import('./pages/ShippingPolicyPage').then((m) => ({ default: m.ShippingPolicyPage })));
+const ReturnsPolicyPage = lazy(() => import('./pages/ReturnsPolicyPage').then((m) => ({ default: m.ReturnsPolicyPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 
 function RouteFallback() {
@@ -92,8 +94,12 @@ function AppContent() {
           <Route path="/intro-test" element={<IntroTestPage />} />
 
           {/* Policy Pages */}
-          <Route path="/shipping-returns" element={<StaticPage pageKey="shipping" />} />
+          <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
+          <Route path="/returns-and-refunds" element={<ReturnsPolicyPage />} />
+          <Route path="/shipping-returns" element={<Navigate to="/shipping-policy" replace />} />
+          <Route path="/privacy-policy" element={<StaticPage pageKey="privacy" />} />
           <Route path="/privacy" element={<StaticPage pageKey="privacy" />} />
+          <Route path="/terms-and-conditions" element={<StaticPage pageKey="terms" />} />
           <Route path="/terms" element={<StaticPage pageKey="terms" />} />
 
           {/* Catch-all redirect to Home */}

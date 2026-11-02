@@ -9,20 +9,41 @@ import { submitOrder } from '../lib/checkout';
 import { formatINR } from '../lib/currency';
 import { CrossSellSection } from '../components/cart/CrossSellSection';
 import { Logo } from '../components/ui/Logo';
+import { policies, INDIAN_STATES, getShippingFee, getCourierPartner } from '../config/policies';
 
 const LOCAL_STORAGE_USER_KEY = 'wrapstore_checkout_user_v2';
 
 export function CheckoutPage() {
   const { products } = useProductsContext();
   const { clearCart } = useCart();
-  const { items, subtotal, shippingFee, estimatedTotal } = useHydratedCart(products);
+  const { items, subtotal } = useHydratedCart(products);
   const navigate = useNavigate();
 
   // Load details from localStorage for returning visitors
   const [fields, setFields] = useState(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        let initialSavedState = parsed.state;
+        if (!initialSavedState && parsed.address) {
+          for (const st of INDIAN_STATES) {
+            if (new RegExp(`\\b${st}\\b`, 'i').test(parsed.address)) {
+              initialSavedState = st;
+              break;
+            }
+          }
+        }
+        return {
+          name: parsed.name || '',
+          phone: parsed.phone || '',
+          email: parsed.email || '',
+          address: parsed.address || '',
+          city: parsed.city || '',
+          state: initialSavedState || 'Tamil Nadu',
+          pincode: parsed.pincode || '',
+        };
+      }
     } catch (e) {
       console.warn('Could not read checkout fields:', e);
     }
@@ -32,6 +53,7 @@ export function CheckoutPage() {
       email: '',
       address: '',
       city: '',
+      state: 'Tamil Nadu',
       pincode: '',
     };
   });
@@ -98,6 +120,10 @@ export function CheckoutPage() {
       errs.city = 'City is required';
     }
 
+    if (!fields.state || !INDIAN_STATES.includes(fields.state)) {
+      errs.state = 'Please select a valid state';
+    }
+
     const cleanPincode = fields.pincode.replace(/\D/g, '');
     if (!cleanPincode || cleanPincode.length !== 6) {
       errs.pincode = 'Valid 6-digit PIN code required';
@@ -131,8 +157,12 @@ export function CheckoutPage() {
         delivery: {
           address: fields.address.trim(),
           city: fields.city.trim(),
+          state: fields.state.trim() || 'Tamil Nadu',
           pincode: fields.pincode.trim(),
         },
+        shipping_state: fields.state.trim() || 'Tamil Nadu',
+        shippingFee: currentShippingFee,
+        courier_partner: currentCourier,
         items: items.map((line) => ({
           productId: line.product.id,
           name: line.product.name,
@@ -147,8 +177,7 @@ export function CheckoutPage() {
           product: line.product,
         })),
         subtotal,
-        shippingFee,
-        total: estimatedTotal,
+        total: checkoutTotal,
       };
 
       const result = await submitOrder(orderPayload);
@@ -163,6 +192,15 @@ export function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  const currentShippingFee = items.length === 0 ? 0 : getShippingFee(fields.state);
+  const currentCourier = getCourierPartner(fields.state);
+  const checkoutTotal = subtotal + currentShippingFee;
+
+  const cleanPincode = (fields.pincode || '').replace(/\D/g, '');
+  const pincodePrefix = parseInt(cleanPincode.slice(0, 3), 10);
+  const isTnPincode = !isNaN(pincodePrefix) && pincodePrefix >= 600 && pincodePrefix <= 643;
+  const showTnPincodeHint = fields.state === 'Tamil Nadu' && cleanPincode.length >= 3 && !isTnPincode;
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
@@ -201,7 +239,7 @@ export function CheckoutPage() {
                 }`}
               />
             </span>
-            <span className="text-[#B0521F]">{formatINR(estimatedTotal)}</span>
+            <span className="text-[#B0521F]">{formatINR(checkoutTotal)}</span>
           </button>
 
           {isMobileSummaryOpen && (
@@ -219,9 +257,21 @@ export function CheckoutPage() {
                   </span>
                 </div>
               ))}
-              <div className="pt-2 border-t border-[#E5E5E3] flex justify-between text-[14px] font-semibold">
-                <span>Total</span>
-                <span>{formatINR(estimatedTotal)}</span>
+              <div className="pt-2 border-t border-[#E5E5E3] space-y-1.5 text-[14px]">
+                <div className="flex justify-between text-[#6B6B6B]">
+                  <span>Subtotal</span>
+                  <span className="text-[#141414] font-semibold tabular-nums">{formatINR(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-[#6B6B6B]">
+                  <span>
+                    Shipping
+                  </span>
+                  <span className="text-[#141414] font-semibold tabular-nums">{formatINR(currentShippingFee)}</span>
+                </div>
+                <div className="flex justify-between font-semibold pt-1 border-t border-[#E5E5E3] text-[#141414]">
+                  <span>Total</span>
+                  <span className="text-[#B0521F] tabular-nums">{formatINR(checkoutTotal)}</span>
+                </div>
               </div>
             </div>
           )}
@@ -358,26 +408,63 @@ export function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="pincode" className="block text-[14px] font-medium text-[#141414] mb-1">
-                      6-digit PIN Code *
+                    <label htmlFor="state" className="block text-[14px] font-medium text-[#141414] mb-1">
+                      State *
                     </label>
-                    <input
-                      id="pincode"
-                      name="pincode"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
-                      required
-                      placeholder="636701"
-                      value={fields.pincode}
+                    <select
+                      id="state"
+                      name="state"
+                      value={fields.state}
                       onChange={handleChange}
-                      className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
-                        errors.pincode ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                      className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] cursor-pointer ${
+                        errors.state ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
                       }`}
-                    />
-                    {errors.pincode && <p className="text-[12px] text-[#B0521F] mt-1">{errors.pincode}</p>}
+                    >
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[12px] text-[#6B6B6B]">
+                      <span>
+                        Shipping: <strong className="text-[#141414] font-semibold">{formatINR(currentShippingFee)}</strong>
+                      </span>
+                      <span className="text-[#737373]">
+                        {fields.state === policies.delivery.homeState || fields.state === 'Puducherry'
+                          ? `Delivery: ${policies.delivery.tn.text}`
+                          : `Delivery: ${policies.delivery.other.text.toLowerCase()}`}
+                      </span>
+                    </div>
+                    {errors.state && <p className="text-[12px] text-[#B0521F] mt-1">{errors.state}</p>}
                   </div>
+                </div>
+
+                <div>
+                  <label htmlFor="pincode" className="block text-[14px] font-medium text-[#141414] mb-1">
+                    6-digit PIN Code *
+                  </label>
+                  <input
+                    id="pincode"
+                    name="pincode"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    required
+                    placeholder="636701"
+                    value={fields.pincode}
+                    onChange={handleChange}
+                    className={`w-full bg-[#FAFAF9] border rounded-[6px] px-3.5 py-2.5 min-h-[44px] text-[14px] text-[#141414] focus:outline-none focus:border-[#141414] ${
+                      errors.pincode ? 'border-[#B0521F]' : 'border-[#E5E5E3]'
+                    }`}
+                  />
+                  {showTnPincodeHint && (
+                    <p className="text-[12px] text-[#B0521F] mt-1 font-medium">
+                      This pincode does not look like Tamil Nadu. Check the state.
+                    </p>
+                  )}
+                  {errors.pincode && <p className="text-[12px] text-[#B0521F] mt-1">{errors.pincode}</p>}
                 </div>
               </div>
             </section>
@@ -408,14 +495,34 @@ export function CheckoutPage() {
                 </p>
                 <div className="pl-6.5 pt-1">
                   <p className="text-[12px] font-medium text-[#B0521F]">
-                    ⚠️ Note: Cash on Delivery (COD) is not available. All orders are safely prepaid online.
+                    All orders are safely prepaid online via Razorpay.
                   </p>
                 </div>
               </div>
             </section>
 
-            {/* Submit Button */}
-            <div>
+            {/* Checkout Pay Notice & Submit Button */}
+            <div className="pt-2">
+              <p className="text-[12px] text-[#6B6B6B] leading-relaxed mb-3">
+                {policies.mode === 'strict' ? (
+                  <>
+                    By placing this order you agree that all sales are final, with replacements only for damaged or wrong items. View our{' '}
+                    <Link to="/returns-and-refunds" className="text-[#B0521F] hover:underline font-medium">
+                      returns policy
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  <>
+                    By placing this order you agree to our{' '}
+                    <Link to="/returns-and-refunds" className="text-[#B0521F] hover:underline font-medium">
+                      returns policy
+                    </Link>
+                    : damaged or wrong items are replaced, and refunded if a replacement is not available.
+                  </>
+                )}
+              </p>
+
               <button
                 type="submit"
                 disabled={isSubmitting || items.length === 0}
@@ -424,7 +531,7 @@ export function CheckoutPage() {
                 {isSubmitting ? (
                   <span>Connecting to Razorpay...</span>
                 ) : (
-                  <span>Pay {formatINR(estimatedTotal)} via Razorpay</span>
+                  <span>Pay {formatINR(checkoutTotal)} via Razorpay</span>
                 )}
               </button>
             </div>
@@ -472,13 +579,13 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-[#6B6B6B]">
                   <span>Shipping</span>
-                  <span className="text-[#141414] font-semibold">
-                    {shippingFee === 0 ? 'Free' : formatINR(shippingFee)}
+                  <span className="text-[#141414] font-semibold tabular-nums">
+                    {formatINR(currentShippingFee)}
                   </span>
                 </div>
                 <div className="pt-3 border-t border-[#E5E5E3] flex justify-between text-[16px] font-semibold text-[#141414]">
                   <span>Total</span>
-                  <span className="text-[#B0521F]">{formatINR(estimatedTotal)}</span>
+                  <span className="text-[#B0521F] tabular-nums">{formatINR(checkoutTotal)}</span>
                 </div>
               </div>
             </div>

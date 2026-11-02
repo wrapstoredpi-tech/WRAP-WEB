@@ -372,7 +372,7 @@ export function AdminOrdersTab({
                 <div className="flex justify-between text-[#6B6B6B]">
                   <span>Shipping Fee</span>
                   <span className="tabular-nums font-medium text-[#141414]">
-                    {selectedOrder.shippingFee > 0 ? formatINR(selectedOrder.shippingFee) : 'Free'}
+                    {formatINR(selectedOrder.shippingFee || 0)}
                   </span>
                 </div>
                 <div className="pt-2 border-t border-[#E5E5E3] flex justify-between text-[15px] font-semibold text-[#141414]">

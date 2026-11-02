@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingBag, ArrowRight } from 'lucide-react';
+import { useCart } from '../../context/CartContext';
 import { formatINR } from '../../lib/currency';
 
 export function StickyMobileCartBar({
@@ -8,6 +10,8 @@ export function StickyMobileCartBar({
   onAddToCart,
 }) {
   const [isVisible, setIsVisible] = useState(false);
+  const navigate = useNavigate();
+  const { cartItems } = useCart();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,9 +29,22 @@ export function StickyMobileCartBar({
   }, [buyButtonRef]);
 
   const isOutOfStock = product?.available_stock === 0 || product?.stock_status === 'OUT_OF_STOCK';
+  const isInCart = Boolean(
+    product?.id &&
+      Array.isArray(cartItems) &&
+      cartItems.some(
+        (i) => String(i.productId) === String(product.id) || String(i.id) === String(product.id)
+      )
+  );
+
 
   const handleAdd = () => {
     if (isOutOfStock) return;
+
+    if (isInCart) {
+      navigate('/cart');
+      return;
+    }
 
     // Scroll smoothly to buy controls
     if (buyButtonRef?.current) {
@@ -72,8 +89,17 @@ export function StickyMobileCartBar({
                 : 'bg-[#141414] hover:bg-[#262626] text-white active:scale-95'
             }`}
           >
-            <ShoppingBag className="w-4 h-4" />
-            <span>{isOutOfStock ? 'Out of stock' : 'Add to Cart'}</span>
+            {isInCart ? (
+              <>
+                <span>Go to Cart</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-4 h-4" />
+                <span>{isOutOfStock ? 'Out of stock' : 'Add to Cart'}</span>
+              </>
+            )}
           </button>
         </div>
       </div>

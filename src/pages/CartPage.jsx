@@ -6,6 +6,7 @@ import { useProductsContext } from '../context/ProductsContext';
 import { CrossSellSection } from '../components/cart/CrossSellSection';
 import { formatINR } from '../lib/currency';
 import { storeConfig } from '../config/store';
+import { policies } from '../config/policies';
 
 export function CartPage() {
   const { itemCount, updateQuantity, removeItem } = useCart();
@@ -17,8 +18,7 @@ export function CartPage() {
     items,
     subtotal,
     shippingFee,
-    isFreeShipping,
-    estimatedTotal,
+        estimatedTotal,
     hasStockWarnings,
   } = useHydratedCart(products);
 
@@ -218,13 +218,7 @@ export function CartPage() {
 
               <div className="flex justify-between text-[#6B6B6B]">
                 <span>Shipping</span>
-                <span>
-                  {isFreeShipping ? (
-                    <span className="text-[#141414] font-semibold">Free</span>
-                  ) : (
-                    <span className="text-[#141414] font-semibold tabular-nums">{formatINR(shippingFee)}</span>
-                  )}
-                </span>
+                <span className="text-[#141414] font-semibold tabular-nums">{formatINR(shippingFee)}</span>
               </div>
 
               <div className="pt-3 border-t border-[#E5E5E3] flex justify-between text-[16px] font-semibold text-[#141414]">
@@ -235,6 +229,11 @@ export function CartPage() {
               <p className="text-[12px] text-[#6B6B6B]">
                 Inclusive of all applicable GST
               </p>
+
+              <div className="pt-2 text-[12px] text-[#6B6B6B] space-y-0.5 border-t border-[#E5E5E3]">
+                <p>Orders delivered within {policies.delivery.tn.label}: {policies.delivery.tn.text}.</p>
+                <p>Orders delivered to {policies.delivery.other.label.toLowerCase()}: {policies.delivery.other.text.toLowerCase()}.</p>
+              </div>
             </div>
 
             {/* Checkout Button: Always visible */}

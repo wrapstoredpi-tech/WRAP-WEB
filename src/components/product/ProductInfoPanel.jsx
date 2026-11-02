@@ -4,6 +4,7 @@ import {
   Minus,
   Plus,
   ShoppingBag,
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -23,7 +24,7 @@ import { ProductShare } from './ProductShare';
 export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const navigate = useNavigate();
   const { products } = useProductsContext();
-  const { addItem } = useCart();
+  const { addItem, cartItems } = useCart();
 
   const isOutOfStock =
     product.stock_status === 'OUT_OF_STOCK' ||
@@ -146,6 +147,28 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const [quantity, setQuantity] = useState(availableQty > 0 ? 1 : 0);
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  // Check if current product / selected model is already in cart
+  const isItemInCart = useMemo(() => {
+    if (!Array.isArray(cartItems) || !product?.id) return false;
+    if (needsModelSelection) {
+      if (!selectedModel) return false;
+      return cartItems.some(
+        (item) =>
+          (String(item.productId) === String(product.id) || String(item.id) === String(product.id)) &&
+          String(item.selected_model) === String(selectedModel)
+      );
+    }
+    return cartItems.some(
+      (item) => String(item.productId) === String(product.id) || String(item.id) === String(product.id)
+    );
+  }, [cartItems, product?.id, needsModelSelection, selectedModel]);
+
+  const showGoToCart = Boolean(added || isItemInCart);
+
+  useEffect(() => {
+    setAdded(false);
+  }, [selectedModel]);
+
 
   // Favorites state from FavoritesContext
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -170,6 +193,11 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
   const handleAddToCart = () => {
     if (isOutOfStock) return;
 
+    if (showGoToCart) {
+      navigate('/cart');
+      return;
+    }
+
     // Check model validation for model-dependent cases
     if (needsModelSelection && !isModelSelected) {
       setModelError(true);
@@ -192,7 +220,6 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
       if (onAddToCart) {
         onAddToCart(product, quantity);
       }
-      setTimeout(() => setAdded(false), 2200);
     }, 200);
   };
 
@@ -410,13 +437,13 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
             >
               {isAdding ? (
                 <span>Adding...</span>
-              ) : added ? (
-                <>
-                  <Check className="w-4.5 h-4.5" />
-                  <span>Added to Cart</span>
-                </>
               ) : isOutOfStock ? (
                 <span>Out of stock</span>
+              ) : showGoToCart ? (
+                <>
+                  <span>Go to Cart</span>
+                  <ArrowRight className="w-4.5 h-4.5" />
+                </>
               ) : (
                 <>
                   <ShoppingBag className="w-4.5 h-4.5" />
@@ -449,16 +476,21 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
             Only {availableQty} left in stock
           </p>
         ) : null}
+
+        {/* Delivery trust line */}
+        <p className="text-[13px] text-[#737373] font-medium pt-1">
+          Delivery in Tamil Nadu: 2 to 4 days.
+        </p>
       </div>
 
       {/* 8. Service Benefits Strip (Matching Mockup with 4 cards & separators) */}
       <div className="bg-[#F8F7F4] rounded-2xl p-4 sm:p-5 border border-[#EDEAE3]">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-2 sm:divide-x sm:divide-[#E5E2DA]">
-          {/* 1: Free Delivery */}
+          {/* 1: Doorstep Delivery */}
           <div className="flex items-center gap-3 sm:px-2">
             <Truck className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
             <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Free delivery</p>
+              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Doorstep delivery</p>
               <p className="text-[11px] text-[#737373]">across India</p>
             </div>
           </div>
@@ -468,7 +500,7 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
             <ShieldCheck className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
             <div className="leading-tight">
               <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Razorpay</p>
-              <p className="text-[11px] text-[#737373]">Prepaid • No COD</p>
+              <p className="text-[11px] text-[#737373]">100% Prepaid</p>
             </div>
           </div>
 
@@ -476,8 +508,8 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
           <div className="flex items-center gap-3 sm:px-3">
             <Package className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
             <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Easy</p>
-              <p className="text-[11px] text-[#737373]">returns</p>
+              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Replacements</p>
+              <p className="text-[11px] text-[#737373]">for damaged items</p>
             </div>
           </div>
 

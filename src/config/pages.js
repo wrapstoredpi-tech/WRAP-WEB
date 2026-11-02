@@ -21,7 +21,7 @@ export const pagesConfig = {
       },
       {
         heading: 'Customer Support',
-        content: 'WhatsApp: +91 94422 18765\nEmail: contact@wrapstore.in\nPhone: +91 94422 18765',
+        content: 'WhatsApp: +91 81227 47947\nEmail: contact@wrapstore.in\nPhone: +91 81227 47947',
       },
       {
         heading: 'In-Store Services',
@@ -41,7 +41,7 @@ export const pagesConfig = {
       },
       {
         heading: 'Shipping Charges',
-        content: 'Free standard shipping on all orders of ₹1,000 and above. Orders below ₹1,000 have a flat shipping rate of ₹99.',
+        content: 'Shipping charges are automatically calculated at checkout based on your delivery destination.',
       },
       {
         heading: 'Replacement Policy',
@@ -49,7 +49,7 @@ export const pagesConfig = {
       },
       {
         heading: 'Return Process',
-        content: 'To request an exchange or replacement, reach out via WhatsApp at +91 94422 18765 with your Order ID and photo of the item. Our support team will assist you within 24 hours.',
+        content: 'To request an exchange or replacement, reach out via WhatsApp at +91 81227 47947 with your Order ID and photo of the item. Our support team will assist you within 24 hours.',
       },
     ],
   },
@@ -89,7 +89,7 @@ export const pagesConfig = {
       },
       {
         heading: 'Online Payments',
-        content: 'All orders must be prepaid online via Razorpay (UPI, Debit Card, Credit Card, Net Banking, or Wallet). Cash on Delivery is not supported.',
+        content: 'All orders must be prepaid online via Razorpay (UPI, Debit Card, Credit Card, Net Banking, or Wallet). All orders are 100% prepaid online.',
       },
       {
         heading: 'Order Fulfillment',

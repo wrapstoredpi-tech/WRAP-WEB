@@ -268,6 +268,10 @@ export function FeaturedProductCard({
     e.stopPropagation();
     e.preventDefault();
     if (isOutOfStock) return;
+    if (isProductAdded) {
+      navigate('/cart');
+      return;
+    }
     setLocalAdded(true);
     if (onAddToCart) {
       onAddToCart(product);
@@ -404,7 +408,7 @@ export function FeaturedProductCard({
                 ? 'Added to cart'
                 : `Add ${product.name} to cart`
             }
-            title={isProductAdded ? 'Added to cart' : 'Add to cart'}
+            title={isProductAdded ? 'Go to cart' : 'Add to cart'}
             className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 ${
               isOutOfStock
                 ? 'bg-[#E5E5E3] text-[#8C8C8C] cursor-not-allowed'

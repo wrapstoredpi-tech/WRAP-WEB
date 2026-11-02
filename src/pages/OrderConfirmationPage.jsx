@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { Copy, Check, MessageCircle, ArrowRight, Package } from 'lucide-react';
 import { formatINR } from '../lib/currency';
 import { store } from '../config/store';
+import { policies, getDeliveryLine } from '../config/policies';
 import { supabase } from '../lib/supabase';
 
 // Lazy-load the scene for performance & bundle splitting
@@ -380,7 +381,7 @@ export function OrderConfirmationPage() {
                 {order.shippingFee !== undefined && (
                   <div className="flex justify-between text-[#737373]">
                     <span>Shipping</span>
-                    <span>{order.shippingFee === 0 ? 'Free' : formatINR(order.shippingFee)}</span>
+                    <span className="tabular-nums">{formatINR(order.shippingFee)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-[#141414] text-[15px] pt-1 border-t border-[#E5E5E3]">
@@ -391,12 +392,33 @@ export function OrderConfirmationPage() {
             </div>
           )}
 
+          {/* Estimated Delivery */}
+          <div className="p-4 bg-white border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#6B6B6B] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-[#141414]">Estimated Delivery</p>
+              
+            </div>
+            {orderState ? (
+              <p>{getDeliveryLine(orderState)}</p>
+            ) : (
+              <div className="space-y-0.5">
+                <p>Orders delivered within {policies.delivery.tn.label}: {policies.delivery.tn.text}.</p>
+                <p>Orders delivered to {policies.delivery.other.label.toLowerCase()}: {policies.delivery.other.text.toLowerCase()}.</p>
+              </div>
+            )}
+            <p className="pt-1">
+              <Link to="/shipping-policy" className="text-[#B0521F] hover:underline font-medium inline-flex items-center gap-1">
+                View shipping policy →
+              </Link>
+            </p>
+          </div>
+
           {/* Delivery Address Preview */}
           {order.delivery && (
             <div className="p-4 bg-white border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#737373] space-y-1">
               <p className="font-semibold text-[#141414]">Delivery Address</p>
               <p>{order.delivery.address}</p>
-              <p>{order.delivery.city} {order.delivery.pincode ? `- ${order.delivery.pincode}` : ''}</p>
+              <p>{order.delivery.city}{order.delivery.state ? `, ${order.delivery.state}` : ''} {order.delivery.pincode ? `- ${order.delivery.pincode}` : ''}</p>
             </div>
           )}
 

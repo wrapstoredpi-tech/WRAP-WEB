@@ -19,10 +19,10 @@ store.phone = store.phoneDisplay;
 store.whatsappUrl = store.whatsappNumber ? `https://wa.me/${store.whatsappNumber}` : '';
 store.mapUrl = store.mapsUrl;
 store.storeHours = store.hours;
-store.onlinePaymentNote = '100% Prepaid via Razorpay (UPI, Cards, Net Banking, Wallets). Cash on Delivery (COD) is not available.';
-store.productTrustLine = 'Packed and dispatched from our Dharmapuri store. 100% Prepaid via Razorpay (No COD).';
-store.checkoutPaymentNotice = 'Pay securely online via Razorpay (UPI, Cards, Net Banking, Wallets). Cash on Delivery is not supported.';
-store.shippingPolicySummary = 'Dispatched from Dharmapuri. Standard courier shipping across India.';
+store.onlinePaymentNote = '100% Prepaid via Razorpay (UPI, Cards, Net Banking, Wallets).';
+store.productTrustLine = 'Packed and dispatched from our Dharmapuri store. 100% Prepaid via Razorpay.';
+store.checkoutPaymentNotice = 'Pay securely online via Razorpay (UPI, Cards, Net Banking, Wallets).';
+store.shippingPolicySummary = 'Dispatched from Dharmapuri. Standard shipping across India.';
 store.returnPolicySummary = 'Replacement available for manufacturing defects or model mismatch.';
 
 export const storeConfig = store;
