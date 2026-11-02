@@ -122,7 +122,7 @@ export async function submitOrder(orderInput) {
     let displayName = item.name || item.product?.name || 'Product';
     if (isCombo && comboComponents.length > 0) {
       const compDesc = comboComponents
-        .map((c) => `${c.product_name || c.name} (Qty: ${c.allotted_qty || 1})`)
+        .map((c) => `${c.product_name || c.name} (1 unit)`)
         .join(', ');
       displayName = `${displayName} [Includes: ${compDesc}]`;
     }
@@ -136,7 +136,9 @@ export async function submitOrder(orderInput) {
 
     itemsToInsert.push({
       order_id: dbOrder.id,
-      product_id: item.productId || item.product?.id || null,
+      // For combos, product_id in products table is null (combos have their own ID in combos table)
+      // to avoid FK violation on online_order_items_product_id_fkey
+      product_id: isCombo ? null : (item.productId || item.product?.id || null),
       product_name: displayName,
       product_type: isCombo ? 'combo' : (item.product?.product_type || 'case'),
       mobile_brand: item.product?.mobile_brand || null,
@@ -169,26 +171,56 @@ export async function submitOrder(orderInput) {
     }
   }
 
-  // 3. Stock deduction: Reduce stock once and log ONLINE_SALE movement
+  // 3. Stock deduction: Reduce stock accurately and log movement
+  // Note: For combos, each combo sold deducts exactly 1 unit of each constituent product
+  const affectedProductIds = new Set();
   for (const item of rawItems) {
     const isCombo = item.is_combo || item.product?.is_combo || false;
     const comboComponents = item.combo_items || item.product?.combo_items || [];
     const itemQty = Number(item.quantity) || 1;
 
     if (isCombo && comboComponents.length > 0) {
-      // Deduct stock for each component product in the combo
+      // Deduct stock for each component product in the combo (1 unit per combo)
       for (const comp of comboComponents) {
         const compProdId = comp.product_id || comp.id;
-        const compQty = (Number(comp.allotted_qty) || 1) * itemQty;
+        // Each combo bundle contains 1 unit of this constituent product
+        const compUnitQty = Number(comp.unit_quantity) || Number(comp.quantity) || 1;
+        const compQty = compUnitQty * itemQty;
         if (compProdId) {
+          affectedProductIds.add(compProdId);
           try {
-            await supabase.rpc('deduct_stock', {
+            const { error: rpcErr } = await supabase.rpc('deduct_stock', {
               p_product_id: compProdId,
               p_quantity: compQty,
               p_channel: 'ONLINE',
               p_performed_by: null,
               p_reference_id: orderNumber,
             });
+
+            if (rpcErr) {
+              // Direct deduction fallback if deduct_stock RPC fails or not in schema cache
+              const { data: prod } = await supabase
+                .from('products')
+                .select('current_stock')
+                .eq('id', compProdId)
+                .single();
+
+              if (prod) {
+                const prev = Number(prod.current_stock) || 0;
+                const next = Math.max(0, prev - compQty);
+                await supabase.from('products').update({ current_stock: next }).eq('id', compProdId);
+                await supabase.from('inventory_movements').insert({
+                  product_id: compProdId,
+                  movement_type: 'ONLINE_SALE',
+                  quantity: compQty,
+                  previous_stock: prev,
+                  new_stock: next,
+                  reason: `Online Sale: Combo ${item.name || ''} (${compQty} unit${compQty > 1 ? 's' : ''})`,
+                  reference_id: orderNumber,
+                  channel: 'website',
+                });
+              }
+            }
           } catch (e) {
             console.warn('deduct_stock combo error:', e);
           }
@@ -197,18 +229,100 @@ export async function submitOrder(orderInput) {
     } else {
       const prodId = item.productId || item.product?.id;
       if (prodId) {
+        affectedProductIds.add(prodId);
         try {
-          await supabase.rpc('deduct_stock', {
+          const { error: rpcErr } = await supabase.rpc('deduct_stock', {
             p_product_id: prodId,
             p_quantity: itemQty,
             p_channel: 'ONLINE',
             p_performed_by: null,
             p_reference_id: orderNumber,
           });
+
+          if (rpcErr) {
+            const { data: prod } = await supabase
+              .from('products')
+              .select('current_stock')
+              .eq('id', prodId)
+              .single();
+
+            if (prod) {
+              const prev = Number(prod.current_stock) || 0;
+              const next = Math.max(0, prev - itemQty);
+              await supabase.from('products').update({ current_stock: next }).eq('id', prodId);
+              await supabase.from('inventory_movements').insert({
+                product_id: prodId,
+                movement_type: 'ONLINE_SALE',
+                quantity: itemQty,
+                previous_stock: prev,
+                new_stock: next,
+                reason: 'ONLINE sale',
+                reference_id: orderNumber,
+                channel: 'website',
+              });
+            }
+          }
         } catch (e) {
           console.warn('deduct_stock product error:', e);
         }
       }
+    }
+  }
+
+  // 3b. Reconcile combo available stock across all active combos containing affected products
+  if (affectedProductIds.size > 0) {
+    try {
+      const validProdIds = Array.from(affectedProductIds);
+      const { data: activeCombos } = await supabase
+        .from('combos')
+        .select('*')
+        .eq('is_active', true);
+
+      if (activeCombos && activeCombos.length > 0) {
+        const affectedCombos = activeCombos.filter((c) => {
+          const items = Array.isArray(c.items) ? c.items : [];
+          return items.some((it) => validProdIds.includes(it.product_id));
+        });
+
+        if (affectedCombos.length > 0) {
+          // Fetch current stock for all items in affected combos
+          const allItemProdIds = new Set();
+          affectedCombos.forEach((c) => {
+            const items = Array.isArray(c.items) ? c.items : [];
+            items.forEach((it) => {
+              if (it.product_id) allItemProdIds.add(it.product_id);
+            });
+          });
+
+          const { data: prods } = await supabase
+            .from('products')
+            .select('id, current_stock')
+            .in('id', Array.from(allItemProdIds));
+
+          const stockMap = {};
+          (prods || []).forEach((p) => {
+            stockMap[p.id] = Math.max(0, Number(p.current_stock) || 0);
+          });
+
+          for (const c of affectedCombos) {
+            const items = Array.isArray(c.items) ? c.items : [];
+            if (items.length === 0) continue;
+            const itemStocks = items.map((it) => stockMap[it.product_id] ?? 0);
+            const newAllotted = Math.max(0, Math.min(...itemStocks));
+            const updatedItems = items.map((it) => ({ ...it, allotted_qty: newAllotted }));
+            await supabase
+              .from('combos')
+              .update({ items: updatedItems, updated_at: new Date().toISOString() })
+              .eq('id', c.id);
+            await supabase
+              .from('combo_items')
+              .update({ allotted_qty: newAllotted })
+              .eq('combo_id', c.id);
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn('Combo sync after checkout notice:', syncErr);
     }
   }
 

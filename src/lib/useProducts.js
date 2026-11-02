@@ -454,8 +454,14 @@ export function normaliseCombo(
   const discount_percentage =
     mrp > selling_price ? Math.round(((mrp - selling_price) / mrp) * 100) : 0;
 
-  const stockList = items.map((it) => Number(it.allotted_qty ?? 10));
-  const available_stock = stockList.length > 0 ? Math.min(...stockList) : 10;
+  const stockList = items.map((it) => {
+    const prod = productsMap[it.product_id];
+    if (prod && (prod.available_stock !== undefined || prod.current_stock !== undefined)) {
+      return Math.max(0, Number(prod.available_stock ?? prod.current_stock ?? 0));
+    }
+    return Math.max(0, Number(it.allotted_qty ?? 0));
+  });
+  const available_stock = stockList.length > 0 ? Math.min(...stockList) : 0;
 
   return {
     id: rawCombo.id,
