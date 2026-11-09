@@ -139,7 +139,7 @@ export function HomePage() {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
+          (p.name || '').toLowerCase().includes(q) ||
           (p.category || '').toLowerCase().includes(q) ||
           (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes(q))) ||
           (p.subcategory || '').toLowerCase().includes(q) ||

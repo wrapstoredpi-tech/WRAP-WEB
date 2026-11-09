@@ -133,7 +133,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
 
   // Accessories subcategories that have > 0 products
   const liveAccessoriesSubcategories = useMemo(() => {
-    const accCat = categories.find((c) => c.name.toLowerCase().includes('accessor') || c.name.toLowerCase().includes('gadget'));
+    const accCat = categories.find((c) => (c?.name || '').toLowerCase().includes('accessor') || (c?.name || '').toLowerCase().includes('gadget'));
     const accCatId = accCat?.id;
 
     return subcategories.filter((sub) => {
@@ -145,7 +145,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
 
   const iphoneSubcategories = useMemo(() => {
     return subcategories.filter((sub) => {
-      const name = sub.name.toLowerCase();
+      const name = (sub?.name || '').toLowerCase();
       const isApple = name.includes('apple') || name.includes('iphone');
       const count = productCountBySubcategory[sub.id] || productCountBySubcategory[sub.name] || 0;
       return isApple && count > 0;
@@ -154,7 +154,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
 
   const samsungSubcategories = useMemo(() => {
     return subcategories.filter((sub) => {
-      const name = sub.name.toLowerCase();
+      const name = (sub?.name || '').toLowerCase();
       const isSamsung = name.includes('samsung') || name.includes('galaxy');
       const count = productCountBySubcategory[sub.id] || productCountBySubcategory[sub.name] || 0;
       return isSamsung && count > 0;
@@ -167,7 +167,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
     const q = searchQuery.toLowerCase().trim();
     return products
       .filter((p) => {
-        const nameMatch = p.name.toLowerCase().includes(q);
+        const nameMatch = (p?.name || '').toLowerCase().includes(q);
         const catMatch =
           (p.category || '').toLowerCase().includes(q) ||
           (Array.isArray(p.categories) && p.categories.some((c) => c.toLowerCase().includes(q)));
