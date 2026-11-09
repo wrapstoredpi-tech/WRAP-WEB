@@ -228,6 +228,48 @@ export function CheckoutPage() {
   const isTnPincode = !isNaN(pincodePrefix) && pincodePrefix >= 600 && pincodePrefix <= 643;
   const showTnPincodeHint = fields.state === 'Tamil Nadu' && cleanPincode.length >= 3 && !isTnPincode;
 
+  if (items.length === 0 && !isSubmitting) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+        <header className="w-full bg-[#FAFAF9] border-b border-[#E5E5E3] h-[64px] flex items-center px-4 sm:px-6 lg:px-8 xl:px-12">
+          <div className="w-full max-w-[1800px] mx-auto flex items-center justify-between">
+            <Link to="/" aria-label="WrapStore Home">
+              <Logo size="md" />
+            </Link>
+            <Link
+              to="/cart"
+              className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#141414] hover:text-[#B0521F] transition-colors min-h-[44px] px-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to bag</span>
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-16 sm:py-24 text-center space-y-6">
+          <div className="max-w-md mx-auto space-y-3 bg-white border border-[#E5E5E3] rounded-[6px] p-8">
+            <div className="w-12 h-12 rounded-[6px] bg-[#FAFAF9] border border-[#E5E5E3] flex items-center justify-center mx-auto text-[#6B6B6B]">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h1 className="text-[28px] font-semibold text-[#141414]">
+              Your Bag is Empty
+            </h1>
+            <p className="text-[14px] text-[#6B6B6B]">
+              There are no items to check out. Add products to your bag to proceed.
+            </p>
+            <div className="pt-2">
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 bg-[#B0521F] text-white text-[14px] font-semibold rounded-[6px] hover:bg-[#994518] transition-colors"
+              >
+                Start Shopping
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
       {/* Reduced Header: Logo and 'Back to bag' only */}
