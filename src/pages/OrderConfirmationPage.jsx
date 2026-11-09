@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Copy, Check, MessageCircle, ArrowRight, Package } from 'lucide-react';
 import { formatINR } from '../lib/currency';
