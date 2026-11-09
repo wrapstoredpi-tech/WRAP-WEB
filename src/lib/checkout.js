@@ -148,6 +148,9 @@ export async function submitOrder(orderInput) {
       discount_pct: 0,
       gst_pct: 18,
       line_total: lineTotal,
+      is_combo: isCombo,
+      combo_id: isCombo ? (item.productId || item.product?.id || null) : null,
+      combo_components: isCombo ? comboComponents : null,
     });
 
     normalizedItems.push({
@@ -179,50 +182,75 @@ export async function submitOrder(orderInput) {
     const comboComponents = item.combo_items || item.product?.combo_items || [];
     const itemQty = Number(item.quantity) || 1;
 
-    if (isCombo && comboComponents.length > 0) {
-      // Deduct stock for each component product in the combo (1 unit per combo)
-      for (const comp of comboComponents) {
-        const compProdId = comp.product_id || comp.id;
-        // Each combo bundle contains 1 unit of this constituent product
-        const compUnitQty = Number(comp.unit_quantity) || Number(comp.quantity) || 1;
-        const compQty = compUnitQty * itemQty;
-        if (compProdId) {
-          affectedProductIds.add(compProdId);
-          try {
-            const { error: rpcErr } = await supabase.rpc('deduct_stock', {
-              p_product_id: compProdId,
-              p_quantity: compQty,
-              p_channel: 'ONLINE',
-              p_performed_by: null,
-              p_reference_id: orderNumber,
-            });
+    if (isCombo) {
+      const comboId = item.productId || item.product?.id;
+      let comboSold = false;
 
-            if (rpcErr) {
-              // Direct deduction fallback if deduct_stock RPC fails or not in schema cache
-              const { data: prod } = await supabase
-                .from('products')
-                .select('current_stock')
-                .eq('id', compProdId)
-                .single();
+      // 1. Attempt atomic sell_combo RPC
+      if (comboId) {
+        try {
+          const { data: sellRes, error: sellErr } = await supabase.rpc('sell_combo', {
+            p_combo_id: comboId,
+            p_qty: itemQty,
+            p_channel: 'ONLINE',
+            p_reference: orderNumber,
+            p_performed_by: null,
+          });
 
-              if (prod) {
-                const prev = Number(prod.current_stock) || 0;
-                const next = Math.max(0, prev - compQty);
-                await supabase.from('products').update({ current_stock: next }).eq('id', compProdId);
-                await supabase.from('inventory_movements').insert({
-                  product_id: compProdId,
-                  movement_type: 'ONLINE_SALE',
-                  quantity: compQty,
-                  previous_stock: prev,
-                  new_stock: next,
-                  reason: `Online Sale: Combo ${item.name || ''} (${compQty} unit${compQty > 1 ? 's' : ''})`,
-                  reference_id: orderNumber,
-                  channel: 'website',
-                });
-              }
+          if (!sellErr && sellRes?.success) {
+            comboSold = true;
+            if (Array.isArray(sellRes.items)) {
+              sellRes.items.forEach((it) => affectedProductIds.add(it.product_id));
             }
-          } catch (e) {
-            console.warn('deduct_stock combo error:', e);
+          }
+        } catch (e) {
+          console.warn('sell_combo RPC notice:', e);
+        }
+      }
+
+      // 2. Direct per-component fallback if sell_combo RPC not yet available
+      if (!comboSold && comboComponents.length > 0) {
+        for (const comp of comboComponents) {
+          const compProdId = comp.product_id || comp.id;
+          const compUnitQty = Number(comp.qty_per_combo) || Number(comp.unit_quantity) || Number(comp.quantity) || 1;
+          const compQty = compUnitQty * itemQty;
+          if (compProdId) {
+            affectedProductIds.add(compProdId);
+            try {
+              const { error: rpcErr } = await supabase.rpc('deduct_stock', {
+                p_product_id: compProdId,
+                p_quantity: compQty,
+                p_channel: 'ONLINE',
+                p_performed_by: null,
+                p_reference_id: orderNumber,
+              });
+
+              if (rpcErr) {
+                const { data: prod } = await supabase
+                  .from('products')
+                  .select('current_stock')
+                  .eq('id', compProdId)
+                  .single();
+
+                if (prod) {
+                  const prev = Number(prod.current_stock) || 0;
+                  const next = Math.max(0, prev - compQty);
+                  await supabase.from('products').update({ current_stock: next }).eq('id', compProdId);
+                  await supabase.from('inventory_movements').insert({
+                    product_id: compProdId,
+                    movement_type: 'ONLINE_SALE',
+                    quantity: compQty,
+                    previous_stock: prev,
+                    new_stock: next,
+                    reason: `Online Sale: Combo ${item.name || ''} (${compQty} unit${compQty > 1 ? 's' : ''})`,
+                    reference_id: orderNumber,
+                    channel: 'website',
+                  });
+                }
+              }
+            } catch (e) {
+              console.warn('deduct_stock combo error:', e);
+            }
           }
         }
       }

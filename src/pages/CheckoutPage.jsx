@@ -20,12 +20,15 @@ function CheckoutComboItems({ components = [], quantity = 1 }) {
 
   return (
     <div className="pl-3 border-l border-[#E5E5E3] mt-1.5 space-y-1 text-[12px] text-[#737373]">
-      {displayed.map((c, idx) => (
-        <div key={idx} className="flex justify-between items-center gap-2">
-          <span className="truncate">• {c.product_name || c.name}</span>
-          <span className="tabular-nums shrink-0">× {(c.allotted_qty || 1) * quantity}</span>
-        </div>
-      ))}
+      {displayed.map((c, idx) => {
+        const qtyPer = Number(c.qty_per_combo ?? c.unit_quantity ?? 1) || 1;
+        return (
+          <div key={idx} className="flex justify-between items-center gap-2">
+            <span className="truncate">• {c.product_name || c.name}</span>
+            <span className="tabular-nums shrink-0">× {qtyPer * quantity}</span>
+          </div>
+        );
+      })}
       {components.length > 4 && (
         <button
           type="button"

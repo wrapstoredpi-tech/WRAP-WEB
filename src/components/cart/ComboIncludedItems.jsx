@@ -79,7 +79,8 @@ export function ComboIncludedItems({
             className="border-l border-[#E5E5E3] ml-2 pl-3 sm:pl-4 space-y-2.5"
           >
             {displayedComponents.map((c, idx) => {
-              const totalQty = (c.allotted_qty || 1) * (comboQuantity || 1);
+              const qtyPerCombo = Number(c.qty_per_combo ?? c.unit_quantity ?? 1) || 1;
+              const totalQty = qtyPerCombo * (comboQuantity || 1);
               const isModelSpecific =
                 (c.mobile_model && c.mobile_model !== 'Universal') ||
                 (c.category || '').toLowerCase().includes('case') ||

@@ -202,17 +202,18 @@ export function useHydratedCart(products = []) {
             const stock = compProd
               ? Math.max(0, compProd.available_stock ?? compProd.current_stock ?? 0)
               : 0;
-            const allottedQty = Math.max(1, Number(ci.allotted_qty) || 1);
+            const qtyPerCombo = Math.max(1, Number(ci.qty_per_combo ?? ci.unit_quantity ?? 1) || 1);
             return {
               product_id: ci.product_id,
               name: compProd?.name || ci.product_name || 'Component Item',
               image: compProd?.image_url || ci.image || null,
               stock,
-              allotted_qty: allottedQty,
+              qty_per_combo: qtyPerCombo,
+              allotted_qty: qtyPerCombo,
               mobile_model: ci.mobile_model || compProd?.mobile_model || null,
               category: compProd?.category || ci.category || '',
               subcategory: compProd?.subcategory || ci.subcategory || '',
-              maxCombosPossible: Math.floor(stock / allottedQty),
+              maxCombosPossible: Math.floor(stock / qtyPerCombo),
             };
           });
 
