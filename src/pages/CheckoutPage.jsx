@@ -13,6 +13,32 @@ import { policies, INDIAN_STATES, getShippingFee, getCourierPartner } from '../c
 
 const LOCAL_STORAGE_USER_KEY = 'wrapstore_checkout_user_v2';
 
+function CheckoutComboItems({ components = [], quantity = 1 }) {
+  const [showAll, setShowAll] = useState(false);
+  if (!components || components.length === 0) return null;
+  const displayed = showAll ? components : components.slice(0, 4);
+
+  return (
+    <div className="pl-3 border-l border-[#E5E5E3] mt-1.5 space-y-1 text-[12px] text-[#737373]">
+      {displayed.map((c, idx) => (
+        <div key={idx} className="flex justify-between items-center gap-2">
+          <span className="truncate">• {c.product_name || c.name}</span>
+          <span className="tabular-nums shrink-0">× {(c.allotted_qty || 1) * quantity}</span>
+        </div>
+      ))}
+      {components.length > 4 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(!showAll)}
+          className="text-[11px] font-semibold text-[#B0521F] hover:underline pt-0.5 cursor-pointer block text-left"
+        >
+          {showAll ? 'Show fewer' : 'Show all ' + components.length + ' items'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function CheckoutPage() {
   const { products } = useProductsContext();
   const { clearCart } = useCart();
@@ -173,7 +199,7 @@ export function CheckoutPage() {
           quantity: line.quantity,
           image: line.product.image_url,
           is_combo: line.product.is_combo || false,
-          combo_items: line.product.combo_items || [],
+          combo_items: line.components || line.product.combo_items || [],
           product: line.product,
         })),
         subtotal,
@@ -245,16 +271,21 @@ export function CheckoutPage() {
           {isMobileSummaryOpen && (
             <div className="mt-4 pt-4 border-t border-[#E5E5E3] space-y-3">
               {items.map((line) => (
-                <div key={line.id} className="flex justify-between text-[14px]">
-                  <div>
-                    <p className="font-semibold text-[#141414]">{line.product.name}</p>
-                    <p className="text-[12px] text-[#6B6B6B]">
-                      Qty {line.quantity} {line.selected_model && `• ${line.selected_model}`}
-                    </p>
+                <div key={line.id} className="text-[14px] space-y-1">
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="font-semibold text-[#141414]">{line.product.name}</p>
+                      <p className="text-[12px] text-[#6B6B6B]">
+                        Qty {line.quantity} {line.selected_model && ('• ' + line.selected_model)}
+                      </p>
+                    </div>
+                    <span className="font-semibold text-[#141414]">
+                      {formatINR(line.product.selling_price * line.quantity)}
+                    </span>
                   </div>
-                  <span className="font-semibold text-[#141414]">
-                    {formatINR(line.product.selling_price * line.quantity)}
-                  </span>
+                  {line.is_combo && Array.isArray(line.components) && line.components.length > 0 && (
+                    <CheckoutComboItems components={line.components} quantity={line.quantity} />
+                  )}
                 </div>
               ))}
               <div className="pt-2 border-t border-[#E5E5E3] space-y-1.5 text-[14px]">
@@ -547,26 +578,33 @@ export function CheckoutPage() {
               {/* Items List */}
               <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
                 {items.map((line) => (
-                  <div key={line.id} className="flex gap-3 text-[14px]">
-                    <div className="w-14 aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden border border-[#E5E5E3] shrink-0">
-                      <img
-                        src={line.product.image_url}
-                        alt={line.product.name}
-                        className="w-full h-full object-cover"
-                      />
+                  <div key={line.id} className="text-[14px] space-y-1.5 pb-2 border-b border-[#E5E5E3]/50 last:border-b-0">
+                    <div className="flex gap-3">
+                      <div className="w-14 aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden border border-[#E5E5E3] shrink-0">
+                        <img
+                          src={line.product.image_url}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[#141414] truncate">{line.product.name}</p>
+                        <p className="text-[12px] text-[#6B6B6B]">
+                          Qty: {line.quantity} {line.selected_model && ('• ' + line.selected_model)}
+                        </p>
+                        <p className="text-[12px] text-[#6B6B6B]">
+                          {formatINR(line.product.selling_price)} each
+                        </p>
+                      </div>
+                      <span className="font-semibold text-[#141414] shrink-0 tabular-nums">
+                        {formatINR(line.product.selling_price * line.quantity)}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#141414] truncate">{line.product.name}</p>
-                      <p className="text-[12px] text-[#6B6B6B]">
-                        Qty: {line.quantity} {line.selected_model && `• ${line.selected_model}`}
-                      </p>
-                      <p className="text-[12px] text-[#6B6B6B]">
-                        {formatINR(line.product.selling_price)} each
-                      </p>
-                    </div>
-                    <span className="font-semibold text-[#141414]">
-                      {formatINR(line.product.selling_price * line.quantity)}
-                    </span>
+
+                    {line.is_combo && Array.isArray(line.components) && line.components.length > 0 && (
+                      <CheckoutComboItems components={line.components} quantity={line.quantity} />
+                    )}
                   </div>
                 ))}
               </div>

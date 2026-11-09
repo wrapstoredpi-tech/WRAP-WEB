@@ -4,6 +4,7 @@ import { policies, getDeliveryLine } from '../config/policies';
 import { Search, Check, AlertCircle, Truck, PackageCheck, RotateCcw } from 'lucide-react';
 import { trackOrder, ORDER_STATUS_STEPS } from '../lib/checkout';
 import { formatINR } from '../lib/currency';
+import { groupOrderItems, CompactComboComponentList } from '../components/cart/OrderItemsList';
 import { supabase } from '../lib/supabase';
 
 const OrderConfirmedScene = lazy(() => import('../components/order/OrderConfirmedScene'));
@@ -296,18 +297,24 @@ export function TrackOrderPage() {
           <div className="pt-4 border-t border-[#E5E5E3] space-y-2">
             <h3 className="text-[14px] font-semibold text-[#141414]">Items in Shipment</h3>
             <div className="divide-y divide-[#E5E5E3]">
-              {result.order.items?.map((item, idx) => (
-                <div key={idx} className="py-2.5 flex justify-between text-[14px]">
-                  <div>
-                    <span className="font-semibold text-[#141414]">{item.name}</span>
-                    <span className="text-[12px] text-[#6B6B6B] block">
-                      Model: {item.selected_model || item.mobile_model || 'Universal'}
-                      {item.color ? ` · Color: ${item.color}` : ''} • Qty: {item.quantity}
+              {groupOrderItems(result.order.items || []).map((item, idx) => (
+                <div key={idx} className="py-2.5 text-[14px] space-y-1">
+                  <div className="flex justify-between">
+                    <div>
+                      <span className="font-semibold text-[#141414]">{item.name}</span>
+                      <span className="text-[12px] text-[#6B6B6B] block">
+                        Model: {item.selected_model || item.mobile_model || 'Universal'}
+                        {item.color ? ' · Color: ' + item.color : ''} • Qty: {item.quantity}
+                      </span>
+                    </div>
+                    <span className="font-semibold text-[#141414]">
+                      {formatINR((item.price || 0) * (item.quantity || 1))}
                     </span>
                   </div>
-                  <span className="font-semibold text-[#141414]">
-                    {formatINR(item.price * item.quantity)}
-                  </span>
+
+                  {item.is_combo && Array.isArray(item.components) && item.components.length > 0 && (
+                    <CompactComboComponentList components={item.components} quantity={item.quantity} />
+                  )}
                 </div>
               ))}
             </div>

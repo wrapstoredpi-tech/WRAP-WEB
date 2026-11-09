@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Copy, Check, MessageCircle, ArrowRight, Package } from 'lucide-react';
 import { formatINR } from '../lib/currency';
+import { groupOrderItems, CompactComboComponentList } from '../components/cart/OrderItemsList';
 import { store } from '../config/store';
 import { policies, getDeliveryLine } from '../config/policies';
 import { supabase } from '../lib/supabase';
@@ -32,6 +33,7 @@ export function OrderConfirmationPage() {
   const orderNumber = order?.orderId || order?.order_number || '';
   const orderId = order?.id || '';
   const customerPhone = order?.contact?.phone || order?.customer_phone || '';
+  const groupedItems = useMemo(() => (Array.isArray(order?.items) ? groupOrderItems(order.items) : []), [order?.items]);
 
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -349,25 +351,31 @@ export function OrderConfirmationPage() {
           </div>
 
           {/* Short Item Summary */}
-          {Array.isArray(order.items) && order.items.length > 0 && (
+          {groupedItems.length > 0 && (
             <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-4 sm:p-5 space-y-3">
               <h2 className="text-[14px] font-bold text-[#141414] pb-2 border-b border-[#E5E5E3]">
-                Items Ordered ({order.items.length})
+                Items Ordered ({groupedItems.length})
               </h2>
 
-              <div className="divide-y divide-[#E5E5E3] max-h-[220px] overflow-y-auto pr-1">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-[13px]">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[#141414] truncate">{item.name}</p>
-                      <p className="text-[12px] text-[#737373]">
-                        {item.selected_model || item.mobile_model || 'Universal'}
-                        {item.color ? ` · ${item.color}` : ''} · Qty {item.quantity}
-                      </p>
+              <div className="divide-y divide-[#E5E5E3] max-h-[300px] overflow-y-auto pr-1">
+                {groupedItems.map((item, idx) => (
+                  <div key={idx} className="py-2.5 first:pt-0 last:pb-0 space-y-1 text-[13px]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#141414] truncate">{item.name}</p>
+                        <p className="text-[12px] text-[#737373]">
+                          {item.selected_model || item.mobile_model || 'Universal'}
+                          {item.color ? ' · ' + item.color : ''} · Qty {item.quantity}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-[#141414] shrink-0 tabular-nums">
+                        {formatINR((item.price || 0) * (item.quantity || 1))}
+                      </span>
                     </div>
-                    <span className="font-semibold text-[#141414] shrink-0 tabular-nums">
-                      {formatINR((item.price || 0) * (item.quantity || 1))}
-                    </span>
+
+                    {item.is_combo && Array.isArray(item.components) && item.components.length > 0 && (
+                      <CompactComboComponentList components={item.components} quantity={item.quantity} />
+                    )}
                   </div>
                 ))}
               </div>

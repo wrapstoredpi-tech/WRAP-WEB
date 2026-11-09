@@ -30,7 +30,7 @@ export function CartProvider({ children }) {
     }
   }, [cartItems]);
 
-  // Item count (sum of quantities)
+  // Item count (sum of line quantities - combos count as 1 per combo line quantity)
   const itemCount = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   }, [cartItems]);
@@ -48,9 +48,13 @@ export function CartProvider({ children }) {
     const colorToSave = isRealColor(rawColor) ? rawColor : (getValidColors(product)[0] || null);
 
     setCartItems((prevItems) => {
+      // Cart line key = combo_id + selected_model
+      const targetModel = modelToSave || 'Universal';
+      const lineKey = `${product.id}_${targetModel}`;
+
       // Find line matching both product ID and selected model
       const existingIndex = prevItems.findIndex(
-        (i) => i.productId === product.id && (i.selected_model || null) === (modelToSave || null)
+        (i) => i.id === lineKey || (i.productId === product.id && (i.selected_model || 'Universal') === targetModel)
       );
 
       if (existingIndex > -1) {
@@ -62,19 +66,20 @@ export function CartProvider({ children }) {
           quantity: newQty,
           selected_model: modelToSave,
           selected_color: colorToSave || updated[existingIndex].selected_color,
+          added_price: updated[existingIndex].added_price ?? product.selling_price,
         };
         return updated;
       } else {
         const finalQty = Math.min(addQty, maxStock);
-        const lineId = `${product.id}_${modelToSave || 'default'}_${Date.now()}`;
         return [
           ...prevItems,
           {
-            id: lineId,
+            id: lineKey,
             productId: product.id,
             quantity: finalQty,
             selected_model: modelToSave,
             selected_color: colorToSave,
+            added_price: product.selling_price,
           },
         ];
       }
@@ -135,6 +140,7 @@ export function useCart() {
 /**
  * useHydratedCart(products)
  * Hydrates cart stubs with live product prices, stock levels, model choices, and names.
+ * For combos: resolves constituent items, stock, availability, and POS edits live.
  */
 export function useHydratedCart(products = []) {
   const { cartItems } = useCart();
@@ -153,17 +159,129 @@ export function useHydratedCart(products = []) {
     return cartItems
       .map((item) => {
         const product = productMap[item.productId];
-        if (!product) return null;
+
+        // Model resolution: line choice > saved product model > null
+        const resolvedModel = item.selected_model || (product ? product.mobile_model : null);
+        const itemColor = isRealColor(item.selected_color) ? item.selected_color : null;
+        const validProdColors = product ? getValidColors(product) : [];
+        const resolvedColor = itemColor || (validProdColors.length > 0 ? validProdColors[0] : null);
+
+        // Check if combo/product was deleted or hidden in POS while in bag
+        if (!product || product.is_active === false || product.online_visible === false) {
+          return {
+            id: item.id || item.productId,
+            lineId: item.id || item.productId,
+            productId: item.productId,
+            product: product || { id: item.productId, name: 'Combo', selling_price: item.added_price || 0 },
+            quantity: item.quantity,
+            selected_model: resolvedModel,
+            selected_color: resolvedColor,
+            isUnavailable: true,
+            unavailableMessage: 'This combo is no longer available',
+            stockWarning: true,
+            isOutOfStock: true,
+            exceedsStock: false,
+            availableStock: 0,
+            is_combo: true,
+            components: [],
+          };
+        }
+
+        // Price change detection: if POS edited price while in bag
+        const priceChanged =
+          item.added_price !== undefined &&
+          Number(product.selling_price) !== Number(item.added_price);
+
+        // Combo line resolution
+        if (product.is_combo) {
+          const rawComboItems = Array.isArray(product.combo_items) ? product.combo_items : [];
+
+          // Derive component list, photos, names, and stock live from productMap
+          const components = rawComboItems.map((ci) => {
+            const compProd = productMap[ci.product_id];
+            const stock = compProd
+              ? Math.max(0, compProd.available_stock ?? compProd.current_stock ?? 0)
+              : 0;
+            const allottedQty = Math.max(1, Number(ci.allotted_qty) || 1);
+            return {
+              product_id: ci.product_id,
+              name: compProd?.name || ci.product_name || 'Component Item',
+              image: compProd?.image_url || ci.image || null,
+              stock,
+              allotted_qty: allottedQty,
+              mobile_model: ci.mobile_model || compProd?.mobile_model || null,
+              category: compProd?.category || ci.category || '',
+              subcategory: compProd?.subcategory || ci.subcategory || '',
+              maxCombosPossible: Math.floor(stock / allottedQty),
+            };
+          });
+
+          // Availability = min over components of floor(stock / allotted_qty)
+          const comboAvailability = components.length > 0
+            ? Math.min(...components.map((c) => c.maxCombosPossible))
+            : 0;
+
+          const isOutOfStock = comboAvailability === 0;
+          const exceedsStock = item.quantity > comboAvailability;
+          const stockWarning = isOutOfStock || exceedsStock;
+
+          let stockWarningMessage = null;
+          if (isOutOfStock) {
+            const outOfStockComp = components.find((c) => c.maxCombosPossible === 0);
+            stockWarningMessage = outOfStockComp
+              ? `Out of stock: ${outOfStockComp.name}`
+              : 'Out of stock';
+          } else if (exceedsStock) {
+            const limitingComp = [...components].sort((a, b) => a.maxCombosPossible - b.maxCombosPossible)[0];
+            stockWarningMessage = limitingComp
+              ? `Only ${comboAvailability} ${comboAvailability === 1 ? 'combo' : 'combos'} available because ${limitingComp.name} is running low`
+              : `Only ${comboAvailability} combos available`;
+          }
+
+          // Savings calculation
+          const originalValue = Number(product.raw_mrp || product.original_value || product.mrp || 0);
+          const sellingPrice = Number(product.selling_price) || 0;
+          const hasRealSavings = originalValue > sellingPrice;
+          const savings = hasRealSavings ? originalValue - sellingPrice : 0;
+
+          // Check if any component has model specificity
+          const hasModelSpecificComponent = components.some(
+            (c) =>
+              (c.mobile_model && c.mobile_model !== 'Universal') ||
+              (c.category || '').toLowerCase().includes('case') ||
+              (c.subcategory || '').toLowerCase().includes('iphone') ||
+              (c.subcategory || '').toLowerCase().includes('samsung')
+          );
+
+          return {
+            id: item.id || item.productId,
+            lineId: item.id || item.productId,
+            productId: item.productId,
+            product,
+            quantity: item.quantity,
+            selected_model: resolvedModel,
+            selected_color: resolvedColor,
+            is_combo: true,
+            components,
+            comboAvailability,
+            availableStock: comboAvailability,
+            isOutOfStock,
+            exceedsStock,
+            stockWarning,
+            stockWarningMessage,
+            priceChanged,
+            originalValue,
+            hasRealSavings,
+            savings,
+            hasModelSpecificComponent,
+          };
+        }
+
+        // Standard product line
         const availableStock = product.available_stock ?? product.current_stock ?? 0;
         const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || availableStock === 0;
         const exceedsStock = item.quantity > availableStock;
         const stockWarning = isOutOfStock || exceedsStock;
-
-        // Model resolution: line choice > saved product model > null
-        const resolvedModel = item.selected_model || product.mobile_model || null;
-        const itemColor = isRealColor(item.selected_color) ? item.selected_color : null;
-        const validProdColors = getValidColors(product);
-        const resolvedColor = itemColor || (validProdColors.length > 0 ? validProdColors[0] : null);
 
         return {
           id: item.id || item.productId,
@@ -177,13 +295,19 @@ export function useHydratedCart(products = []) {
           isOutOfStock,
           exceedsStock,
           availableStock,
+          priceChanged,
+          is_combo: false,
         };
       })
       .filter(Boolean);
   }, [cartItems, productMap]);
 
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + (item.product.selling_price || 0) * (item.quantity || 1), 0),
+    () =>
+      items.reduce(
+        (sum, item) => sum + (item.product.selling_price || 0) * (item.quantity || 1),
+        0
+      ),
     [items]
   );
 
@@ -201,7 +325,7 @@ export function useHydratedCart(products = []) {
 
   const baseShippingFee = items.length === 0 ? 0 : getShippingFee(defaultSavedState);
   const estimatedTotal = subtotal + baseShippingFee;
-  const hasStockWarnings = items.some((item) => item.stockWarning);
+  const hasStockWarnings = items.some((item) => item.stockWarning || item.isUnavailable);
 
   return {
     items,

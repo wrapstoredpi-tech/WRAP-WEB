@@ -4,6 +4,8 @@ import { Trash2, Minus, Plus, ShoppingBag, AlertTriangle, ArrowRight } from 'luc
 import { useCart, useHydratedCart } from '../context/CartContext';
 import { useProductsContext } from '../context/ProductsContext';
 import { CrossSellSection } from '../components/cart/CrossSellSection';
+import { ComboThumbnail } from '../components/cart/ComboThumbnail';
+import { ComboIncludedItems } from '../components/cart/ComboIncludedItems';
 import { formatINR } from '../lib/currency';
 import { storeConfig } from '../config/store';
 import { policies } from '../config/policies';
@@ -18,7 +20,7 @@ export function CartPage() {
     items,
     subtotal,
     shippingFee,
-        estimatedTotal,
+    estimatedTotal,
     hasStockWarnings,
   } = useHydratedCart(products);
 
@@ -88,7 +90,7 @@ export function CartPage() {
                   Stock Alert
                 </strong>
                 <p className="text-[#141414]">
-                  One or more items in your bag exceed available inventory. Please adjust quantities or remove out-of-stock items to proceed to checkout.
+                  One or more items in your bag exceed available inventory or are no longer available. Please adjust quantities or remove unavailable items to proceed to checkout.
                 </p>
               </div>
             </div>
@@ -97,18 +99,51 @@ export function CartPage() {
           {/* Cart Lines */}
           <div className="bg-white border border-[#E5E5E3] rounded-[6px] divide-y divide-[#E5E5E3]">
             {items.map((line) => {
+              // Deleted or hidden combo/product in POS while in bag
+              if (line.isUnavailable) {
+                return (
+                  <div key={line.id || line.productId} className="p-4 sm:p-6 space-y-3 bg-[#FAFAF9]">
+                    <div className="flex gap-4 sm:gap-6 items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-[16px] font-semibold text-[#141414]">
+                          {line.product.name}
+                        </p>
+                        <p className="text-[13px] text-[#B0521F] font-medium">
+                          {line.unavailableMessage || 'This combo is no longer available'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(line.id)}
+                        className="min-h-[44px] px-4 py-2 text-[13px] font-semibold text-[#B0521F] border border-[#B0521F] rounded-[4px] hover:bg-[#B0521F] hover:text-white transition-colors cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               const maxStock = line.availableStock ?? 99;
+
               return (
                 <div key={line.id || line.productId} className="p-4 sm:p-6 space-y-3">
                   <div className="flex gap-4 sm:gap-6">
-                    {/* Item Image */}
-                    <div className="w-20 sm:w-24 aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden border border-[#E5E5E3] shrink-0">
-                      <img
-                        src={line.product.image_url}
-                        alt={line.product.name}
-                        className="w-full h-full object-cover"
+                    {/* Item Image: Tiled photos for combo, standard thumbnail for products */}
+                    {line.is_combo ? (
+                      <ComboThumbnail
+                        product={line.product}
+                        components={line.components}
                       />
-                    </div>
+                    ) : (
+                      <div className="w-20 sm:w-24 aspect-[4/5] bg-[#FAFAF9] rounded-[6px] overflow-hidden border border-[#E5E5E3] shrink-0">
+                        <img
+                          src={line.product.image_url}
+                          alt={line.product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
 
                     {/* Item Details */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
@@ -125,16 +160,32 @@ export function CartPage() {
                           </span>
                         </div>
 
-                        {/* Selected Model */}
-                        {line.selected_model && (
-                          <p className="text-[14px] text-[#141414]">
-                            <span className="text-[#6B6B6B]">Model: </span>
-                            <span className="font-semibold">{line.selected_model}</span>
+                        {/* Quiet Combo text tag (small, muted, no pill) */}
+                        {line.is_combo && (
+                          <p className="text-[12px] text-[#737373] font-normal">
+                            Combo
                           </p>
                         )}
 
-                        {/* Colour */}
-                        {line.selected_color && (
+                        {/* Selected Model: for combo, show when it has a model-specific component */}
+                        {line.is_combo ? (
+                          line.hasModelSpecificComponent && line.selected_model && (
+                            <p className="text-[14px] text-[#141414]">
+                              <span className="text-[#737373]">Model: </span>
+                              <span className="font-semibold">{line.selected_model}</span>
+                            </p>
+                          )
+                        ) : (
+                          line.selected_model && (
+                            <p className="text-[14px] text-[#141414]">
+                              <span className="text-[#6B6B6B]">Model: </span>
+                              <span className="font-semibold">{line.selected_model}</span>
+                            </p>
+                          )
+                        )}
+
+                        {/* Colour (for standard products) */}
+                        {!line.is_combo && line.selected_color && (
                           <p className="text-[12px] text-[#6B6B6B]">
                             Colour: {line.selected_color}
                           </p>
@@ -144,27 +195,41 @@ export function CartPage() {
                         <p className="text-[12px] text-[#6B6B6B]">
                           {formatINR(line.product.selling_price)} each
                         </p>
+
+                        {/* Real savings note on combo lines */}
+                        {line.is_combo && line.hasRealSavings && (
+                          <p className="text-[12px] text-[#16A34A] font-medium">
+                            Worth {formatINR(line.originalValue)}, you save {formatINR(line.savings)}
+                          </p>
+                        )}
+
+                        {/* Quiet "Price updated" note if POS edited price while in bag */}
+                        {line.priceChanged && (
+                          <p className="text-[12px] text-[#737373] italic">
+                            Price updated
+                          </p>
+                        )}
                       </div>
 
                       {/* Stepper & Remove */}
                       <div className="flex items-center justify-between pt-3">
-                        <div className="inline-flex items-center border border-[#E5E5E3] rounded-[6px] bg-[#FAFAF9] min-h-[36px]">
+                        <div className="inline-flex items-center border border-[#E5E5E3] rounded-[6px] bg-[#FAFAF9] min-h-[44px]">
                           <button
                             type="button"
                             onClick={() => updateQuantity(line.id, line.quantity - 1, maxStock)}
-                            className="w-8 h-8 flex items-center justify-center text-[#141414] hover:text-[#B0521F]"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#141414] hover:text-[#B0521F] cursor-pointer"
                             aria-label="Decrease quantity"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="w-8 text-center text-[14px] font-semibold text-[#141414]">
+                          <span className="w-8 text-center text-[14px] font-semibold text-[#141414] tabular-nums">
                             {line.quantity}
                           </span>
                           <button
                             type="button"
                             disabled={line.quantity >= maxStock}
                             onClick={() => updateQuantity(line.id, line.quantity + 1, maxStock)}
-                            className="w-8 h-8 flex items-center justify-center text-[#141414] hover:text-[#B0521F] disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#141414] hover:text-[#B0521F] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                             aria-label="Increase quantity"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -174,7 +239,7 @@ export function CartPage() {
                         <button
                           type="button"
                           onClick={() => removeItem(line.id)}
-                          className="text-[12px] text-[#6B6B6B] hover:text-[#B0521F] flex items-center gap-1 transition-colors min-h-[36px] px-2"
+                          className="min-h-[44px] px-3 text-[12px] text-[#6B6B6B] hover:text-[#B0521F] flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Remove</span>
@@ -183,14 +248,25 @@ export function CartPage() {
                     </div>
                   </div>
 
+                  {/* Included items breakdown for combos */}
+                  {line.is_combo && Array.isArray(line.components) && line.components.length > 0 && (
+                    <ComboIncludedItems
+                      components={line.components}
+                      comboQuantity={line.quantity}
+                      selectedModel={line.selected_model}
+                      comboName={line.product.name}
+                    />
+                  )}
+
                   {/* Amber Line Stock Warning */}
                   {line.stockWarning && (
                     <div className="p-2.5 bg-[#F9EDE7] border border-[#B0521F] rounded-[6px] text-[12px] text-[#B0521F] flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       <span>
-                        {line.isOutOfStock
-                          ? 'This item is out of stock. Please remove it to proceed.'
-                          : `Only ${line.availableStock} available in stock. Please reduce your quantity.`}
+                        {line.stockWarningMessage ||
+                          (line.isOutOfStock
+                            ? 'This item is out of stock. Please remove it to proceed.'
+                            : `Only ${line.availableStock} available in stock. Please reduce your quantity.`)}
                       </span>
                     </div>
                   )}
@@ -229,45 +305,22 @@ export function CartPage() {
               <p className="text-[12px] text-[#6B6B6B]">
                 Inclusive of all applicable GST
               </p>
-
-              <div className="pt-2 text-[12px] text-[#6B6B6B] space-y-0.5 border-t border-[#E5E5E3]">
-                <p>Orders delivered within {policies.delivery.tn.label}: {policies.delivery.tn.text}.</p>
-                <p>Orders delivered to {policies.delivery.other.label.toLowerCase()}: {policies.delivery.other.text.toLowerCase()}.</p>
-              </div>
             </div>
 
-            {/* Checkout Button: Always visible */}
             <div className="pt-2">
               <button
                 type="button"
-                disabled={hasStockWarnings}
+                disabled={hasStockWarnings || items.length === 0}
                 onClick={handleProceedToCheckout}
-                className={`w-full min-h-[48px] px-6 py-3 rounded-[6px] text-[16px] font-semibold transition-colors flex items-center justify-center gap-2 ${
-                  hasStockWarnings
-                    ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
-                    : 'bg-[#B0521F] hover:bg-[#994518] text-white cursor-pointer'
-                }`}
+                className="w-full min-h-[44px] py-3 px-6 bg-[#141414] text-white text-[14px] font-semibold rounded-[6px] hover:bg-[#262626] transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <span>Proceed to Checkout</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {hasStockWarnings && (
-                <p className="text-[12px] text-[#B0521F] text-center mt-2">
-                  Resolve stock warnings above to continue.
-                </p>
-              )}
-            </div>
-
-            {/* Payment security note */}
-            <div className="pt-3 border-t border-[#E5E5E3] text-[12px] text-[#6B6B6B] space-y-1">
-              <strong className="block text-[#141414] font-semibold">Payment Guarantee</strong>
-              <p>
-                {storeConfig.onlinePaymentNote}
-              </p>
             </div>
           </div>
         </div>
+
       </div>
     </main>
   );

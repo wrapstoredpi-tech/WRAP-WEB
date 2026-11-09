@@ -690,6 +690,23 @@ export function useProducts() {
       setError(null);
     } catch (err) {
       console.error('[useProducts] fetch error:', err);
+      try {
+        const mockRaw =
+          typeof window !== 'undefined' &&
+          (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+        if (mockRaw) {
+          const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+          if (parsed && Array.isArray(parsed.products) && parsed.products.length > 0) {
+            setProducts(parsed.products);
+            setCategories(parsed.categories || []);
+            setSubcategories(parsed.subcategories || []);
+            setError(null);
+            return;
+          }
+        }
+      } catch (mockErr) {
+        console.warn('Mock catalog fallback error:', mockErr);
+      }
       setError(err.message || 'Failed to load products');
     } finally {
       setIsLoading(false);
