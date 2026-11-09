@@ -9,30 +9,30 @@ export function ProductCard({ product }) {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  if (!product) return null;
-
-  const isOutOfStock = product.stock_status === 'OUT_OF_STOCK' || product.available_stock === 0;
-  const isLowStock = !isOutOfStock && (product.available_stock <= 5 || product.stock_status === 'LOW_STOCK');
-  const hasDiscount = product.mrp > product.selling_price;
-  const validColors = getValidColors(product);
-  const isFav = isFavorite(product.id);
+  const isOutOfStock = product?.stock_status === 'OUT_OF_STOCK' || product?.available_stock === 0;
+  const isLowStock = !isOutOfStock && ((product?.available_stock || 0) <= 5 || product?.stock_status === 'LOW_STOCK');
+  const hasDiscount = (product?.mrp || 0) > (product?.selling_price || 0);
+  const validColors = product ? getValidColors(product) : [];
+  const isFav = product?.id ? isFavorite(product.id) : false;
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    toggleFavorite(product.id, { returnUrl: `/product/${product.id}` });
+    if (product?.id) {
+      toggleFavorite(product.id, { returnUrl: `/product/${product.id}` });
+    }
   };
 
   // Extract all distinct images for this product
   const images = useMemo(() => {
     const rawList = [];
-    if (Array.isArray(product.images) && product.images.length > 0) {
+    if (Array.isArray(product?.images) && product.images.length > 0) {
       rawList.push(...product.images);
     }
-    if (product.image_url) {
+    if (product?.image_url) {
       rawList.push(product.image_url);
     }
-    if (Array.isArray(product.combo_items)) {
+    if (Array.isArray(product?.combo_items)) {
       product.combo_items.forEach((it) => {
         if (it.image) rawList.push(it.image);
       });
@@ -47,14 +47,14 @@ export function ProductCard({ product }) {
       }
     });
 
-    return result.length > 0 ? result : [product.image_url || ''];
-  }, [product.images, product.image_url, product.combo_items]);
+    return result.length > 0 ? result : [product?.image_url || ''];
+  }, [product?.images, product?.image_url, product?.combo_items]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Auto-scroll images smoothly when there are 2 or more images
   useEffect(() => {
-    if (images.length <= 1) return;
+    if (!product || images.length <= 1) return;
 
     // Subtle deterministic stagger so multiple cards don't all scroll on the exact same microsecond
     const delay =
@@ -75,7 +75,9 @@ export function ProductCard({ product }) {
       clearTimeout(timeoutId);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [images.length, product.id]);
+  }, [images.length, product?.id]);
+
+  if (!product) return null;
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
