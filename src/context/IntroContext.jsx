@@ -10,9 +10,17 @@ const IntroContext = createContext({
 });
 
 export function IntroProvider({ children }) {
-  // Check if intro was eligible from initial inline script
+  // Check if intro was eligible (only on "/" and first load per session)
+  const isHome =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/' || window.location.pathname === '' || window.location.pathname === '/index.html');
+  const hasSeen =
+    typeof window !== 'undefined' && sessionStorage.getItem('wrapstore_intro_done') === 'true';
+
   const isInitiallyEligible =
     typeof window !== 'undefined' &&
+    isHome &&
+    !hasSeen &&
     window.__WRAPSTORE_INTRO_ELIGIBLE__ === true &&
     document.getElementById('wrapstore-intro') !== null;
 
@@ -22,6 +30,13 @@ export function IntroProvider({ children }) {
   const activeControllerRef = useRef(null);
 
   useEffect(() => {
+    // If not on home or already done, clean up intro element immediately
+    if (!isInitiallyEligible && typeof document !== 'undefined') {
+      const el = document.getElementById('wrapstore-intro');
+      if (el) el.remove();
+      document.documentElement.classList.add('no-intro');
+    }
+
     // If initially eligible, start animation on the inline element
     if (isInitiallyEligible) {
       const container = document.getElementById('wrapstore-intro');
@@ -35,10 +50,12 @@ export function IntroProvider({ children }) {
             setIsRevealing(true);
           },
           onDone: () => {
+            sessionStorage.setItem('wrapstore_intro_done', 'true');
             setIsIntroDone(true);
           },
         });
       } else {
+        sessionStorage.setItem('wrapstore_intro_done', 'true');
         setIsIntroDone(true);
       }
     }

@@ -45,7 +45,7 @@ export const pagesConfig = {
       },
       {
         heading: 'Replacement Policy',
-        content: 'We provide a 7-day replacement for products with manufacturing defects or if you received an incorrect item. Because cases are precision-engineered for specific phone models, please ensure you verify your model before finalizing your purchase.',
+        content: 'We provide a 7-day replacement for products with manufacturing defects or if you received an incorrect item. Because cases are made for specific phone models, please ensure you verify your model before finalizing your purchase.',
       },
       {
         heading: 'Return Process',

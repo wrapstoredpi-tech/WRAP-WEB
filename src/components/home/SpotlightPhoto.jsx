@@ -29,6 +29,11 @@ export function SpotlightPhoto({
         height={800}
         loading="lazy"
         onLoad={handleLoad}
+        onError={(e) => {
+          if (!e.currentTarget.src.includes('iphone.jpg')) {
+            e.currentTarget.src = '/subcategories/iphone.jpg';
+          }
+        }}
         className={`w-full h-full rounded-[6px] transition-opacity duration-300 ${
           isUnder700 ? 'object-contain max-h-full max-w-full' : 'object-cover'
         }`}

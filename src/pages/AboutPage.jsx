@@ -69,11 +69,11 @@ export function AboutPage() {
             Explore our collection
           </p>
           <p className="text-[13px] text-[#6B6B6B]">
-            Find precision cases and accessories for your phone model.
+            Find cases and accessories for your phone model.
           </p>
         </div>
         <Link
-          to="/?category=Mobile%20Cases"
+          to="/cases"
           className="min-h-[44px] px-6 py-2.5 bg-[#141414] hover:bg-[#383836] text-white font-semibold text-[14px] rounded-[6px] transition-colors inline-flex items-center justify-center"
         >
           Shop cases

@@ -115,7 +115,7 @@ export function ProductGrid({
 
       {/* Sticky Filters & Sort Controls Bar (Keeps fixed at the top when scrolling) */}
       <div className="sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2 sm:py-2.5 bg-[#FAFAF9]/95 backdrop-blur-md transition-shadow">
-        <div className="flex items-center justify-between gap-3 w-full bg-white border border-[#E5E5E3] rounded-[8px] p-2.5 sm:p-3 shadow-2xs">
+        <div className="flex items-center justify-between gap-3 w-full bg-white border border-[#E5E5E3] rounded-[6px] p-2.5 sm:p-3 shadow-2xs">
           {/* Desktop Left: Title with product count */}
           <div className="hidden lg:block">
             <h1 className="text-[20px] xl:text-[22px] font-semibold text-[#141414] tracking-[-0.01em]">
@@ -193,9 +193,9 @@ export function ProductGrid({
         </div>
       )}
 
-      {/* Grid of Cards: 3 columns desktop, 2 columns mobile */}
+      {/* Grid of Cards: 2 columns mobile, 3 tablet, 3-4 desktop */}
       {visibleProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 pt-2">
           {visibleProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}

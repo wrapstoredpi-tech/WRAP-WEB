@@ -33,6 +33,7 @@ export function OrderConfirmationPage() {
   const orderNumber = order?.orderId || order?.order_number || '';
   const orderId = order?.id || '';
   const customerPhone = order?.contact?.phone || order?.customer_phone || '';
+  const orderState = order?.shipping_state || order?.delivery?.state || null;
   const groupedItems = useMemo(() => (Array.isArray(order?.items) ? groupOrderItems(order.items) : []), [order?.items]);
 
   // Copy button state
@@ -164,16 +165,22 @@ export function OrderConfirmationPage() {
   if (!order) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-20 text-center space-y-4">
-        <h1 className="font-serif text-[28px] font-semibold text-[#141414]">No Active Order Found</h1>
-        <p className="text-[14px] text-[#6B6B6B]">
-          If you recently completed a purchase, you can look it up with your order number and mobile phone.
+        <h1 className="font-serif text-[28px] font-semibold text-[#141414]">We couldn't load this order</h1>
+        <p className="text-[14px] text-[#6B6B6B] max-w-md mx-auto">
+          If you recently placed an order, you can track it with your order number, or continue shopping.
         </p>
-        <div className="pt-2">
+        <div className="pt-3 flex flex-wrap items-center justify-center gap-3">
           <Link
             to="/track-order"
             className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-[#141414] text-white text-[14px] font-semibold rounded-[6px] hover:bg-[#262626] transition-colors"
           >
-            Track Order
+            Track order
+          </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-white border border-[#E5E5E3] text-[#141414] text-[14px] font-semibold rounded-[6px] hover:bg-[#FAFAF9] transition-colors"
+          >
+            Home
           </Link>
         </div>
       </main>
@@ -384,9 +391,9 @@ export function OrderConfirmationPage() {
               <div className="pt-3 border-t border-[#E5E5E3] space-y-1 text-[13px]">
                 <div className="flex justify-between text-[#737373]">
                   <span>Subtotal</span>
-                  <span className="tabular-nums">{formatINR(order.subtotal || order.total)}</span>
+                  <span className="tabular-nums">{formatINR(order?.subtotal || order?.total || 0)}</span>
                 </div>
-                {order.shippingFee !== undefined && (
+                {order?.shippingFee !== undefined && (
                   <div className="flex justify-between text-[#737373]">
                     <span>Shipping</span>
                     <span className="tabular-nums">{formatINR(order.shippingFee)}</span>
@@ -394,7 +401,7 @@ export function OrderConfirmationPage() {
                 )}
                 <div className="flex justify-between font-bold text-[#141414] text-[15px] pt-1 border-t border-[#E5E5E3]">
                   <span>Total</span>
-                  <span className="text-[#B0521F] tabular-nums">{formatINR(order.total || order.grand_total)}</span>
+                  <span className="text-[#B0521F] tabular-nums">{formatINR(order?.total || order?.grand_total || 0)}</span>
                 </div>
               </div>
             </div>
@@ -422,7 +429,7 @@ export function OrderConfirmationPage() {
           </div>
 
           {/* Delivery Address Preview */}
-          {order.delivery && (
+          {order?.delivery && (
             <div className="p-4 bg-white border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#737373] space-y-1">
               <p className="font-semibold text-[#141414]">Delivery Address</p>
               <p>{order.delivery.address}</p>

@@ -1,35 +1,47 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Minus,
-  Plus,
   ShoppingBag,
   ArrowRight,
-  Check,
   CheckCircle2,
   ChevronDown,
-  Heart,
   Truck,
-  ShieldCheck,
-  Package,
-  Headphones,
+  Check,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
 import { useProductsContext } from '../../context/ProductsContext';
-import { useFavorites } from '../../context/FavoritesContext';
+import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
 import { resolveColorStyle, getValidColors } from '../../lib/colors';
-import { ProductShare } from './ProductShare';
+import { policies } from '../../config/policies';
+import { CompleteYourSetup } from './CompleteYourSetup';
+import { ProductAccordions } from './ProductAccordions';
 
-export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
+export function ProductInfoPanel({
+  product,
+  onAddToCart,
+  buyButtonRef,
+  selectedModel,
+  setSelectedModel,
+  modelError,
+  setModelError,
+  modelSelectRef,
+  isModelSelected,
+  needsModelSelection,
+}) {
   const navigate = useNavigate();
   const { products } = useProductsContext();
   const { addItem, cartItems } = useCart();
+  const { openSheet } = usePurchaseSheet();
+  const { selectPhone } = usePhoneContext();
 
   const isOutOfStock =
     product.stock_status === 'OUT_OF_STOCK' ||
-    (product.available_stock ?? product.current_stock ?? 0) === 0;
-  const availableQty = Math.max(0, product.available_stock ?? product.current_stock ?? 0);
+    (product.available_stock !== undefined && product.available_stock === 0) ||
+    (product.current_stock !== undefined && product.current_stock === 0);
+
+  const availableQty = Math.max(0, product.available_stock ?? product.current_stock ?? 99);
   const sellingPrice = Number(product.selling_price) || 0;
   const rawMrp = Number(product.raw_mrp ?? product.mrp);
   const mrp =
@@ -39,115 +51,34 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
       ? Math.round(sellingPrice / (1 - product.discount_percentage / 100))
       : 0;
   const hasDiscount = mrp > sellingPrice;
+  const discountPercent = hasDiscount ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
 
   const compatibleModels = product.compatible_models || [];
-  const isCase =
-    (product.category || '').toLowerCase().includes('case') ||
-    (Array.isArray(product.categories) && product.categories.some((c) => c.toLowerCase().includes('case')));
-  const needsModelSelection = isCase || compatibleModels.length > 0;
 
-  // Selected phone model state: starts unselected by default per specification
-  const [selectedModel, setSelectedModel] = useState('');
-  const [modelError, setModelError] = useState(false);
-  const modelSelectRef = useRef(null);
+  // ─── COLOUR SIBLINGS ────────────────────────────────────────────────────────
+  // Products with the same name (trimmed, case-insensitive) in the same subcategory
+  const colourSiblings = useMemo(() => {
+    if (!product) return [];
+    const currentName = (product.name || '').trim().toLowerCase();
+    const currentSub = (product.subcategory || product.category || '').trim().toLowerCase();
 
-  // Validate that selectedModel is actually in compatibleModels
-  const isModelSelected = Boolean(
-    selectedModel &&
-      (!compatibleModels.length || compatibleModels.includes(selectedModel))
-  );
+    const matches = (products || []).filter((p) => {
+      const pName = (p.name || '').trim().toLowerCase();
+      const pSub = (p.subcategory || p.category || '').trim().toLowerCase();
+      return pName === currentName && pSub === currentSub;
+    });
 
-  // Collection-based Colour Selector state
-  const collectionName = (product.collection || '').trim();
-
-  // Find all products in the same collection
-  const collectionProducts = useMemo(() => {
-    if (!collectionName) return [product];
-    return (products || []).filter(
-      (p) =>
-        p.collection &&
-        p.collection.trim().toLowerCase() === collectionName.toLowerCase()
-    );
-  }, [products, collectionName, product]);
-
-  // Derive all unique color variants across this collection
-  const colorVariants = useMemo(() => {
-    const variants = [];
-    const seenColors = new Set();
-
-    if (collectionName && collectionProducts.length > 0) {
-      collectionProducts.forEach((p) => {
-        const pColors = getValidColors(p.color_variants || p.color);
-        const colList =
-          pColors.length > 0
-            ? pColors
-            : typeof p.color_variants === 'string' && p.color_variants.trim()
-            ? [p.color_variants.trim()]
-            : p.color
-            ? [p.color]
-            : [];
-
-        colList.forEach((col) => {
-          const key = col.toLowerCase().trim();
-          if (!seenColors.has(key)) {
-            seenColors.add(key);
-            variants.push({
-              color: col,
-              productId: p.id,
-              isCurrent: p.id === product.id,
-              product: p,
-            });
-          }
-        });
-      });
-    } else {
-      // If product has no collection, use only this product's own valid colors
-      const ownColors = getValidColors(product.color_variants || product.colors);
-      ownColors.forEach((col) => {
-        const key = col.toLowerCase().trim();
-        if (!seenColors.has(key)) {
-          seenColors.add(key);
-          variants.push({
-            color: col,
-            productId: product.id,
-            isCurrent: true,
-            product,
-          });
-        }
-      });
+    if (matches.length <= 1) {
+      // If no distinct siblings by name, check color_variants or colors
+      return [product];
     }
+    return matches;
+  }, [products, product]);
 
-    return variants;
-  }, [collectionName, collectionProducts, product.id, product.color_variants, product.colors]);
-
-  // Selected color defaults to current product's color
-  const currentProductColor =
-    getValidColors(product.color_variants || product.colors)[0] ||
-    (typeof product.color_variants === 'string' && product.color_variants.trim()) ||
-    colorVariants.find((v) => v.isCurrent)?.color ||
-    colorVariants[0]?.color ||
-    '';
-
-  const [selectedColor, setSelectedColor] = useState(currentProductColor);
-
-  useEffect(() => {
-    if (currentProductColor) {
-      setSelectedColor(currentProductColor);
-    }
-  }, [product.id, currentProductColor]);
-
-  const handleColorClick = (variant) => {
-    setSelectedColor(variant.color);
-    if (variant.productId && variant.productId !== product.id) {
-      navigate(`/product/${variant.productId}`);
-    }
-  };
-
-  // Quantity state
-  const [quantity, setQuantity] = useState(availableQty > 0 ? 1 : 0);
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
-  // Check if current product / selected model is already in cart
+
+  // Check if item is already in cart
   const isItemInCart = useMemo(() => {
     if (!Array.isArray(cartItems) || !product?.id) return false;
     if (needsModelSelection) {
@@ -169,25 +100,10 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
     setAdded(false);
   }, [selectedModel]);
 
-
-  // Favorites state from FavoritesContext
-  const { isFavorite, toggleFavorite } = useFavorites();
-  const isWishlisted = isFavorite(product.id);
-
-  const handleToggleWishlist = () => {
-    toggleFavorite(product.id, { returnUrl: `/product/${product.id}` });
-  };
-
-  const handleDecrement = () => {
-    if (quantity > 1) {
-      setQuantity((q) => q - 1);
-    }
-  };
-
-  const handleIncrement = () => {
-    if (quantity < availableQty) {
-      setQuantity((q) => q + 1);
-    }
+  const handleSiblingClick = (sibling) => {
+    if (sibling.id === product.id) return;
+    const modelQuery = selectedModel ? `?model=${encodeURIComponent(selectedModel)}` : '';
+    navigate(`/product/${sibling.id}${modelQuery}`);
   };
 
   const handleAddToCart = () => {
@@ -198,7 +114,6 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
       return;
     }
 
-    // Check model validation for model-dependent cases
     if (needsModelSelection && !isModelSelected) {
       setModelError(true);
       if (modelSelectRef.current) {
@@ -209,117 +124,64 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
     }
 
     setIsAdding(true);
-    const chosenColor = selectedColor || null;
+    const chosenColor = (product.color_variants && product.color_variants[0]) || product.color || null;
     const modelToSave = selectedModel || 'Universal';
 
-    addItem(product, quantity, modelToSave, chosenColor);
+    addItem(product, 1, modelToSave, chosenColor);
 
     setTimeout(() => {
       setIsAdding(false);
       setAdded(true);
+      openSheet({
+        product,
+        quantity: 1,
+        selectedModel: modelToSave,
+        selectedColor: chosenColor,
+      });
       if (onAddToCart) {
-        onAddToCart(product, quantity);
+        onAddToCart(product, 1, modelToSave, chosenColor);
       }
     }, 200);
   };
 
   return (
     <div className="flex flex-col space-y-6">
-      {/* 1. Category Pill */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {product.is_combo && (
-          <span className="inline-flex items-center px-3.5 py-1 rounded-full text-[12px] font-semibold bg-[#B0521F] text-white tracking-wide">
-            Combo Bundle
-          </span>
-        )}
-        <span className="inline-flex items-center px-3.5 py-1 rounded-full text-[12px] font-medium bg-[#F2F1ED] text-[#737373] tracking-wide">
-          {Array.isArray(product.categories) && product.categories.length > 1
-            ? product.categories.join(' + ')
-            : product.category || 'Mobile Cases'}
-          {product.subcategory && (!product.categories || product.categories.length <= 1) ? ` / ${product.subcategory}` : ''}
-        </span>
-      </div>
-
-      {/* 2. Product Title - Explicit sans-serif bold matching mockup */}
-      <h1 className="font-sans text-[28px] sm:text-[36px] font-bold text-[#141414] tracking-[-0.02em] leading-[1.15]">
+      
+      {/* 1. Name (Poppins 600, 24px) */}
+      <h1 className="font-sans font-semibold text-[24px] text-[#141414] leading-snug tracking-tight">
         {product.name}
       </h1>
 
-      {/* 3. Pricing and MRP */}
+      {/* 2. Price row (price, struck-through MRP, "N% off" in accent, "Inclusive of all taxes" muted) */}
       <div className="space-y-1">
-        <div className="flex items-baseline gap-3 tabular-nums">
-          <span className="font-sans text-[26px] sm:text-[30px] font-bold text-[#141414]">
+        <div className="flex items-baseline gap-3 tabular-nums flex-wrap">
+          <span className="font-sans text-[24px] font-semibold text-[#141414]">
             {formatINR(sellingPrice)}
           </span>
           {hasDiscount && (
-            <span className="font-sans text-[16px] sm:text-[18px] text-[#737373] line-through font-normal">
-              MRP {formatINR(mrp)}
+            <span className="font-sans text-[15px] text-[#6B6B6B] line-through font-normal">
+              {formatINR(mrp)}
+            </span>
+          )}
+          {hasDiscount && (
+            <span className="text-[14px] font-semibold text-[#B0521F]">
+              {discountPercent}% off
             </span>
           )}
         </div>
-        <p className="text-[13px] text-[#737373] font-normal">
-          Inclusive of taxes
+        <p className="text-[12px] text-[#6B6B6B] font-normal">
+          Inclusive of all taxes
         </p>
-
-        {/* 4. NEW REQUIREMENT — Dynamic Compatibility Status */}
-        {needsModelSelection && isModelSelected && (
-          <div className="pt-2 animate-fadeIn" data-testid="compatibility-status">
-            <div className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#141414]">
-              <CheckCircle2 className="w-4.5 h-4.5 text-[#16A34A] shrink-0" />
-              <span>Compatible with {selectedModel}</span>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Combo Breakdown */}
-      {product.is_combo && Array.isArray(product.combo_items) && product.combo_items.length > 0 && (
-        <div className="p-4 rounded-xl bg-[#FAFAF9] border border-[#E5E5E3] space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-[#141414] uppercase tracking-wider">
-              Combo Includes ({product.combo_items.length} Items)
-            </span>
-            {hasDiscount && (
-              <span className="text-[12px] font-semibold text-[#B0521F]">
-                Save {formatINR(mrp - sellingPrice)}
-              </span>
-            )}
-          </div>
-          <div className="divide-y divide-[#E5E5E3]">
-            {product.combo_items.map((item, idx) => (
-              <div key={idx} className="py-2.5 flex items-center justify-between gap-3 text-[13px]">
-                <div className="flex items-center gap-3 min-w-0">
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.product_name}
-                      className="w-10 h-10 object-cover rounded-md border border-[#E5E5E3] shrink-0"
-                    />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-medium text-[#141414] truncate">{item.product_name}</p>
-                    <p className="text-[11px] text-[#737373]">
-                      {item.category} {item.subcategory ? `· ${item.subcategory}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="font-medium text-[#141414]">{formatINR(item.unit_price)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 5. Phone Model Selector (When required) */}
+      {/* 3. The existing required model dropdown (prefilled from saved phone when compatible) */}
       {needsModelSelection && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <label
             htmlFor="phone-model-select"
-            className="block text-[14px] font-medium text-[#141414]"
+            className="block text-[13px] font-medium text-[#141414]"
           >
-            Select Phone Model <span className="text-[#DC2626]">*</span>
+            Select phone model <span className="text-[#B0521F]">*</span>
           </label>
           <div className="relative">
             <select
@@ -327,67 +189,103 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
               ref={modelSelectRef}
               value={selectedModel}
               onChange={(e) => {
-                setSelectedModel(e.target.value);
+                const newModel = e.target.value;
+                setSelectedModel(newModel);
                 setModelError(false);
+                if (newModel && selectPhone) {
+                  selectPhone(product.mobile_brand || 'Apple', newModel);
+                }
               }}
-              className={`w-full bg-white border rounded-xl px-4 py-3 min-h-[48px] text-[14px] text-[#141414] transition-all appearance-none cursor-pointer pr-10 focus:outline-none focus:ring-1 ${
+              className={`w-full bg-white border rounded-[6px] px-3.5 py-3 min-h-[48px] text-[14px] text-[#141414] transition-all appearance-none cursor-pointer pr-10 focus:outline-none ${
                 modelError
-                  ? 'border-[#DC2626] ring-1 ring-[#DC2626]'
-                  : 'border-[#E5E5E3] hover:border-[#141414] focus:border-[#141414] focus:ring-[#141414]'
+                  ? 'border-[#B0521F] ring-1 ring-[#B0521F]'
+                  : 'border-[#E5E5E3] hover:border-[#141414] focus:border-[#141414]'
               }`}
             >
-              <option value="">Choose your exact phone model</option>
+              <option value="">Choose your phone model</option>
               {compatibleModels.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-[#737373] absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-[#6B6B6B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Validation / Helper message when no model is chosen */}
-          {!isModelSelected && (
-            <p className="text-[12px] text-[#DC2626] font-normal pt-0.5">
-              Please choose your phone model to check exact fit.
+          {isModelSelected ? (
+            <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#141414] pt-0.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#141414]" />
+              <span>Compatible with {selectedModel}</span>
+            </div>
+          ) : (
+            <p className="text-[12px] text-[#B0521F] font-normal pt-0.5">
+              Please choose your phone model to add to bag.
             </p>
           )}
         </div>
       )}
 
-      {/* 6. Colour Selector */}
-      {colorVariants.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-[14px]">
-            <span className="text-[#737373] font-normal">Colour:</span>
+      {/* 4. COLOUR: Swatches for every colour sibling with the name under each
+          (the current one has an accent ring; tapping another opens that sibling's page,
+          keeping the chosen model; sold-out siblings are crossed out) */}
+      {colourSiblings.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-[13px]">
+            <span className="text-[#6B6B6B]">Colour:</span>
             <span className="font-semibold text-[#141414]">
-              {selectedColor || currentProductColor}
+              {getValidColors(product.color_variants || product.color)[0] || product.color || 'Standard'}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            {colorVariants.map((variant) => {
-              const isSelected =
-                variant.isCurrent ||
-                (selectedColor &&
-                  variant.color.toLowerCase() === selectedColor.toLowerCase());
-              const style = resolveColorStyle(variant.color);
+
+          <div className="flex items-start gap-4 flex-wrap">
+            {colourSiblings.map((sibling) => {
+              const isCurrent = sibling.id === product.id;
+              const sibColor =
+                getValidColors(sibling.color_variants || sibling.color)[0] ||
+                sibling.color ||
+                'Standard';
+              const style = resolveColorStyle(sibColor);
+              const sibOutOfStock =
+                sibling.stock_status === 'OUT_OF_STOCK' ||
+                (sibling.available_stock !== undefined && sibling.available_stock <= 0);
+
               return (
                 <button
-                  key={`${variant.productId}-${variant.color}`}
+                  key={sibling.id}
                   type="button"
-                  onClick={() => handleColorClick(variant)}
-                  aria-label={`Select ${variant.color} color`}
-                  title={variant.color}
-                  className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                    isSelected
-                      ? 'ring-2 ring-offset-2 ring-[#141414]'
-                      : 'hover:scale-105'
-                  }`}
+                  onClick={() => handleSiblingClick(sibling)}
+                  className="flex flex-col items-center gap-1.5 group cursor-pointer focus:outline-none"
+                  aria-label={`Select ${sibColor} colour`}
                 >
+                  <div
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center p-0.5 transition-all ${
+                      isCurrent
+                        ? 'ring-2 ring-offset-2 ring-[#B0521F]'
+                        : 'border border-[#E5E5E3] hover:scale-105'
+                    }`}
+                  >
+                    <span
+                      className="w-full h-full rounded-full border border-black/10 shadow-2xs block"
+                      style={style}
+                    />
+                    {/* Sold out cross-out */}
+                    {sibOutOfStock && (
+                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="w-full h-[1.5px] bg-[#141414] rotate-45 transform" />
+                      </span>
+                    )}
+                  </div>
                   <span
-                    className="w-full h-full rounded-full border border-black/10 shadow-2xs"
-                    style={style}
-                  />
+                    className={`text-[11px] font-medium transition-colors ${
+                      isCurrent
+                        ? 'text-[#141414] font-semibold'
+                        : sibOutOfStock
+                        ? 'text-[#6B6B6B] line-through'
+                        : 'text-[#6B6B6B] group-hover:text-[#141414]'
+                    }`}
+                  >
+                    {sibColor}
+                  </span>
                 </button>
               );
             })}
@@ -395,137 +293,76 @@ export function ProductInfoPanel({ product, onAddToCart, buyButtonRef }) {
         </div>
       )}
 
-      {/* 7. Quantity, Add to Cart, and Wishlist Row */}
-      <div className="pt-1 space-y-3">
-        <div className="flex items-center gap-3 sm:gap-4">
-          {/* Stepper Quantity Selector */}
-          <div className="inline-flex items-center justify-between border border-[#E5E5E3] bg-white rounded-full min-h-[48px] px-3.5 w-28 shrink-0 select-none">
-            <button
-              type="button"
-              disabled={isOutOfStock || quantity <= 1}
-              onClick={handleDecrement}
-              className="w-7 h-7 flex items-center justify-center text-[#141414] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/5 rounded-full transition-colors cursor-pointer"
-              aria-label="Decrease quantity"
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-[14px] font-semibold text-[#141414] tabular-nums">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              disabled={isOutOfStock || quantity >= availableQty}
-              onClick={handleIncrement}
-              className="w-7 h-7 flex items-center justify-center text-[#141414] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/5 rounded-full transition-colors cursor-pointer"
-              aria-label="Increase quantity"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Add to Cart Button (Black Pill matching mockup) */}
-          <div ref={buyButtonRef} className="flex-1">
-            <button
-              type="button"
-              disabled={isOutOfStock}
-              onClick={handleAddToCart}
-              className={`w-full min-h-[48px] px-6 py-3 rounded-full text-[15px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
-                isOutOfStock
-                  ? 'bg-[#E5E5E3] text-[#737373] cursor-not-allowed'
-                  : 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
-              }`}
-            >
-              {isAdding ? (
-                <span>Adding...</span>
-              ) : isOutOfStock ? (
-                <span>Out of stock</span>
-              ) : showGoToCart ? (
-                <>
-                  <span>Go to Cart</span>
-                  <ArrowRight className="w-4.5 h-4.5" />
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="w-4.5 h-4.5" />
-                  <span>Add to Cart</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Wishlist Button */}
-          <button
-            type="button"
-            onClick={handleToggleWishlist}
-            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            className="w-12 h-12 rounded-full border border-[#E5E5E3] hover:border-[#141414] bg-white flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-2xs hover:shadow-xs"
-          >
-            <Heart
-              className={`w-5 h-5 transition-colors ${
-                isWishlisted ? 'text-[#DC2626] fill-[#DC2626]' : 'text-[#141414]'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Quiet stock note */}
+      {/* 5. Stock line */}
+      <div className="pt-0.5">
         {isOutOfStock ? (
-          <p className="text-[13px] text-[#DC2626] font-medium">Currently out of stock</p>
-        ) : availableQty <= 5 && availableQty > 0 ? (
-          <p className="text-[13px] text-[#B0521F] font-semibold">
-            Only {availableQty} left in stock
-          </p>
-        ) : null}
-
-        {/* Delivery trust line */}
-        <p className="text-[13px] text-[#737373] font-medium pt-1">
-          Delivery in Tamil Nadu: 2 to 4 days.
-        </p>
+          <p className="text-[13px] text-[#B0521F] font-medium">Currently out of stock</p>
+        ) : availableQty <= 5 ? (
+          <p className="text-[13px] text-[#B0521F] font-medium">Only {availableQty} left in stock</p>
+        ) : (
+          <p className="text-[13px] text-[#141414] font-medium">In stock</p>
+        )}
       </div>
 
-      {/* 8. Service Benefits Strip (Matching Mockup with 4 cards & separators) */}
-      <div className="bg-[#F8F7F4] rounded-2xl p-4 sm:p-5 border border-[#EDEAE3]">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-2 sm:divide-x sm:divide-[#E5E2DA]">
-          {/* 1: Doorstep Delivery */}
-          <div className="flex items-center gap-3 sm:px-2">
-            <Truck className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
-            <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Doorstep delivery</p>
-              <p className="text-[11px] text-[#737373]">across India</p>
-            </div>
-          </div>
+      {/* 6. Full-width Add to Bag (accent #B0521F, 52px; disabled until a model is chosen)
+          (Visible on desktop inside right column; mobile uses the sticky bar) */}
+      <div ref={buyButtonRef} className="hidden lg:block pt-1">
+        <button
+          type="button"
+          disabled={isOutOfStock || (needsModelSelection && !isModelSelected)}
+          onClick={handleAddToCart}
+          className={`w-full h-[52px] min-h-[52px] rounded-[6px] text-[15px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+            isOutOfStock
+              ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
+              : needsModelSelection && !isModelSelected
+              ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
+              : showGoToCart
+              ? 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
+              : 'bg-[#B0521F] hover:bg-[#964317] text-white active:scale-[0.99]'
+          }`}
+        >
+          {isAdding ? (
+            <span>Adding to bag...</span>
+          ) : isOutOfStock ? (
+            <span>Out of stock</span>
+          ) : needsModelSelection && !isModelSelected ? (
+            <span>Select a phone model above</span>
+          ) : showGoToCart ? (
+            <>
+              <span>Go to Bag</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="w-4 h-4" />
+              <span>Add to Bag</span>
+            </>
+          )}
+        </button>
+      </div>
 
-          {/* 2: Secure Payments */}
-          <div className="flex items-center gap-3 sm:px-3">
-            <ShieldCheck className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
-            <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Razorpay</p>
-              <p className="text-[11px] text-[#737373]">100% Prepaid</p>
-            </div>
-          </div>
-
-          {/* 3: Easy Returns */}
-          <div className="flex items-center gap-3 sm:px-3">
-            <Package className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
-            <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Replacements</p>
-              <p className="text-[11px] text-[#737373]">for damaged items</p>
-            </div>
-          </div>
-
-          {/* 4: Dedicated Support */}
-          <div className="flex items-center gap-3 sm:px-3">
-            <Headphones className="w-5 h-5 text-[#141414] shrink-0 stroke-[1.6]" />
-            <div className="leading-tight">
-              <p className="text-[12px] sm:text-[13px] font-bold text-[#141414]">Dedicated</p>
-              <p className="text-[11px] text-[#737373]">support</p>
-            </div>
-          </div>
+      {/* 7. The delivery line from policies config */}
+      <div className="pt-1 border-t border-[#E5E5E3]">
+        <div className="flex items-center gap-2 text-[13px] text-[#6B6B6B]">
+          <Truck className="w-4 h-4 text-[#141414] shrink-0" />
+          <span>
+            {policies.delivery.tn.text} in {policies.delivery.tn.label}.
+          </span>
         </div>
       </div>
 
-      {/* 9. Product Sharing */}
-      <ProductShare product={product} selectedModel={selectedModel} />
+      {/* 8. "Complete your setup": up to 4 compact rows of screen protection for chosen model,
+          then universal accessories, then combos with this product */}
+      <CompleteYourSetup
+        currentProduct={product}
+        selectedModel={selectedModel}
+      />
+
+      {/* 9. Accordions: Product details, Compatible models, Delivery and returns */}
+      <div className="pt-2">
+        <ProductAccordions product={product} />
+      </div>
+
     </div>
   );
 }

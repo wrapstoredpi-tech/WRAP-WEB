@@ -727,13 +727,13 @@ export function FeaturedProductsSection() {
       </div>
 
       {/* ── Category Filter Bar with Horizontal Carousel Controls ──────────── */}
-      <div className="relative mb-6 sm:mb-8 flex items-center gap-3">
+      <div className="relative mb-6 sm:mb-8 flex items-center gap-3 min-w-0 w-full overflow-hidden">
         {/* Horizontally Scrollable Category Pills */}
         <div
           ref={pillContainerRef}
           role="tablist"
           aria-label="Filter featured products by category"
-          className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full"
+          className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 min-w-0 flex-1"
         >
           {CATEGORY_PILLS.map((pill) => {
             const isActive = activeFilter === pill.id;

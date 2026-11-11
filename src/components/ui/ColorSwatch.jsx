@@ -31,8 +31,18 @@ export function ColorSwatch({
   className = '',
   ...props
 }) {
-  const validColors = getValidColors(colors);
-  if (!validColors || validColors.length === 0) return null;
+  // Support either string array or object array [{ name, inStock }]
+  const items = colors
+    .map((c) => {
+      if (typeof c === 'string') return { name: c, inStock: true };
+      return {
+        name: c?.name || c?.color || '',
+        inStock: c?.inStock !== false && !c?.outOfStock,
+      };
+    })
+    .filter((item) => item.name);
+
+  if (items.length === 0) return null;
 
   const sizeDimensions = {
     xs: 'w-3 h-3',
@@ -44,10 +54,11 @@ export function ColorSwatch({
   return (
     <div
       className={`inline-flex items-center flex-wrap gap-1.5 select-none ${className}`}
-      aria-label={`Colours: ${validColors.join(', ')}`}
+      aria-label={`Colours: ${items.map((i) => i.name).join(', ')}`}
       {...props}
     >
-      {validColors.map((colorName, idx) => {
+      {items.map((item, idx) => {
+        const { name: colorName, inStock } = item;
         const colorStyle = resolveColorStyle(colorName);
         const lowerName = colorName.toLowerCase();
         const isLight =
@@ -62,19 +73,32 @@ export function ColorSwatch({
         return (
           <span
             key={`${colorName}-${idx}`}
-            title={colorName}
-            aria-label={colorName}
+            title={`${colorName}${!inStock ? ' (Sold out)' : ''}`}
+            aria-label={`${colorName}${!inStock ? ' (Sold out)' : ''}`}
             className="group relative inline-flex items-center justify-center cursor-default"
           >
             <span
               className={`
-                block rounded-full transition-transform duration-150
+                relative block rounded-full transition-transform duration-150 overflow-hidden
                 ${sizeDimensions[size] || sizeDimensions.md}
-                ${isLight && lowerName !== 'clear' && lowerName !== 'clear/transparent' ? 'border border-[#E7E5E4]' : ''}
-                hover:scale-110
+                ${isLight && lowerName !== 'clear' && lowerName !== 'clear/transparent' ? 'border border-[#E5E5E3]' : ''}
+                ${!inStock ? 'opacity-60' : 'hover:scale-110'}
               `}
               style={colorStyle}
-            />
+            >
+              {!inStock && (
+                <svg
+                  className="absolute inset-0 w-full h-full text-[#141414]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  aria-hidden="true"
+                >
+                  <line x1="3" y1="21" x2="21" y2="3" />
+                </svg>
+              )}
+            </span>
           </span>
         );
       })}

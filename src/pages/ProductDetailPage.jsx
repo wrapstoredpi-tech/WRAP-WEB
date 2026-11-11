@@ -1,42 +1,139 @@
-import React, { useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useProductsContext } from '../context/ProductsContext';
+import { usePhoneContext } from '../context/PhoneContext';
 import { ImageGallery } from '../components/product/ImageGallery';
 import { ProductInfoPanel } from '../components/product/ProductInfoPanel';
-import { ProductAccordions } from '../components/product/ProductAccordions';
-import { RelatedProducts } from '../components/product/RelatedProducts';
 import { StickyMobileCartBar } from '../components/product/StickyMobileCartBar';
+import { modelToSlug } from '../lib/models';
+import { setPageMeta } from '../lib/seo';
 
 export function ProductDetailPage({ onAddToCart }) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const buyButtonRef = useRef(null);
+  const modelSelectRef = useRef(null);
 
   const { products, isLoading } = useProductsContext();
+  const { savedPhone } = usePhoneContext();
+
   const product = products.find((p) => p.id === id || p.product_id === id);
 
+  const compatibleModels = product?.compatible_models || [];
+  const isCase =
+    (product?.category || '').toLowerCase().includes('case') ||
+    (Array.isArray(product?.categories) && product.categories.some((c) => c.toLowerCase().includes('case')));
+  const needsModelSelection = isCase || compatibleModels.length > 0;
+
+  // Selected phone model state:
+  // 1. URL search param ?model=...
+  // 2. Prefilled from savedPhone if compatible
+  // 3. Otherwise empty prompt
+  const paramModel = searchParams.get('model');
+
+  const [selectedModel, setSelectedModel] = useState(() => {
+    if (paramModel && (!compatibleModels.length || compatibleModels.includes(paramModel))) {
+      return paramModel;
+    }
+    if (savedPhone?.model && (!compatibleModels.length || compatibleModels.includes(savedPhone.model))) {
+      return savedPhone.model;
+    }
+    return '';
+  });
+
+  const [modelError, setModelError] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  // Page title and meta (Rule 8: product "<Name> for <models> | WrapStore" plus OG image)
+  useEffect(() => {
+    if (product) {
+      const compList = Array.isArray(product.compatible_models) ? product.compatible_models : [];
+      const modelsStr = compList.length > 0 ? compList.slice(0, 3).join(', ') : 'All Devices';
+      const title = `${product.name} for ${modelsStr} | WrapStore`;
+      const description =
+        product.description && product.description.length >= 20
+          ? product.description
+          : `${product.name} available at WrapStore Dharmapuri.`;
+      const image =
+        product.image_url || (Array.isArray(product.images) && product.images[0]) || '';
+      setPageMeta({ title, description, image });
+    }
+  }, [product]);
+
+  // Scroll to top on id change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [id]);
+    if (product) {
+      if (paramModel && (!compatibleModels.length || compatibleModels.includes(paramModel))) {
+        setSelectedModel(paramModel);
+      } else if (savedPhone?.model && compatibleModels.includes(savedPhone.model)) {
+        setSelectedModel(savedPhone.model);
+      } else {
+        setSelectedModel('');
+      }
+      setModelError(false);
+    }
+  }, [id, product, savedPhone?.model, paramModel]);
+
+  // Listen for custom toast events (e.g. from share)
+  useEffect(() => {
+    const handleToast = (e) => {
+      setToastMessage(e.detail || 'Link copied');
+      setTimeout(() => setToastMessage(''), 2500);
+    };
+    window.addEventListener('wrapstore:toast', handleToast);
+    return () => window.removeEventListener('wrapstore:toast', handleToast);
+  }, []);
+
+  const isModelSelected = Boolean(
+    selectedModel &&
+      (!compatibleModels.length || compatibleModels.includes(selectedModel))
+  );
+
+  // Derive brand for breadcrumbs
+  const derivedBrand = useMemo(() => {
+    if (savedPhone?.brand) return savedPhone.brand;
+    if (selectedModel) {
+      if (/iphone/i.test(selectedModel)) return 'Apple';
+      if (/galaxy|samsung/i.test(selectedModel)) return 'Samsung';
+    }
+    if (product?.mobile_brand) return product.mobile_brand;
+    return 'Apple';
+  }, [savedPhone, selectedModel, product]);
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: product?.name || 'WrapStore Case',
+        url: window.location.href,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setToastMessage('Link copied');
+      setTimeout(() => setToastMessage(''), 2500);
+    }
+  };
 
   if (isLoading) {
     return (
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-20 flex items-center justify-center">
-        <p className="text-[14px] text-[#737373]">Loading product details...</p>
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 flex items-center justify-center">
+        <p className="text-[14px] text-[#6B6B6B]">Loading product details...</p>
       </main>
     );
   }
 
   if (!product) {
     return (
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-20 text-center space-y-4">
-        <h1 className="font-sans text-[28px] font-semibold text-[#141414]">Product Not Found</h1>
-        <p className="text-[14px] text-[#737373]">The product you requested could not be located in our catalog.</p>
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 text-center space-y-4">
+        <h1 className="font-serif text-[28px] text-[#141414]">Product not found</h1>
+        <p className="text-[14px] text-[#6B6B6B]">The product you requested could not be located in our catalog.</p>
         <div className="pt-2">
           <Link
-            to="/"
-            className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-[#141414] text-white text-[14px] font-semibold rounded-full hover:bg-[#262626] transition-colors"
+            to="/cases"
+            className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-[#B0521F] text-white text-[14px] font-semibold rounded-[6px] hover:bg-[#964317] transition-colors"
           >
-            Return to Home
+            Browse Cases
           </Link>
         </div>
       </main>
@@ -44,75 +141,124 @@ export function ProductDetailPage({ onAddToCart }) {
   }
 
   return (
-    <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-4 sm:py-6 space-y-6 sm:space-y-10">
-      {/* Breadcrumb matching mockup navigation */}
-      <nav aria-label="Breadcrumb" className="text-[12px] sm:text-[13px] text-[#737373] flex items-center gap-2 flex-wrap">
+    <main className="flex-1 w-full max-w-[1280px] mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-0 sm:py-4 md:py-6 space-y-4 sm:space-y-6 pb-28 lg:pb-16 relative">
+      
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="fixed top-18 left-1/2 -translate-x-1/2 z-50 bg-[#141414] text-white text-[13px] font-medium px-4 py-2 rounded-[6px] shadow-lg animate-fadeIn select-none">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────────
+          DESKTOP BREADCRUMBS:
+          WrapStore / Cases / <Brand> / <Model> / <Product Name>
+          ─────────────────────────────────────────────────────────────────────────── */}
+      <nav aria-label="Breadcrumb" className="hidden lg:flex text-[13px] text-[#6B6B6B] items-center gap-2 flex-wrap px-4 sm:px-0">
         <Link to="/" className="hover:text-[#141414] transition-colors">
-          Home
+          WrapStore
         </Link>
-        <span className="text-[#A8A29E] select-none">›</span>
-        <Link
-          to={`/?category=${encodeURIComponent(product.category || 'All')}`}
-          className="hover:text-[#141414] transition-colors"
-        >
-          {product.category || 'Mobile Cases'}
-        </Link>
-        {product.subcategory && (
+        <span className="text-[#E5E5E3] select-none">/</span>
+
+        {isCase ? (
           <>
-            <span className="text-[#A8A29E] select-none">›</span>
+            <Link to="/cases" className="hover:text-[#141414] transition-colors">
+              Cases
+            </Link>
+            <span className="text-[#E5E5E3] select-none">/</span>
             <Link
-              to={`/?category=${encodeURIComponent(product.category || 'All')}&subcategory=${encodeURIComponent(product.subcategory)}`}
+              to={`/cases?brand=${encodeURIComponent(derivedBrand)}`}
               className="hover:text-[#141414] transition-colors"
             >
-              {product.subcategory}
+              {derivedBrand}
             </Link>
+            {selectedModel && (
+              <>
+                <span className="text-[#E5E5E3] select-none">/</span>
+                <Link
+                  to={`/cases/${derivedBrand.toLowerCase()}/${modelToSlug(selectedModel)}`}
+                  className="hover:text-[#141414] transition-colors"
+                >
+                  {selectedModel}
+                </Link>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <Link
+              to={`/?category=${encodeURIComponent(product.category || 'Accessories')}`}
+              className="hover:text-[#141414] transition-colors"
+            >
+              {product.category || 'Accessories'}
+            </Link>
+            {product.subcategory && (
+              <>
+                <span className="text-[#E5E5E3] select-none">/</span>
+                <Link
+                  to={`/?category=${encodeURIComponent(product.category || 'Accessories')}&subcategory=${encodeURIComponent(product.subcategory)}`}
+                  className="hover:text-[#141414] transition-colors"
+                >
+                  {product.subcategory}
+                </Link>
+              </>
+            )}
           </>
         )}
-        <span className="text-[#A8A29E] select-none">›</span>
-        <span className="text-[#141414] font-medium truncate max-w-[200px] sm:max-w-md">
+
+        <span className="text-[#E5E5E3] select-none">/</span>
+        <span className="text-[#141414] font-medium truncate max-w-[240px]">
           {product.name}
         </span>
       </nav>
 
-      {/* Main 2-Column Presentation: Gallery & Accordions on Left (6 cols), Buy Box on Right (6 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-start">
-        {/* Left Column: Gallery on Desktop (6 cols - minimised 15% from 7 cols), with 4-row Accordions below gallery */}
-        <div className="lg:col-span-6 space-y-6 lg:space-y-8">
-          <ImageGallery images={product.images} product={product} />
-
-          {/* Desktop Accordions: Below gallery, matching gallery width */}
-          <div className="hidden lg:block">
-            <ProductAccordions product={product} />
-          </div>
+      {/* ───────────────────────────────────────────────────────────────────────────
+          TWO COLUMNS (Desktop):
+          Left (about 55%): Large #F4F3F0 image panel sticky while right column scrolls.
+          Right (about 45%): Product details, swatches, Add to Bag, Complete your setup, accordions.
+          ─────────────────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 lg:gap-14 items-start">
+        
+        {/* Left Column (~55%): Full width on mobile (no side margins), Sticky on Desktop */}
+        <div className="w-full lg:w-[55%] shrink-0 lg:sticky lg:top-[96px] self-start">
+          <ImageGallery
+            images={product.images}
+            product={product}
+            onShare={handleShare}
+          />
         </div>
 
-        {/* Right Column: Product Information & Purchase Controls (6 cols) */}
-        <div className="lg:col-span-6 space-y-6 lg:space-y-8">
+        {/* Right Column (~45%): Scrolls naturally, padded on mobile */}
+        <div className="w-full lg:w-[45%] px-4 sm:px-0">
           <ProductInfoPanel
             product={product}
             onAddToCart={onAddToCart}
             buyButtonRef={buyButtonRef}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            modelError={modelError}
+            setModelError={setModelError}
+            modelSelectRef={modelSelectRef}
+            isModelSelected={isModelSelected}
+            needsModelSelection={needsModelSelection}
           />
-
-          {/* Mobile Accordions: Placed below main product info on screens < lg */}
-          <div className="block lg:hidden pt-2">
-            <ProductAccordions product={product} />
-          </div>
         </div>
+
       </div>
 
-      {/* Related Products Section */}
-      <RelatedProducts
-        currentProductId={product.id}
-        currentProduct={product}
-      />
-
-      {/* Mobile Sticky Add to Bag Bar */}
+      {/* ───────────────────────────────────────────────────────────────────────────
+          STICKY MOBILE 52px ADD TO BAG BAR (< 1024px)
+          ─────────────────────────────────────────────────────────────────────────── */}
       <StickyMobileCartBar
         product={product}
-        buyButtonRef={buyButtonRef}
+        selectedModel={selectedModel}
+        isModelSelected={isModelSelected}
+        needsModelSelection={needsModelSelection}
         onAddToCart={onAddToCart}
+        modelSelectRef={modelSelectRef}
+        setModelError={setModelError}
       />
+
     </main>
   );
 }

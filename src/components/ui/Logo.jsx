@@ -29,7 +29,7 @@ export function Logo({
       {...props}
     >
       <img
-        src="/logo.png"
+        src={typeof window !== 'undefined' && window.location.protocol === 'file:' ? './logo.png' : '/logo.png'}
         alt={alt}
         className={`${currentHeight} w-auto object-contain select-none transition-transform duration-150 ${
           isLight ? 'invert brightness-0 invert-100' : ''

@@ -9,7 +9,7 @@ export const store = {
   mapEmbedSrc: 'https://www.google.com/maps?q=12.1253261,78.1566856&z=17&output=embed',
   lat: 12.1253261,
   lng: 78.1566856,
-  hours: '',                        // TODO owner to fill in; hide the hours row while empty
+  hours: '10:00 AM – 9:00 PM',
 };
 
 // Aliases for backward compatibility across existing store components

@@ -32,7 +32,7 @@ export function PhoneSelectionModal() {
       }
     }
 
-    // Curated fallbacks if catalog is loading or has few rows
+    // Fallbacks if catalog is loading or has few rows
     if (appleSet.size === 0) {
       [
         'iPhone 16 Pro Max',

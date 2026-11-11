@@ -3,7 +3,7 @@ export const about = {
   paragraphs: [
     'At Wrap Store, we believe your iPhone deserves more than just a case; it deserves a statement. Based in the heart of innovation, we specialize in crafting premium, stylish, and durable iPhone cases that combine cutting-edge design with unmatched functionality.',
     'Our mission is to help you express your unique personality while keeping your iPhone safe from life’s little mishaps. From sleek and minimalistic designs to vibrant and eye-catching patterns, Wrap Store offers a collection that suits every style and need.',
-    'Customer satisfaction is at the core of what we do. We ensure that every product is crafted with quality and precision, making your shopping experience seamless and delightful.',
+    'Customer satisfaction is at the core of what we do. We ensure that every product is crafted with quality and care, making your shopping experience seamless and delightful.',
     'Join the Wrap Store family and discover how our cases redefine protection with elegance. Your iPhone deserves nothing less!',
   ],
 };

@@ -92,7 +92,7 @@ export function CategoryHub({
             {category.name}
           </h1>
           <p className="text-[14px] sm:text-[15px] text-[#666664] mt-1.5 font-normal max-w-xl">
-            Select a sub-category to explore curated designs and device fits.
+            Select a sub-category to explore designs and device fits.
           </p>
         </div>
       </div>

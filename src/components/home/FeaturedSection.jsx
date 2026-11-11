@@ -52,7 +52,7 @@ export function FeaturedSection({
       try {
         const map = await fetchBestSellersMap(16);
         if (isMounted) {
-          setBestSellerMap(map);
+          setInternalBestSellerMap(map);
           setIsBestsellersLoaded(true);
         }
       } catch {

@@ -89,16 +89,19 @@
     </noscript>
   </head>
   <body class="bg-[#FAFAF9] text-[#141414] antialiased">
-    <!-- Inline Decision Script: checks accessibility preferences -->
+    <!-- Inline Decision Script: checks accessibility preferences and route eligibility -->
     <script>
       (function() {
         try {
           var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          if (prefersReduced) {
+          var isHome = window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.pathname === '';
+          var seen = sessionStorage.getItem('wrapstore_intro_seen');
+          if (prefersReduced || !isHome || seen) {
             document.documentElement.classList.add('no-intro');
             window.__WRAPSTORE_INTRO_ELIGIBLE__ = false;
             return;
           }
+          sessionStorage.setItem('wrapstore_intro_seen', 'true');
           window.__WRAPSTORE_INTRO_ELIGIBLE__ = true;
           document.documentElement.classList.add('has-intro');
         } catch(e) {

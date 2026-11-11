@@ -15,17 +15,17 @@ export function DealOfTheDaySection({ dealData }) {
   return (
     <section
       aria-labelledby="deal-of-the-day-title"
-      className="w-full bg-[#F4F3F0] border-y border-[#E5E5E3] py-12 lg:py-16 select-none"
+      className="w-full bg-[#F4F3F0] border-y border-[#E5E5E3] py-8 sm:py-10 lg:py-12 select-none"
     >
-      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+      <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
         {/* On Mobile: H2 sits at the top */}
-        <h2 className="lg:hidden font-display font-normal text-[30px] leading-[1.1] tracking-[-0.01em] text-[#141414] mb-6">
+        <h2 className="lg:hidden font-display font-normal text-[28px] sm:text-[32px] leading-[1.1] tracking-[-0.01em] text-[#141414] mb-4">
           {dealConfig.heading || 'Deal of the day'}
         </h2>
 
         {/* 12-Column Grid: Text 5 cols on Left, Photo 7 cols on Right (Desktop)
             Mobile: Photo, then Text/Price/Button */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
           
           {/* Photo: Desktop Right 7 cols (order-2), Mobile Top (order-1) */}
           <div className="order-1 lg:order-2 lg:col-span-7">

@@ -527,10 +527,51 @@ export function normaliseCombo(
  * Realtime: subscribed to products, product_images, categories, subcategories.
  */
 export function useProducts() {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);      // [{ id, name, sort_order }]
-  const [subcategories, setSubcategories] = useState([]); // [{ id, name, category_id, sort_order }]
-  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useState(() => {
+    try {
+      const mockRaw =
+        typeof window !== 'undefined' &&
+        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+      if (mockRaw) {
+        const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+        if (Array.isArray(parsed?.products)) return parsed.products;
+      }
+    } catch {}
+    return [];
+  });
+  const [categories, setCategories] = useState(() => {
+    try {
+      const mockRaw =
+        typeof window !== 'undefined' &&
+        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+      if (mockRaw) {
+        const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+        if (Array.isArray(parsed?.categories)) return parsed.categories;
+      }
+    } catch {}
+    return [];
+  });
+  const [subcategories, setSubcategories] = useState(() => {
+    try {
+      const mockRaw =
+        typeof window !== 'undefined' &&
+        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+      if (mockRaw) {
+        const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+        if (Array.isArray(parsed?.subcategories)) return parsed.subcategories;
+      }
+    } catch {}
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const mockRaw =
+        typeof window !== 'undefined' &&
+        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+      if (mockRaw) return false;
+    } catch {}
+    return true;
+  });
   const [error, setError] = useState(null);
   const channelRef = useRef(null);
 

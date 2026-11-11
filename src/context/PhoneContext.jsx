@@ -30,17 +30,7 @@ export function PhoneProvider({ children }) {
 
   const [isPhoneSheetOpen, setIsPhoneSheetOpen] = useState(false);
 
-  // Auto-prompt on first visit if no phone is saved and hasn't been prompted this session
-  useEffect(() => {
-    const hasPrompted = sessionStorage.getItem(SESSION_PROMPTED_KEY);
-    if (!savedPhone && !hasPrompted) {
-      const timer = setTimeout(() => {
-        setIsPhoneSheetOpen(true);
-        sessionStorage.setItem(SESSION_PROMPTED_KEY, 'true');
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [savedPhone]);
+  // Auto-prompt on page load removed as per spec (phone selection lives at /cases)
 
   const selectPhone = useCallback((brand, model) => {
     const data = { brand, model, timestamp: Date.now() };

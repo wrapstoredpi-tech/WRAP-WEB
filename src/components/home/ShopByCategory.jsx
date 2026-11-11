@@ -13,7 +13,7 @@ export const CATEGORY_TILES = {
       image: '/subcategories/iphone.jpg',
       category: 'Mobile Cases',
       subcategory: null,
-      alt: 'Precision Phone Cases & Armor',
+      alt: 'Phone Cases & Armor',
     },
     {
       id: 'watch-bands',
@@ -103,7 +103,7 @@ export const CATEGORY_TILES = {
       image: '/subcategories/skin.jpg',
       category: 'Accessories',
       subcategory: 'Skin',
-      alt: '3M Precision Textured Vinyl Skins',
+      alt: '3M Textured Vinyl Skins',
     },
   ],
   work: [
@@ -137,7 +137,7 @@ export const CATEGORY_TILES = {
       image: '/subcategories/cleaning-kit.jpg',
       category: 'Accessories',
       subcategory: 'Cleaning Kit',
-      alt: '7-in-1 Port & Screen Precision Care Kits',
+      alt: '7-in-1 Port & Screen Care Kits',
     },
     {
       id: 'ipad-temper',

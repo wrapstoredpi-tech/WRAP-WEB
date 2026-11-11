@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
-import { ShopByCategoryRow } from '../components/home/ShopByCategoryRow';
-import { WhyWrapstore } from '../components/home/WhyWrapstore';
-import { FeaturedProductsSection } from '../components/home/FeaturedProductsSection';
-import { NewArrivalsSection } from '../components/home/NewArrivalsSection';
-import { HomeAboutBlock } from '../components/home/HomeAboutBlock';
-import { StoreDetailsSection } from '../components/home/StoreDetailsSection';
+import { CategoryScrollSection } from '../components/home/CategoryScrollSection';
+import { ShopByPhoneStrip } from '../components/home/ShopByPhoneStrip';
+import { ProductScrollRow } from '../components/home/ProductScrollRow';
+import { DealOfTheDaySection } from '../components/home/DealOfTheDaySection';
+import { VisitOurStoreBanner } from '../components/home/VisitOurStoreBanner';
 import { HomeSEO } from '../components/home/HomeSEO';
 import { FilterSidebar } from '../components/home/FilterSidebar';
 import { FilterBottomSheet } from '../components/home/FilterBottomSheet';
@@ -14,6 +13,8 @@ import { ProductGrid } from '../components/home/ProductGrid';
 import { useProductsContext } from '../context/ProductsContext';
 import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
 import { fetchBestSellersMap } from '../lib/productRowAdapter';
+import { selectDealOfTheDay } from '../lib/dealFeaturedAdapter';
+import { setPageMeta } from '../lib/seo';
 import { ChevronRight } from 'lucide-react';
 
 const INITIAL_FILTERS = {
@@ -30,12 +31,56 @@ const INITIAL_FILTERS = {
 export function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  useEffect(() => {
+    setPageMeta({
+      title: 'WrapStore | Phone cases and accessories in Dharmapuri',
+      description: 'Phone cases and accessories from Dharmapuri.',
+    });
+  }, []);
+
   const {
     products: liveProducts = [],
     categories: liveCategories = [],
     subcategories: liveSubcategories = [],
     isLoading = false,
   } = useProductsContext();
+
+  // Deal of the day selection
+  const dealData = useMemo(() => {
+    return selectDealOfTheDay(liveProducts);
+  }, [liveProducts]);
+
+  // Derived Product Rows for Home Page (Featured, Combos, New Arrivals)
+  // All in-stock only; each section hidden if fewer than 4 products
+  const newArrivalProducts = useMemo(() => {
+    return liveProducts
+      .filter(
+        (p) =>
+          !p.is_combo &&
+          p.stock_status !== 'OUT_OF_STOCK' &&
+          (p.available_stock ?? p.current_stock ?? 0) > 0
+      )
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  }, [liveProducts]);
+
+  const comboProducts = useMemo(() => {
+    return liveProducts.filter(
+      (p) =>
+        (p.is_combo || p.product_type === 'combo') &&
+        p.stock_status !== 'OUT_OF_STOCK' &&
+        (p.available_stock ?? p.current_stock ?? 0) > 0
+    );
+  }, [liveProducts]);
+
+  const featuredProducts = useMemo(() => {
+    return liveProducts.filter(
+      (p) =>
+        p.online_featured &&
+        !p.is_combo &&
+        p.stock_status !== 'OUT_OF_STOCK' &&
+        (p.available_stock ?? p.current_stock ?? 0) > 0
+    );
+  }, [liveProducts]);
 
   // Bestsellers RPC map state
   const [bestSellerMap, setBestSellerMap] = useState(new Map());
@@ -316,9 +361,11 @@ export function HomePage() {
   }, [filters, searchQuery, featuredQuery]);
 
   // ───────────────────────────────────────────────────────────────────────────
-  // VIEW 1: HOME PAGE (Strict Home Order with 96px desktop / 64px mobile spacing)
-  // Order: Info bar, Header, First screen, Shop by category, Deal of the day,
-  //        Featured, New arrivals, About us, Contact and store, Footer.
+  // VIEW 1: HOME PAGE (Strict Data-Driven Flow per specifications)
+  // Order: 1. Hero, 2. Shop by category, 3. Shop by phone strip,
+  //        4. New arrivals, 5. Better together (combos), 6. Deal of the day,
+  //        7. Featured, 8. Visit our store, 9. Footer (layout)
+  // Each section hidden when empty or fewer than 4 items (except hero).
   // ───────────────────────────────────────────────────────────────────────────
   if (!isListingMode) {
     return (
@@ -326,51 +373,74 @@ export function HomePage() {
         {/* Page SEO title, meta description, OG tags */}
         <HomeSEO />
 
-        <main className="flex-1 w-full bg-[#FAFAF9] pb-16 sm:pb-24">
-          <div className="space-y-16 lg:space-y-24">
+        <main className="flex-1 w-full bg-[#FAFAF9] pb-0">
+          <div className="space-y-12 sm:space-y-16 lg:space-y-20">
             
-            {/* 1. First Screen: Hero Full-Width Banner Slider (Completely hidden if no slides) */}
+            {/* 1. HERO: Full-bleed carousel from hero_slides table */}
             <HeroFirstScreen />
 
-            {/* 2. Featured Products: Handpicked for a Better Everyday (directly next to banner) */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <FeaturedProductsSection />
-            </div>
-
-            {/* 3. Shop by Category: Bento grid below featured products */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <ShopByCategoryRow
+            {/* 2. SHOP BY CATEGORY: Pill tabs + 4:5 portrait tiles row */}
+            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+              <CategoryScrollSection
                 products={liveProducts}
-                subcategories={liveSubcategories}
                 categories={liveCategories}
+                subcategories={liveSubcategories}
               />
             </div>
 
-            {/* 4. Why WrapStore: Editorial 4-card feature row */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <WhyWrapstore />
+            {/* 3. SHOP BY PHONE STRIP: Compact phone strip */}
+            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+              <ShopByPhoneStrip />
             </div>
 
+            {/* 4. NEW ARRIVALS: Product row (hidden if < 4 items) */}
+            {newArrivalProducts.length >= 4 && (
+              <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+                <ProductScrollRow
+                  title="New arrivals"
+                  viewAllLink="/?view=all"
+                  viewAllText="View all"
+                  products={newArrivalProducts}
+                />
+              </div>
+            )}
 
+            {/* 5. BETTER TOGETHER (combos): Row of combo cards (hidden if < 4 items) */}
+            {comboProducts.length >= 4 && (
+              <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+                <ProductScrollRow
+                  title="Better together"
+                  subtitle="Protection bundles designed to work together"
+                  viewAllLink="/combos"
+                  viewAllText="View all combos"
+                  products={comboProducts}
+                  isComboRow={true}
+                />
+              </div>
+            )}
 
-            {/* 5. New arrivals: Grid of up to 8, excluding Deal and Featured products */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <NewArrivalsSection
-                products={liveProducts}
-                excludedProductIds={excludedProductIds}
-                isLoading={isLoading}
-              />
-            </div>
+            {/* 6. DEAL OF THE DAY: Existing layout and rules */}
+            {dealData && (
+              <div className="w-full">
+                <DealOfTheDaySection dealData={dealData} />
+              </div>
+            )}
 
-            {/* 6. About us: 2-column block */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <HomeAboutBlock />
-            </div>
+            {/* 7. FEATURED: Product row from online_featured (hidden if < 4 items) */}
+            {featuredProducts.length >= 4 && (
+              <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+                <ProductScrollRow
+                  title="Featured products"
+                  viewAllLink="/?featured=1"
+                  viewAllText="View all"
+                  products={featuredProducts}
+                />
+              </div>
+            )}
 
-            {/* 7. Contact and store: Store details, hours, map CTA */}
-            <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
-              <StoreDetailsSection />
-            </div>
+            {/* 8. VISIT OUR STORE: Full-bleed store banner */}
+            <VisitOurStoreBanner />
+
           </div>
         </main>
       </>
@@ -381,7 +451,7 @@ export function HomePage() {
   // VIEW 2: LISTING PAGE (Breadcrumb, Sidebar filters, Sort right, Product Cards grid)
   // ───────────────────────────────────────────────────────────────────────────
   return (
-    <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12">
+    <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-8 sm:py-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Sidebar on Desktop */}

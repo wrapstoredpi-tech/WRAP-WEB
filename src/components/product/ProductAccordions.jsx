@@ -4,11 +4,11 @@ import { ChevronDown, Check } from 'lucide-react';
 import { policies } from '../../config/policies';
 
 export function ProductAccordions({ product, className = '' }) {
-  // Support independent toggle for each accordion row
+  // Support independent toggle for each accordion row; Product details open by default when present
   const [openSections, setOpenSections] = useState({
-    details: false,
-    compatibility: false,
-    returnsAndShipping: false,
+    details: true,
+    compatibleModels: false,
+    deliveryAndReturns: false,
   });
 
   const toggleSection = (key) => {
@@ -18,115 +18,114 @@ export function ProductAccordions({ product, className = '' }) {
     }));
   };
 
-  const compatibleModels = product?.compatible_models || [];
+  const compModels = Array.isArray(product?.compatible_models) ? product.compatible_models : [];
+  const desc = (product?.description || '').trim();
+  const lowerDesc = desc.toLowerCase();
+  const isPlaceholderDesc =
+    !desc ||
+    lowerDesc === (product?.name || '').trim().toLowerCase() ||
+    desc.length < 20 ||
+    ['demo', 'desc', 'description', 'description text here'].includes(lowerDesc);
+  const showDetails = !isPlaceholderDesc;
 
   return (
-    <div className={`bg-white rounded-2xl border border-[#E5E5E3] divide-y divide-[#E5E5E3] overflow-hidden ${className}`}>
-      {/* 1. Product Details */}
-      <div>
-        <button
-          type="button"
-          onClick={() => toggleSection('details')}
-          aria-expanded={openSections.details}
-          className="w-full px-5 py-4 sm:py-4.5 flex items-center justify-between text-left text-[15px] font-semibold text-[#141414] hover:bg-[#FAFAF9] transition-colors cursor-pointer select-none"
-        >
-          <span>Product Details</span>
-          <ChevronDown
-            className={`w-4 h-4 text-[#737373] transition-transform duration-200 ${
-              openSections.details ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
-        {openSections.details && (
-          <div className="px-5 pb-5 pt-1 text-[13px] text-[#6B6B6B] leading-relaxed space-y-3">
-            <p>
-              {product?.description ||
-                'Precision-crafted protective case engineered with high-grade impact-absorbing materials, tactile responsive button covers, and a scratch-resistant textured finish.'}
-            </p>
-            <ul className="space-y-1.5 pl-1 text-[13px]">
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#141414] mt-2 shrink-0" />
-                <span>Precision cutouts for speaker grilles, microphone, and charging port</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#141414] mt-2 shrink-0" />
-                <span>Raised 1.2mm camera bezel protects camera lenses against table scratches</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#141414] mt-2 shrink-0" />
-                <span>Reinforced impact corners with shock dispersion cushioning</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#141414] mt-2 shrink-0" />
-                <span>Textured anti-slip sides for comfortable, secure one-handed grip</span>
-              </li>
-            </ul>
-          </div>
-        )}
-      </div>
+    <div className={`bg-white rounded-[6px] border border-[#E5E5E3] divide-y divide-[#E5E5E3] overflow-hidden ${className}`}>
+      
+      {/* 1. Product details (hidden if empty, equals name, or is placeholder) */}
+      {showDetails && (
+        <div>
+          <button
+            type="button"
+            onClick={() => toggleSection('details')}
+            aria-expanded={openSections.details}
+            className="w-full px-4 sm:px-5 py-3.5 flex items-center justify-between text-left text-[14px] font-semibold text-[#141414] hover:bg-[#FAFAF9] transition-colors cursor-pointer select-none"
+          >
+            <span>Product details</span>
+            <ChevronDown
+              className={`w-4 h-4 text-[#6B6B6B] transition-transform duration-200 ${
+                openSections.details ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+          {openSections.details && (
+            <div className="px-4 sm:px-5 pb-4 pt-1 text-[13px] text-[#6B6B6B] leading-relaxed">
+              <p className="whitespace-pre-line">{desc}</p>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* 2. Compatibility */}
+      {/* 2. Compatible models */}
       <div>
         <button
           type="button"
-          onClick={() => toggleSection('compatibility')}
-          aria-expanded={openSections.compatibility}
-          className="w-full px-5 py-4 sm:py-4.5 flex items-center justify-between text-left text-[15px] font-semibold text-[#141414] hover:bg-[#FAFAF9] transition-colors cursor-pointer select-none"
+          onClick={() => toggleSection('compatibleModels')}
+          aria-expanded={openSections.compatibleModels}
+          className="w-full px-4 sm:px-5 py-3.5 flex items-center justify-between text-left text-[14px] font-semibold text-[#141414] hover:bg-[#FAFAF9] transition-colors cursor-pointer select-none"
         >
-          <span>Compatibility</span>
+          <span>Compatible models</span>
           <ChevronDown
-            className={`w-4 h-4 text-[#737373] transition-transform duration-200 ${
-              openSections.compatibility ? 'rotate-180' : ''
+            className={`w-4 h-4 text-[#6B6B6B] transition-transform duration-200 ${
+              openSections.compatibleModels ? 'rotate-180' : ''
             }`}
           />
         </button>
-        {openSections.compatibility && (
-          <div className="px-5 pb-5 pt-1 text-[13px] text-[#6B6B6B] leading-relaxed">
-            {compatibleModels.length > 0 ? (
+        {openSections.compatibleModels && (
+          <div className="px-4 sm:px-5 pb-4 pt-1 text-[13px] text-[#6B6B6B] leading-relaxed">
+            {compModels.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-[12px] text-[#737373]">
-                  Precision engineered and verified for the following devices:
+                <p className="text-[12px] text-[#6B6B6B]">
+                  Compatible with:
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                  {compatibleModels.map((m, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-1.5 bg-[#F8F7F4] border border-[#E5E5E3] rounded-[6px] px-2.5 py-1.5 text-[12px] text-[#141414] font-medium"
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {compModels.map((m) => (
+                    <span
+                      key={m}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#F4F3F0] border border-[#E5E5E3] rounded-[4px] text-[12px] font-medium text-[#141414]"
                     >
-                      <Check className="w-3.5 h-3.5 text-[#B0521F] shrink-0" />
-                      <span className="truncate">{m}</span>
-                    </div>
+                      <Check className="w-3 h-3 text-[#141414]" />
+                      <span>{m}</span>
+                    </span>
                   ))}
                 </div>
               </div>
             ) : (
-              <p>Universal compatibility across standard smartphones, cables, or accessories.</p>
+              <p>Standard universal fit.</p>
             )}
           </div>
         )}
       </div>
 
-      {/* 3. Returns and shipping */}
+      {/* 3. Delivery and returns */}
       <div>
         <button
           type="button"
-          onClick={() => toggleSection('returnsAndShipping')}
-          aria-expanded={openSections.returnsAndShipping}
-          className="w-full px-5 py-4 sm:py-4.5 flex items-center justify-between text-left text-[15px] font-semibold text-[#141414] hover:bg-[#FAFAF9] transition-colors cursor-pointer select-none"
+          onClick={() => toggleSection('deliveryAndReturns')}
+          aria-expanded={openSections.deliveryAndReturns}
+          className="w-full px-4 sm:px-5 py-3.5 flex items-center justify-between text-left text-[14px] font-semibold text-[#141414] hover:bg-[#FAFAF9] transition-colors cursor-pointer select-none"
         >
-          <span>Returns and shipping</span>
+          <span>Delivery and returns</span>
           <ChevronDown
-            className={`w-4 h-4 text-[#737373] transition-transform duration-200 ${
-              openSections.returnsAndShipping ? 'rotate-180' : ''
+            className={`w-4 h-4 text-[#6B6B6B] transition-transform duration-200 ${
+              openSections.deliveryAndReturns ? 'rotate-180' : ''
             }`}
           />
         </button>
-        {openSections.returnsAndShipping && (
-          <div className="px-5 pb-5 pt-1 text-[13px] text-[#6B6B6B] leading-relaxed space-y-2">
-            <p>Orders delivered within {policies.delivery.tn.label}: {policies.delivery.tn.text}.</p>
-            <p>Orders delivered to {policies.delivery.other.label.toLowerCase()}: {policies.delivery.other.text.toLowerCase()}.</p>
-            <p>Damaged or wrong items are replaced.</p>
-            <div className="pt-2 flex flex-wrap gap-4 text-[13px]">
+        {openSections.deliveryAndReturns && (
+          <div className="px-4 sm:px-5 pb-4 pt-1 text-[13px] text-[#6B6B6B] leading-relaxed space-y-2">
+            <p>
+              Orders in {policies.delivery.tn.label}: {policies.delivery.tn.text}.
+            </p>
+            <p>
+              {policies.delivery.other.label}: {policies.delivery.other.text.toLowerCase()}.
+            </p>
+            <p>
+              Counted from {policies.delivery.countedFrom}.
+            </p>
+            <p className="text-[#141414] font-medium pt-1">
+              Items damaged in transit or with manufacturing defects are promptly replaced.
+            </p>
+            <div className="pt-2 flex flex-wrap gap-4 text-[12px] sm:text-[13px]">
               <Link to="/shipping-policy" className="text-[#B0521F] hover:underline font-medium">
                 Shipping policy
               </Link>
@@ -137,6 +136,7 @@ export function ProductAccordions({ product, className = '' }) {
           </div>
         )}
       </div>
+
     </div>
   );
 }

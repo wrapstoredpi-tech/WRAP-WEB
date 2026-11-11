@@ -1,44 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
 import { formatINR } from '../../lib/currency';
 
 export function StickyMobileCartBar({
   product,
-  buyButtonRef,
+  selectedModel,
+  isModelSelected,
+  needsModelSelection,
   onAddToCart,
+  modelSelectRef,
+  setModelError,
 }) {
-  const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
-  const { cartItems } = useCart();
+  const { cartItems, addItem } = useCart();
+  const { openSheet } = usePurchaseSheet();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!buyButtonRef?.current) return;
-      const rect = buyButtonRef.current.getBoundingClientRect();
-      if (rect.bottom < 0) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
-    };
+  if (!product) return null;
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [buyButtonRef]);
+  const isOutOfStock =
+    product.stock_status === 'OUT_OF_STOCK' ||
+    (product.available_stock !== undefined && product.available_stock === 0) ||
+    (product.current_stock !== undefined && product.current_stock === 0);
 
-  const isOutOfStock = product?.available_stock === 0 || product?.stock_status === 'OUT_OF_STOCK';
+  const isModelDisabled = needsModelSelection && !isModelSelected;
+
   const isInCart = Boolean(
-    product?.id &&
+    product.id &&
       Array.isArray(cartItems) &&
-      cartItems.some(
-        (i) => String(i.productId) === String(product.id) || String(i.id) === String(product.id)
-      )
+      cartItems.some((i) => {
+        const matchesId = String(i.productId) === String(product.id) || String(i.id) === String(product.id);
+        if (!matchesId) return false;
+        if (needsModelSelection) {
+          return String(i.selected_model) === String(selectedModel);
+        }
+        return true;
+      })
   );
 
-
-  const handleAdd = () => {
+  const handleClick = () => {
     if (isOutOfStock) return;
 
     if (isInCart) {
@@ -46,62 +48,66 @@ export function StickyMobileCartBar({
       return;
     }
 
-    // Scroll smoothly to buy controls
-    if (buyButtonRef?.current) {
-      buyButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (isModelDisabled) {
+      if (setModelError) setModelError(true);
+      if (modelSelectRef?.current) {
+        modelSelectRef.current.focus();
+        modelSelectRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    const modelToSave = selectedModel || 'Universal';
+    addItem(product, 1, modelToSave, null);
+    openSheet({
+      product,
+      quantity: 1,
+      selectedModel: modelToSave,
+      selectedColor: null,
+    });
+    if (onAddToCart) {
+      onAddToCart(product, 1, modelToSave, null);
     }
   };
 
-  if (!isVisible || !product) return null;
+  const sellingPrice = Number(product.selling_price) || 0;
 
   return (
     <aside
-      aria-label="Quick Add to Bag"
-      className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5E5E3] p-3 sm:hidden shadow-lg"
+      aria-label="Add to Bag"
+      className="fixed bottom-0 inset-x-0 z-40 bg-[#FAFAF9]/95 backdrop-blur-md border-t border-[#E5E5E3] p-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden shadow-lg select-none"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="w-11 h-11 bg-[#F5F4F0] rounded-xl overflow-hidden shrink-0 border border-[#E5E5E3]">
-            <img
-              src={product.image_url || (product.images && product.images[0])}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-[#141414] truncate">
-              {product.name}
-            </p>
-            <span className="text-[13px] font-bold text-[#141414]">
-              {formatINR(product.selling_price)}
-            </span>
-          </div>
-        </div>
-
-        <div className="shrink-0">
-          <button
-            type="button"
-            disabled={isOutOfStock}
-            onClick={handleAdd}
-            className={`min-h-[44px] px-5 py-2 text-[14px] font-semibold rounded-full flex items-center gap-2 transition-all cursor-pointer shadow-xs ${
-              isOutOfStock
-                ? 'bg-[#E5E5E3] text-[#737373] cursor-not-allowed'
-                : 'bg-[#141414] hover:bg-[#262626] text-white active:scale-95'
-            }`}
-          >
-            {isInCart ? (
-              <>
-                <span>Go to Cart</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="w-4 h-4" />
-                <span>{isOutOfStock ? 'Out of stock' : 'Add to Cart'}</span>
-              </>
-            )}
-          </button>
-        </div>
+      <div className="w-full max-w-[1280px] mx-auto">
+        <button
+          type="button"
+          disabled={isOutOfStock || isModelDisabled}
+          onClick={handleClick}
+          className={`w-full h-[52px] px-6 text-[15px] font-semibold rounded-[6px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm ${
+            isOutOfStock || isModelDisabled
+              ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
+              : isInCart
+              ? 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
+              : 'bg-[#B0521F] hover:bg-[#964317] text-white active:scale-[0.99]'
+          }`}
+        >
+          {isOutOfStock ? (
+            <span>Out of stock</span>
+          ) : isModelDisabled ? (
+            <span>Select a phone model above</span>
+          ) : isInCart ? (
+            <>
+              <span>Go to Bag</span>
+              <ArrowRight className="w-4.5 h-4.5" />
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="w-4.5 h-4.5" />
+              <span>
+                Add to Bag {sellingPrice > 0 ? `· ${formatINR(sellingPrice)}` : ''}
+              </span>
+            </>
+          )}
+        </button>
       </div>
     </aside>
   );

@@ -5,7 +5,7 @@
  */
 
 export const heroContent = {
-  title: 'Cases Engineered for Precision & Defense',
+  title: 'Cases Engineered for Everyday Defense',
   description: 'Low-profile protective structures crafted from tactile materials for seamless daily carry.',
   primaryCta: {
     text: 'Explore Catalog',
@@ -15,9 +15,9 @@ export const heroContent = {
 
 export const heroSlides = [
   {
-    id: 'storefront-flagship',
+    id: 'storefront-shop',
     image: '/hero/slide-1.jpg',
-    alt: 'WrapStore physical storefront in Dharmapuri featuring customer service counter and curated accessories',
+    alt: 'WrapStore physical storefront in Dharmapuri featuring customer service counter and phone accessories',
   },
   {
     id: 'case-wall-collection',

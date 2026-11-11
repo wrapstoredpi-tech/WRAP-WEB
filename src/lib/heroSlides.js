@@ -4,25 +4,15 @@ import { supabase, supabaseConfigured } from './supabase';
 const STORAGE_KEY = 'wrapstore_hero_slides_v4';
 const SYSTEM_RECORD_KEY = '__WRAPSTORE_HERO_SLIDES__';
 
+let inMemorySlides = null;
+
 /**
- * Returns the current active hero slider slides synchronously from localStorage cache.
- * Falls back to default slides in homeConfig if no cache exists.
+ * Returns the current active hero slider slides synchronously.
+ * Falls back to default slides in homeConfig if no memory cache exists.
  */
 export function getHeroSlides() {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem('wrapstore_hero_slides_v2');
-      localStorage.removeItem('wrapstore_hero_slides_v3');
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Error reading hero slides cache:', e);
-    }
+  if (inMemorySlides && inMemorySlides.length > 0) {
+    return inMemorySlides;
   }
   return homeConfig.heroSlider?.slides || [];
 }
@@ -156,14 +146,30 @@ export async function resetHeroSlides() {
 }
 
 /**
- * Helper to update localStorage safely without throwing on quota limit
+ * Helper to update cache safely.
+ * Per audit rule 30: Do not cache hero slide images in localStorage (they are base64 and ~300 KB).
+ * Cache only slide metadata (or keep images strictly in memory).
  */
 function updateLocalCache(slides) {
+  inMemorySlides = Array.isArray(slides) ? slides : [];
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(slides));
+    const metadataOnly = (slides || []).map((slide) => {
+      const isImgBase64 = typeof slide.image === 'string' && slide.image.startsWith('data:');
+      const isVidBase64 = typeof slide.video === 'string' && slide.video.startsWith('data:');
+      return {
+        id: slide.id,
+        type: slide.type || 'image',
+        tag: slide.tag || '',
+        tagSubtitle: slide.tagSubtitle || '',
+        link: slide.link || '',
+        alt: slide.alt || '',
+        image: isImgBase64 ? undefined : slide.image,
+        video: isVidBase64 ? undefined : slide.video,
+      };
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(metadataOnly));
   } catch (e) {
-    // If quota exceeded due to large dataUrl images, catch gracefully
-    console.warn('[heroSlides] localStorage quota exceeded, skipping local storage cache:', e);
+    console.warn('[heroSlides] Failed to write hero slide metadata to localStorage:', e);
   }
 }

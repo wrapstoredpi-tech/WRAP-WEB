@@ -553,3 +553,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.release_combo_stock(UUID, INT, TEXT) TO anon, authenticated, service_role;
+

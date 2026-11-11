@@ -1,8 +1,7 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import { PhoneSelectionModal } from './components/layout/PhoneSelectionModal';
 import { FloatingWhatsApp } from './components/layout/FloatingWhatsApp';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -10,9 +9,15 @@ import { ProductsProvider } from './context/ProductsContext';
 import { PhoneProvider } from './context/PhoneContext';
 import { IntroProvider } from './context/IntroContext';
 import { FavoritesProvider } from './context/FavoritesContext';
+import { PurchaseSheetProvider } from './context/PurchaseSheetContext';
+import { CompleteYourPurchaseSheet } from './components/cart/CompleteYourPurchaseSheet';
+import { ScrollToTop } from './components/common/ScrollToTop';
+import { modelToSlug } from './lib/models';
 
 // Route-level code splitting
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
+const CasesPickerPage = lazy(() => import('./pages/CasesPickerPage').then((m) => ({ default: m.CasesPickerPage })));
+const ModelCasesPage = lazy(() => import('./pages/ModelCasesPage').then((m) => ({ default: m.ModelCasesPage })));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
 const CartPage = lazy(() => import('./pages/CartPage').then((m) => ({ default: m.CartPage })));
@@ -25,8 +30,12 @@ const AccountPage = lazy(() => import('./pages/AccountPage').then((m) => ({ defa
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
-const TypeTestPage = lazy(() => import('./pages/TypeTestPage').then((m) => ({ default: m.TypeTestPage })));
-const IntroTestPage = lazy(() => import('./pages/IntroTestPage').then((m) => ({ default: m.IntroTestPage })));
+const TypeTestPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/TypeTestPage').then((m) => ({ default: m.TypeTestPage })))
+  : null;
+const IntroTestPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/IntroTestPage').then((m) => ({ default: m.IntroTestPage })))
+  : null;
 const StaticPage = lazy(() => import('./pages/StaticPage').then((m) => ({ default: m.StaticPage })));
 const ShippingPolicyPage = lazy(() => import('./pages/ShippingPolicyPage').then((m) => ({ default: m.ShippingPolicyPage })));
 const ReturnsPolicyPage = lazy(() => import('./pages/ReturnsPolicyPage').then((m) => ({ default: m.ReturnsPolicyPage })));
@@ -34,10 +43,69 @@ const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default:
 
 function RouteFallback() {
   return (
-    <div className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-24 flex items-center justify-center">
+    <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-24 flex items-center justify-center">
       <p className="text-[14px] text-[#6B6B6B]">Loading page...</p>
     </div>
   );
+}
+
+function LegacyCasesRedirect() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const category = params.get('category');
+    const subcategory = params.get('subcategory');
+    const brand = params.get('brand');
+    const model = params.get('model') || params.get('series');
+
+    const isCaseCategory =
+      category &&
+      (category.toLowerCase().includes('mobile case') ||
+        category.toLowerCase() === 'cases' ||
+        category.toLowerCase() === 'case');
+    const isBrandCaseQuery =
+      !category &&
+      brand &&
+      (brand.toLowerCase() === 'apple' || brand.toLowerCase() === 'samsung');
+
+    if (isCaseCategory || isBrandCaseQuery) {
+      if (brand && model) {
+        navigate(`/cases/${brand.toLowerCase()}/${modelToSlug(model)}`, { replace: true });
+      } else if (brand) {
+        const brandCap = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase();
+        navigate(`/cases?brand=${brandCap}`, { replace: true });
+      } else {
+        navigate('/cases', { replace: true });
+      }
+      return;
+    }
+
+    // Accessories legacy query param redirect
+    if (category && category.toLowerCase().includes('accessor')) {
+      if (subcategory) {
+        navigate(`/accessories/${modelToSlug(subcategory)}`, { replace: true });
+      } else {
+        navigate('/accessories', { replace: true });
+      }
+      return;
+    }
+
+    // Combos legacy query param redirect
+    if (category && category.toLowerCase().includes('combo')) {
+      navigate('/combos', { replace: true });
+      return;
+    }
+  }, [location, navigate]);
+
+  return null;
+}
+
+function CasesBrandRedirect() {
+  const { brand } = useParams();
+  const brandCap = brand ? brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase() : 'Apple';
+  return <Navigate to={`/cases?brand=${brandCap}`} replace />;
 }
 
 function AppContent() {
@@ -45,7 +113,8 @@ function AppContent() {
   const isCheckout = location.pathname === '/checkout';
   const isCallback = location.pathname === '/auth/callback';
   const isAdmin = location.pathname.startsWith('/wrapwebadmin');
-  const isReduced = isCheckout || isCallback || isAdmin;
+  const isHeaderHidden = isCallback || isAdmin;
+  const isFooterHidden = isCheckout || isCallback || isAdmin;
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && typeof window.__DISMISS_WRAPSTORE_INTRO__ === 'function') {
@@ -54,17 +123,22 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#141414] font-sans antialiased">
-      {/* Sticky Header with 36px Info Bar & 72px Main Row (Hidden on reduced checkout, callback, or admin flows) */}
-      {!isReduced && <Header />}
+    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#141414] font-sans antialiased overflow-x-hidden w-full">
+      <ScrollToTop />
+      <LegacyCasesRedirect />
 
-      {/* Global Phone Selection Modal (Hidden on admin) */}
-      {!isAdmin && <PhoneSelectionModal />}
+      {/* Header (reduced on /cart and /checkout; hidden on auth callback or admin) */}
+      {!isHeaderHidden && <Header />}
 
       {/* Page Routes with Suspense code splitting */}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/cases" element={<CasesPickerPage />} />
+          <Route path="/cases/:brand" element={<CasesBrandRedirect />} />
+          <Route path="/cases/:brand/:model" element={<ModelCasesPage />} />
+          <Route path="/accessories" element={<ModelCasesPage isAccessoryPage={true} />} />
+          <Route path="/accessories/:subcategory" element={<ModelCasesPage isAccessoryPage={true} />} />
           <Route path="/combos" element={<HomePage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
@@ -87,11 +161,11 @@ function AppContent() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
 
-          {/* Temporary Typography Pairing Route */}
-          <Route path="/type-test" element={<TypeTestPage />} />
+          {/* Temporary Typography Pairing Route (Dev Only) */}
+          {import.meta.env.DEV && <Route path="/type-test" element={<TypeTestPage />} />}
 
-          {/* Temporary Logo Intro Animation QA Route */}
-          <Route path="/intro-test" element={<IntroTestPage />} />
+          {/* Temporary Logo Intro Animation QA Route (Dev Only) */}
+          {import.meta.env.DEV && <Route path="/intro-test" element={<IntroTestPage />} />}
 
           {/* Policy Pages */}
           <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
@@ -108,10 +182,13 @@ function AppContent() {
       </Suspense>
 
       {/* Footer (Hidden on reduced checkout, callback, or admin flows) */}
-      {!isReduced && <Footer />}
+      {!isFooterHidden && <Footer />}
 
       {/* Floating WhatsApp fixed bottom-left (Hidden on reduced checkout, callback, or admin flows) */}
-      {!isReduced && <FloatingWhatsApp />}
+      {!isFooterHidden && <FloatingWhatsApp />}
+
+      {/* Complete Your Purchase Sheet / Panel (Triggered after Add to Bag) */}
+      <CompleteYourPurchaseSheet />
     </div>
   );
 }
@@ -153,23 +230,29 @@ class ErrorBoundary extends React.Component {
 }
 
 export function App() {
+  const initialRoute = typeof window !== 'undefined' ? window.__INITIAL_ROUTE__ : null;
+  const RouterComponent = initialRoute ? MemoryRouter : BrowserRouter;
+  const routerProps = initialRoute ? { initialEntries: [initialRoute] } : {};
+
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <RouterComponent {...routerProps}>
         <IntroProvider>
           <AuthProvider>
             <CartProvider>
               <ProductsProvider>
                 <FavoritesProvider>
                   <PhoneProvider>
-                    <AppContent />
+                    <PurchaseSheetProvider>
+                      <AppContent />
+                    </PurchaseSheetProvider>
                   </PhoneProvider>
                 </FavoritesProvider>
               </ProductsProvider>
             </CartProvider>
           </AuthProvider>
         </IntroProvider>
-      </BrowserRouter>
+      </RouterComponent>
     </ErrorBoundary>
   );
 }

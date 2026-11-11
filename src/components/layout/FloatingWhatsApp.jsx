@@ -1,11 +1,38 @@
-import React from 'react';
+import React, { useContext, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { store } from '../../config/store';
 import { homeConfig } from '../../config/home';
+import PurchaseSheetContext from '../../context/PurchaseSheetContext';
 
 export function FloatingWhatsApp() {
+  const { pathname } = useLocation();
+  const purchaseSheet = useContext(PurchaseSheetContext);
+  const isSheetOpen =
+    Boolean(purchaseSheet?.isOpen) ||
+    Boolean(typeof window !== 'undefined' && window.__TEST_PURCHASE_SHEET_OPEN__);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const checkMenu = () => {
+      const modal = document.querySelector('[role="dialog"][aria-label="Navigation Menu"]');
+      setIsMenuOpen(Boolean(modal));
+    };
+    const observer = new MutationObserver(checkMenu);
+    observer.observe(document.body, { childList: true, subtree: true });
+    checkMenu();
+    return () => observer.disconnect();
+  }, []);
+
   const number = store.whatsappNumber ? store.whatsappNumber.replace(/\D/g, '') : '';
 
-  if (!number) return null;
+  if (!number || isSheetOpen || isMenuOpen) return null;
+
+  // Rule 25: hidden on product, bag and checkout pages on mobile (these have sticky bars)
+  const isStickyBarPage =
+    pathname.startsWith('/product/') ||
+    pathname === '/cart' ||
+    pathname === '/checkout';
 
   const prefilled =
     homeConfig.floatingWhatsApp?.prefilledMessage ||
@@ -20,7 +47,9 @@ export function FloatingWhatsApp() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat with WrapStore on WhatsApp"
-        className="pointer-events-auto fixed bottom-[84px] left-4 sm:bottom-6 sm:left-6 z-40 w-12 h-12 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2 cursor-pointer"
+        className={`pointer-events-auto fixed bottom-6 right-6 z-40 w-12 h-12 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2 cursor-pointer ${
+          isStickyBarPage ? 'hidden lg:flex' : 'flex'
+        }`}
       >
         <svg
           className="w-6 h-6 fill-current"

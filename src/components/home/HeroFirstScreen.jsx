@@ -1,10 +1,93 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
-import { homeConfig } from '../../config/home';
 import { useIntro } from '../../context/IntroContext';
 import { useIntroReveal } from '../../hooks/useIntroReveal';
 import { getHeroSlides, fetchHeroSlides } from '../../lib/heroSlides';
+import { modelToSlug } from '../../lib/models';
+
+/**
+ * Rewrites old query-string link URLs (?category=..., ?subcategory=...) to modern routes.
+ */
+export function rewriteHeroLinkUrl(rawUrl = '') {
+  if (!rawUrl) return '/cases';
+  try {
+    const queryIdx = rawUrl.indexOf('?');
+    if (queryIdx !== -1) {
+      const queryPart = rawUrl.substring(queryIdx);
+      const params = new URLSearchParams(queryPart);
+      const cat = (params.get('category') || '').toLowerCase();
+      const brand = (params.get('brand') || '').toLowerCase();
+      const model = params.get('model');
+      const series = params.get('series');
+
+      if (cat.includes('case') || cat.includes('phone') || brand.includes('apple') || brand.includes('samsung')) {
+        const targetBrand = brand.includes('samsung') ? 'samsung' : 'apple';
+        if (model) {
+          return `/cases/${targetBrand}/${modelToSlug(model)}`;
+        }
+        if (series) {
+          return `/cases?brand=${targetBrand === 'apple' ? 'Apple' : 'Samsung'}&series=${encodeURIComponent(series)}`;
+        }
+        return `/cases?brand=${targetBrand === 'apple' ? 'Apple' : 'Samsung'}`;
+      }
+
+      if (cat.includes('accessor')) {
+        const sub = params.get('subcategory');
+        if (sub) return `/?category=Accessories&subcategory=${encodeURIComponent(sub)}`;
+        return '/?category=Accessories';
+      }
+
+      if (cat.includes('combo')) {
+        return '/combos';
+      }
+    }
+  } catch (err) {
+    console.warn('Error rewriting hero link:', err);
+  }
+  return rawUrl;
+}
+
+export function getHeroButtonText(linkUrl) {
+  if (!linkUrl) return 'Shop now';
+  const urlLower = String(linkUrl).toLowerCase();
+
+  // 1. Case links: 'Shop cases'
+  if (
+    urlLower.includes('/cases') ||
+    urlLower.includes('category=mobile%20cases') ||
+    urlLower.includes('category=cases')
+  ) {
+    return 'Shop cases';
+  }
+
+  // 2. Accessory subcategory links: 'Shop <subcategory>'
+  if (urlLower.includes('subcategory=')) {
+    try {
+      const parsed = new URL(linkUrl, 'https://wrapstore.in');
+      const sub = parsed.searchParams.get('subcategory');
+      if (sub) {
+        return `Shop ${sub.toLowerCase()}`;
+      }
+    } catch {
+      const match = linkUrl.match(/subcategory=([^&]+)/i);
+      if (match) {
+        return `Shop ${decodeURIComponent(match[1]).toLowerCase()}`;
+      }
+    }
+  }
+
+  if (urlLower.startsWith('/accessories/')) {
+    const subSlug = linkUrl.split('/accessories/')[1]?.split('?')[0];
+    if (subSlug) {
+      const subName = decodeURIComponent(subSlug).replace(/-/g, ' ');
+      return `Shop ${subName.toLowerCase()}`;
+    }
+  }
+
+  // 3. Anything else: 'Shop now'
+  return 'Shop now';
+}
 
 export function HeroFirstScreen() {
   const { isIntroDone } = useIntro();
@@ -19,71 +102,50 @@ export function HeroFirstScreen() {
   useEffect(() => {
     let isMounted = true;
     fetchHeroSlides().then((dbSlides) => {
-      if (isMounted && Array.isArray(dbSlides)) {
+      if (isMounted && Array.isArray(dbSlides) && dbSlides.length > 0) {
         setSlides(dbSlides);
       }
     });
 
     const handleUpdate = (e) => {
-      if (Array.isArray(e.detail)) {
+      if (Array.isArray(e.detail) && e.detail.length > 0) {
         setSlides(e.detail);
         setActiveIndex(0);
       }
     };
-    const handleStorage = (e) => {
-      if (e.key === 'wrapstore_hero_slides_v4') {
-        try {
-          const parsed = JSON.parse(e.newValue || '[]');
-          if (Array.isArray(parsed)) {
-            setSlides(parsed);
-            setActiveIndex(0);
-          }
-        } catch {}
-      }
-    };
     window.addEventListener('wrapstore:hero_slides_updated', handleUpdate);
-    window.addEventListener('storage', handleStorage);
     return () => {
       isMounted = false;
       window.removeEventListener('wrapstore:hero_slides_updated', handleUpdate);
-      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
-  const navigate = useNavigate();
+  // Inspect and report any base64 image sizes
+  useEffect(() => {
+    if (Array.isArray(slides)) {
+      slides.forEach((s, idx) => {
+        if (s.image && typeof s.image === 'string' && s.image.startsWith('data:')) {
+          const sizeKb = Math.round((s.image.length * 3) / 4 / 1024);
+          console.info(`[Hero Slide ${idx + 1}] Base64 image payload size: ~${sizeKb} KB`);
+        }
+      });
+    }
+  }, [slides]);
 
-  // Video element refs
+  const navigate = useNavigate();
   const videoRefs = useRef({});
 
   // Clamp activeIndex safely
   const safeIndex = slides.length > 0 ? Math.min(activeIndex, slides.length - 1) : 0;
 
-  // Play active video when slide changes
-  useEffect(() => {
-    if (!slides || slides.length === 0) return;
-    const currentSlide = slides[safeIndex];
-    if (currentSlide?.type === 'video' || currentSlide?.video) {
-      const vid = videoRefs.current[safeIndex];
-      if (vid) {
-        vid.currentTime = 0;
-        vid.play().catch(() => {
-          // Autoplay policy fallback: ensure muted
-          vid.muted = true;
-          vid.play().catch(() => {});
-        });
-      }
-    }
-  }, [safeIndex, slides]);
-
-  // Autoplay timer: advances slides every 6 seconds unless paused
+  // Autoplay timer: advances slides every 5000ms unless paused
   useEffect(() => {
     if (!isIntroDone) return;
     if (paused || slides.length <= 1) return;
 
-    const interval = homeConfig.heroSlider?.autoplayIntervalMs || 6000;
     const timer = setTimeout(() => {
       setActiveIndex((prev) => (prev + 1) % slides.length);
-    }, interval);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [safeIndex, paused, slides.length, isIntroDone]);
@@ -98,10 +160,10 @@ export function HeroFirstScreen() {
     setActiveIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
 
-  // Touch swipe handling & tap navigation guards
-  const isSwipingRef = useRef(false);
+  // Touch swipe handling
   const touchStartXRef = useRef(0);
   const touchEndXRef = useRef(0);
+  const isSwipingRef = useRef(false);
 
   const handleTouchStart = (e) => {
     isSwipingRef.current = false;
@@ -120,68 +182,37 @@ export function HeroFirstScreen() {
   const handleTouchEnd = () => {
     setPaused(false);
     const diff = touchStartXRef.current - touchEndXRef.current;
-    if (Math.abs(diff) > 45) {
-      if (diff > 0) {
-        handleNext();
-      } else {
-        handlePrev();
-      }
-      setTimeout(() => {
-        isSwipingRef.current = false;
-      }, 150);
-    } else {
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) handleNext();
+      else handlePrev();
+    }
+    setTimeout(() => {
       isSwipingRef.current = false;
-    }
+    }, 150);
   };
 
-  const handleLinkNavigation = (e, targetUrl) => {
-    if (isSwipingRef.current) {
-      e?.preventDefault?.();
-      return;
-    }
-    const url = targetUrl || '/?category=Mobile%20Cases';
-    if (!url) return;
-
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      try {
-        const parsed = new URL(url);
-        if (parsed.origin === window.location.origin) {
-          e?.preventDefault?.();
-          navigate(parsed.pathname + parsed.search + parsed.hash);
-          return;
-        }
-      } catch {}
-      // External link - allow native browser navigation
-      return;
-    }
-
-    // Relative internal link
-    e?.preventDefault?.();
-    navigate(url);
-  };
-
-  // If there are no slides configured, completely hide the hero section!
-  if (!slides || slides.length === 0) {
-    return null;
-  }
+  if (!slides || slides.length === 0) return null;
 
   const currentSlide = slides[safeIndex] || slides[0] || {};
+  const rewrittenLink = rewriteHeroLinkUrl(currentSlide.link_url || currentSlide.link || '/cases');
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+    <div className="w-full">
       <section
-        aria-label="Hero Spotlight Banner"
+        aria-label="Hero Carousel"
         style={heroRevealStyle}
-        className="w-full pt-2 sm:pt-3 select-none"
+        className="w-full select-none"
       >
+        {/* Keyframe style for the 5s filling progress bar */}
+        <style>{`
+          @keyframes fillProgressBar {
+            from { width: 0%; }
+            to { width: 100%; }
+          }
+        `}</style>
+
         {/* ─────────────────────────────────────────────────────────────────
-            Full-Width Hero Banner
-            Matches design:
-            - Full-width modern banner with rounded corners
-            - Video / High-res media display
-            - Centered pill badge: Tag (White Pill) + Subtitle/CTA
-            - Bottom dots pagination
-            - Sleek hover chevrons & optional sound toggle
+            Full-Bleed Hero Banner (Desktop 21:8, Mobile 4:5, object-fit: cover)
             ───────────────────────────────────────────────────────────────── */}
         <div
           onMouseEnter={() => setPaused(true)}
@@ -189,7 +220,7 @@ export function HeroFirstScreen() {
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className="group relative w-full h-[380px] sm:h-[460px] md:h-[520px] lg:h-[580px] xl:h-[640px] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#141414] shadow-[0_8px_30px_rgba(0,0,0,0.06)]"
+          className="group relative w-full aspect-[4/5] md:aspect-[21/8] min-h-[380px] md:min-h-[440px] max-h-[640px] overflow-hidden bg-[#141414]"
         >
           {/* Slides Track */}
           <div
@@ -198,15 +229,12 @@ export function HeroFirstScreen() {
           >
             {slides.map((slide, idx) => {
               const isVideo = slide.type === 'video' || Boolean(slide.video);
-              const destination = slide.link || '/?category=Mobile%20Cases';
+              const destination = rewriteHeroLinkUrl(slide.link_url || slide.link || '/cases');
+
               return (
-                <a
+                <div
                   key={slide.id || idx}
-                  href={destination}
-                  onClick={(e) => handleLinkNavigation(e, destination)}
-                  className="w-full h-full shrink-0 relative bg-neutral-900 block cursor-pointer select-none group/slide"
-                  aria-label={`${slide.tag || slide.alt || 'Hero banner slide'} - click to explore`}
-                  tabIndex={safeIndex === idx ? 0 : -1}
+                  className="w-full h-full shrink-0 relative bg-neutral-900 block"
                 >
                   {isVideo ? (
                     <video
@@ -226,65 +254,59 @@ export function HeroFirstScreen() {
                     <img
                       src={slide.image}
                       alt={slide.alt || slide.tag || 'Hero banner'}
-                      width={slide.width || 1800}
-                      height={slide.height || 1200}
                       loading={idx === 0 ? 'eager' : 'lazy'}
-                      fetchpriority={idx === 0 ? 'high' : 'auto'}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover/slide:scale-[1.01]"
+                      fetchPriority={idx === 0 ? 'high' : 'auto'}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.01]"
                     />
                   )}
 
-                  {/* Subtle vignette shadow on bottom and edges for badge readability */}
+                  {/* Dark gradient scrim on bottom for readability */}
                   <div
-                    className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"
+                    className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none"
                     aria-hidden="true"
                   />
-                </a>
+                </div>
               );
             })}
           </div>
 
           {/* ─────────────────────────────────────────────────────────────────
-              Center-Aligned Pill Badge (Rendered only if tag or tagSubtitle exists)
+              Text Bottom-Left Aligned to Shared Container
+              Headline (DM Serif Display), tag_subtitle as one line, one button
               ───────────────────────────────────────────────────────────────── */}
-          {(currentSlide.tag || currentSlide.tagSubtitle) && (
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-8 sm:bottom-11 lg:bottom-12 z-20 pointer-events-auto max-w-[90%]">
-              <a
-                href={currentSlide.link || '/?category=Mobile%20Cases'}
-                onClick={(e) => handleLinkNavigation(e, currentSlide.link)}
-                className="group/badge inline-flex flex-col items-center text-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                aria-label={`${currentSlide.tag || 'Hero slide'} - ${currentSlide.tagSubtitle || 'Explore'}`}
-              >
-                {/* Top White Pill */}
+          <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-end">
+            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 pb-7 sm:pb-10 pointer-events-auto">
+              <div className="max-w-xl text-left space-y-1.5 sm:space-y-2">
                 {currentSlide.tag && (
-                  <div className="bg-white text-[#141414] px-5 sm:px-6 py-1.5 sm:py-2 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.22)] flex items-center justify-center gap-2 whitespace-nowrap">
-                    <span className="font-extrabold text-[17px] sm:text-[22px] lg:text-[25px] tracking-tight leading-none text-[#141414]">
-                      {currentSlide.tag}
-                    </span>
-                  </div>
+                  <h1 className="text-white text-[28px] sm:text-[38px] lg:text-[44px] font-normal font-serif tracking-tight leading-[1.1] drop-shadow-md">
+                    {currentSlide.tag}
+                  </h1>
                 )}
-
-                {/* Subtitle / CTA Line */}
                 {currentSlide.tagSubtitle && (
-                  <div className="bg-white/95 group-hover/badge:bg-white backdrop-blur-md text-[#141414] px-4 sm:px-5 py-1 rounded-full text-[12px] sm:text-[14px] font-semibold tracking-normal transition-colors shadow-md flex items-center justify-center gap-1.5 mt-1 border border-black/5 whitespace-nowrap">
-                    <span>{currentSlide.tagSubtitle}</span>
-                    <span className="text-[12px] opacity-75 group-hover/badge:translate-x-1 transition-transform">
-                      →
-                    </span>
-                  </div>
+                  <p className="text-white/90 text-[13px] sm:text-[15px] font-normal truncate drop-shadow-sm max-w-lg">
+                    {currentSlide.tagSubtitle}
+                  </p>
                 )}
-              </a>
+                <div className="pt-2">
+                  <Link
+                    to={rewrittenLink}
+                    className="inline-flex items-center justify-center px-6 py-2.5 sm:py-3 bg-[#B0521F] hover:bg-[#964317] text-white text-[13px] sm:text-[14px] font-semibold rounded-[6px] transition-colors shadow-md cursor-pointer"
+                  >
+                    {getHeroButtonText(rewrittenLink)}
+                  </Link>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
 
           {/* ─────────────────────────────────────────────────────────────────
-              Pagination Dots: Centered bottom
+              Short Line Indicators Bottom-Right (Active line fills over 5s)
               ───────────────────────────────────────────────────────────────── */}
           {slides.length > 1 && (
             <div
-              className="absolute left-1/2 -translate-x-1/2 bottom-2.5 sm:bottom-3.5 z-20 flex items-center gap-2 bg-black/35 backdrop-blur-sm px-3 py-1.5 rounded-full"
+              className="absolute right-4 sm:right-8 md:right-12 bottom-7 sm:bottom-10 z-20 flex items-center gap-2"
               role="tablist"
-              aria-label="Slide indicators"
+              aria-label="Slide progress indicators"
             >
               {slides.map((_, idx) => {
                 const isActive = idx === safeIndex;
@@ -296,19 +318,26 @@ export function HeroFirstScreen() {
                     role="tab"
                     aria-selected={isActive}
                     aria-label={`Go to slide ${idx + 1}`}
-                    className={`transition-all duration-300 rounded-full cursor-pointer ${
-                      isActive
-                        ? 'w-7 sm:w-8 h-2 sm:h-2.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]'
-                        : 'w-2 sm:w-2.5 h-2 sm:h-2.5 bg-white/50 hover:bg-white/80'
-                    }`}
-                  />
+                    className="w-7 sm:w-10 h-1 bg-white/30 rounded-full overflow-hidden cursor-pointer transition-colors hover:bg-white/50 relative block p-0"
+                  >
+                    {isActive ? (
+                      <span
+                        key={safeIndex}
+                        className="block h-full bg-white rounded-full"
+                        style={{
+                          animation: paused ? 'none' : 'fillProgressBar 5000ms linear forwards',
+                          width: paused ? '100%' : undefined,
+                        }}
+                      />
+                    ) : null}
+                  </button>
                 );
               })}
             </div>
           )}
 
           {/* ─────────────────────────────────────────────────────────────────
-              Navigation Chevrons (Previous / Next) on Desktop Hover
+              Desktop Plain Chevrons at Left & Right Edges on Hover
               ───────────────────────────────────────────────────────────────── */}
           {slides.length > 1 && (
             <>
@@ -316,36 +345,34 @@ export function HeroFirstScreen() {
                 type="button"
                 onClick={handlePrev}
                 aria-label="Previous slide"
-                className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 cursor-pointer z-20 shadow-lg border border-white/10"
+                className="hidden lg:flex absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 cursor-pointer z-20 shadow-md border border-white/10"
               >
-                <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
+                <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
               </button>
 
               <button
                 type="button"
                 onClick={handleNext}
                 aria-label="Next slide"
-                className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 cursor-pointer z-20 shadow-lg border border-white/10"
+                className="hidden lg:flex absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 cursor-pointer z-20 shadow-md border border-white/10"
               >
-                <ChevronRight className="w-6 h-6" strokeWidth={2.5} />
+                <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
               </button>
             </>
           )}
 
-          {/* ─────────────────────────────────────────────────────────────────
-              Optional Audio Toggle for Video Slides (Top Right)
-              ───────────────────────────────────────────────────────────────── */}
+          {/* Optional Audio Toggle for Video Slides */}
           {(currentSlide.type === 'video' || currentSlide.video) && (
             <button
               type="button"
               onClick={() => setIsMuted((prev) => !prev)}
               aria-label={isMuted ? 'Unmute video' : 'Mute video'}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md flex items-center justify-center transition-colors cursor-pointer border border-white/15 shadow-md"
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer border border-white/15 shadow-md"
             >
               {isMuted ? (
-                <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-white/90" />
+                <VolumeX className="w-4 h-4 text-white/90" />
               ) : (
-                <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                <Volume2 className="w-4 h-4 text-white" />
               )}
             </button>
           )}

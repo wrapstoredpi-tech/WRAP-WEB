@@ -44,7 +44,7 @@ const PRESET_STORE_PHOTOS = [
   },
   {
     image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=1800&q=80',
-    alt: 'Curated premium leather and silicone phone case collection',
+    alt: 'Premium leather and silicone phone case collection',
     label: 'Leather & Case Lifestyle',
   },
   {
