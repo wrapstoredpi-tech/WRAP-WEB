@@ -74,6 +74,21 @@ export function StickyMobileCartBar({
   const sellingPrice = Number(product.selling_price) || 0;
   const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
 
+  if (isCombo && product.empty_intersection) {
+    return (
+      <aside
+        aria-label="Unavailable"
+        className="fixed bottom-0 inset-x-0 z-40 bg-[#FAFAF9]/95 backdrop-blur-md border-t border-[#E5E5E3] p-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden shadow-lg select-none"
+      >
+        <div className="w-full max-w-[1280px] mx-auto text-center py-2">
+          <p className="text-[13px] text-[#6B6B6B] font-medium">
+            This combo is not available for any single phone model
+          </p>
+        </div>
+      </aside>
+    );
+  }
+
   if (isCombo && !combosOrderable) {
     return (
       <aside

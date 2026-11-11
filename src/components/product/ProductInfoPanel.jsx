@@ -114,6 +114,14 @@ export function ProductInfoPanel({
     setAdded(false);
   }, [selectedModel]);
 
+  useEffect(() => {
+    if (isCombo && product?.empty_intersection) {
+      console.warn(
+        `[ProductInfoPanel] Combo "${product.name}" (id: ${product.id}) has an empty model intersection across its components - this combo is not available for any single phone model.`
+      );
+    }
+  }, [isCombo, product]);
+
   const handleSiblingClick = (sibling) => {
     if (sibling.id === product.id) return;
     const modelQuery = selectedModel ? `?model=${encodeURIComponent(selectedModel)}` : '';
@@ -188,8 +196,17 @@ export function ProductInfoPanel({
         </p>
       </div>
 
-      {/* 3. The existing required model dropdown (prefilled from saved phone when compatible) */}
-      {needsModelSelection && (
+      {/* 3. The required model dropdown or Empty Intersection notice */}
+      {isCombo && product.empty_intersection ? (
+        <div className="p-4 bg-[#F4F3F0] border border-[#E5E5E3] rounded-[6px] text-center space-y-1">
+          <p className="text-[14px] font-semibold text-[#141414]">
+            This combo is not available for any single phone model
+          </p>
+          <p className="text-[12px] text-[#6B6B6B]">
+            Its component items are configured for different phone models.
+          </p>
+        </div>
+      ) : needsModelSelection && (
         <div className="space-y-2">
           <label
             htmlFor="phone-model-select"
@@ -388,7 +405,13 @@ export function ProductInfoPanel({
       {/* 6. Full-width Add to Bag (accent #B0521F, 52px; or in-store WhatsApp CTA for view-only combos)
           (Visible on desktop inside right column; mobile uses the sticky bar) */}
       <div ref={buyButtonRef} className="hidden lg:block pt-1">
-        {isCombo && !combosOrderable ? (
+        {isCombo && product.empty_intersection ? (
+          <div className="p-3.5 bg-[#F4F3F0] border border-[#E5E5E3] rounded-[6px] text-center">
+            <p className="text-[13px] font-medium text-[#6B6B6B]">
+              Unavailable for purchase
+            </p>
+          </div>
+        ) : isCombo && !combosOrderable ? (
           <div className="space-y-3">
             <div className="p-3.5 bg-[#F4F3F0] border border-[#E5E5E3] rounded-[6px] text-center">
               <p className="text-[14px] font-medium text-[#141414]">

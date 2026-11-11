@@ -78,6 +78,17 @@ export function isProductCompatibleWithPhone(product, savedPhone) {
   if (!savedPhone || !savedPhone.model) return true;
   if (!product) return true;
 
+  // Combos: check intersected compatible_models
+  if (product.is_combo || product.product_type === 'combo') {
+    if (product.empty_intersection === true) return false;
+    const models = product.compatible_models || [];
+    if (models.length > 0) {
+      const target = savedPhone.model.toLowerCase().trim();
+      return models.some((m) => m.toLowerCase().trim() === target);
+    }
+    return !product.has_restricted_components;
+  }
+
   // Non-case categories are universal accessories
   const cat = (product.category || '').toLowerCase().trim();
   const allCats = Array.isArray(product.categories)
@@ -306,7 +317,7 @@ export function normaliseCombo(
 
     let brand = prod.mobile_brand || item.mobile_brand || '';
     if (!brand || brand === 'Universal') {
-      const itemModels = (item.mobile_model || '').toLowerCase();
+      const itemModels = (item.mobile_model || prod.mobile_model || '').toLowerCase();
       if (itemModels.includes('iphone') || itemModels.includes('apple')) {
         brand = 'Apple';
       } else if (itemModels.includes('samsung') || itemModels.includes('galaxy')) {
@@ -315,6 +326,22 @@ export function normaliseCombo(
         brand = 'Universal';
       }
     }
+
+    // Extract item models cleanly
+    let rawModels = [];
+    if (Array.isArray(item.compatible_models) && item.compatible_models.length > 0) {
+      rawModels = item.compatible_models;
+    } else if (typeof item.mobile_model === 'string' && item.mobile_model.trim()) {
+      rawModels = parseModels(item.mobile_model);
+    } else if (Array.isArray(prod.compatible_models) && prod.compatible_models.length > 0) {
+      rawModels = prod.compatible_models;
+    } else if (typeof prod.mobile_model === 'string' && prod.mobile_model.trim()) {
+      rawModels = parseModels(prod.mobile_model);
+    }
+
+    const itemCompatibleModels = rawModels
+      .map((m) => (typeof m === 'string' ? m.trim() : ''))
+      .filter((m) => m && m.toLowerCase() !== 'universal' && m.toLowerCase() !== 'all');
 
     return {
       ...item,
@@ -326,8 +353,11 @@ export function normaliseCombo(
       category: catObj?.name || prod.category || 'Accessories',
       subcategory: subObj?.name || prod.subcategory || 'Accessories',
       mobile_brand: brand,
+      mobile_model: item.mobile_model || prod.mobile_model || (itemCompatibleModels[0] || null),
+      compatible_models: itemCompatibleModels,
       unit_price: item.unit_price ?? prod.selling_price ?? 0,
       image: item.image || prod.image_url || null,
+      qty_per_combo: item.qty_per_combo ?? item.unit_quantity ?? item.quantity ?? 1,
     };
   });
 
@@ -335,25 +365,12 @@ export function normaliseCombo(
   const categoryNameSet = new Set();
   const subcategoryIdSet = new Set();
   const subcategoryNameSet = new Set();
-  const brandSet = new Set();
-  const modelSet = new Set();
 
   items.forEach((it) => {
     if (it.category_id) categoryIdSet.add(it.category_id);
     if (it.category && it.category !== 'Other') categoryNameSet.add(it.category);
     if (it.subcategory_id) subcategoryIdSet.add(it.subcategory_id);
     if (it.subcategory && it.subcategory !== 'Other') subcategoryNameSet.add(it.subcategory);
-    if (it.mobile_brand && it.mobile_brand !== 'Universal') brandSet.add(it.mobile_brand);
-
-    const models = parseModels(it.mobile_model);
-    models.forEach((m) => {
-      modelSet.add(m);
-      if (m.toLowerCase().includes('iphone') || m.toLowerCase().includes('apple')) {
-        brandSet.add('Apple');
-      } else if (m.toLowerCase().includes('samsung') || m.toLowerCase().includes('galaxy')) {
-        brandSet.add('Samsung');
-      }
-    });
   });
 
   categoryNameSet.add('Combos');
@@ -361,9 +378,68 @@ export function normaliseCombo(
   const category_ids = Array.from(categoryIdSet);
   const subcategories = Array.from(subcategoryNameSet);
   const subcategory_ids = Array.from(subcategoryIdSet);
-  const compatible_models = Array.from(modelSet);
-  const brands = Array.from(brandSet);
 
+  // ── Compute compatible_models as the INTERSECTION of components' model lists ──
+  // Rule: A component with no model list (i.e. universal) does not restrict the combo.
+  const restrictedLists = [];
+
+  items.forEach((it) => {
+    if (Array.isArray(it.compatible_models) && it.compatible_models.length > 0) {
+      restrictedLists.push(it.compatible_models);
+    }
+  });
+
+  let compatible_models = [];
+  let emptyIntersection = false;
+  const hasRestrictedComponents = restrictedLists.length > 0;
+
+  if (restrictedLists.length === 0) {
+    // All components are universal
+    compatible_models = [];
+    emptyIntersection = false;
+  } else if (restrictedLists.length === 1) {
+    // Only one component has model restrictions; universal components do not restrict it
+    compatible_models = [...restrictedLists[0]];
+    emptyIntersection = false;
+  } else {
+    // Two or more components have model lists: compute intersection case-insensitively
+    let current = [...restrictedLists[0]];
+    for (let i = 1; i < restrictedLists.length; i++) {
+      const nextSet = new Set(restrictedLists[i].map((m) => m.toLowerCase().trim()));
+      current = current.filter((m) => nextSet.has(m.toLowerCase().trim()));
+    }
+    compatible_models = current;
+    if (compatible_models.length === 0) {
+      emptyIntersection = true;
+    }
+  }
+
+  if (emptyIntersection) {
+    console.warn(
+      `[useProducts] Combo "${rawCombo.name}" (id: ${rawCombo.id}) has an empty model intersection across its components:`,
+      restrictedLists
+    );
+  }
+
+  const brandSet = new Set();
+  compatible_models.forEach((m) => {
+    const lower = m.toLowerCase();
+    if (lower.includes('iphone') || lower.includes('apple')) {
+      brandSet.add('Apple');
+    } else if (lower.includes('samsung') || lower.includes('galaxy')) {
+      brandSet.add('Samsung');
+    }
+  });
+
+  if (brandSet.size === 0) {
+    items.forEach((it) => {
+      if (it.mobile_brand && it.mobile_brand !== 'Universal') {
+        brandSet.add(it.mobile_brand);
+      }
+    });
+  }
+
+  const brands = Array.from(brandSet);
   const primaryBrand = brands.includes('Apple') ? 'Apple' : brands[0] || 'Universal';
 
   const primaryCategory = 'Combos';
@@ -487,6 +563,8 @@ export function normaliseCombo(
     brands: brands.length > 0 ? brands : [primaryBrand],
     mobile_model: compatible_models[0] || 'Universal',
     compatible_models,
+    empty_intersection: emptyIntersection,
+    has_restricted_components: hasRestrictedComponents,
     brand_compatibility: brands.length > 0 ? brands : [primaryBrand],
     color_variants: [],
     selling_price,

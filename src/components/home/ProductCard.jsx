@@ -72,18 +72,19 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
     (item) => item.productId === product.id || item.product_id === product.id
   );
 
+  const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
+  const isComboOrderable = isCombo ? Boolean(combosOrderable) : true;
+
   // Model compatibility check for quick-add
   const models = Array.isArray(product.compatible_models) ? product.compatible_models : [];
   const hasModelList = models.length > 0;
   const fitsEffectiveModel = Boolean(
     effectiveModel &&
+      !product.empty_intersection &&
       (models.length === 0 ||
         models.some((m) => (m || '').toLowerCase().trim() === effectiveModel.toLowerCase().trim()))
   );
-  const isDirectAdd = !hasModelList;
-
-  const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
-  const isComboOrderable = isCombo ? Boolean(combosOrderable) : true;
+  const isDirectAdd = !hasModelList && !product.empty_intersection;
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();

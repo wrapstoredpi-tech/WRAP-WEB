@@ -43,6 +43,19 @@ export function CompleteYourSetup({ currentProduct, selectedModel }) {
       (cartItems || []).map((item) => String(item.productId || item.id))
     );
 
+    // Rule: Never suggest a product that is already a component of the combo being viewed
+    const comboComponentIds = new Set();
+    const isCurrentCombo = Boolean(
+      currentProduct.is_combo || currentProduct.product_type === 'combo'
+    );
+    if (isCurrentCombo) {
+      (currentProduct.combo_items || currentProduct.items || []).forEach((c) => {
+        if (c.product_id) comboComponentIds.add(String(c.product_id).toLowerCase());
+        if (c.id) comboComponentIds.add(String(c.id).toLowerCase());
+        if (c.product_code) comboComponentIds.add(String(c.product_code).toLowerCase());
+      });
+    }
+
     const NON_PHONE_SUBCATS = [
       'watch strap',
       'watch cases',
@@ -58,7 +71,15 @@ export function CompleteYourSetup({ currentProduct, selectedModel }) {
       // 2. Not already in bag
       if (inCartIds.has(String(p.id))) return false;
 
-      // 3. Must be in stock
+      // 3. Never suggest a component of the combo being viewed
+      if (
+        comboComponentIds.has(String(p.id).toLowerCase()) ||
+        (p.product_id && comboComponentIds.has(String(p.product_id).toLowerCase()))
+      ) {
+        return false;
+      }
+
+      // 4. Must be in stock
       const isOutOfStock =
         p.stock_status === 'OUT_OF_STOCK' ||
         (p.available_stock !== undefined && p.available_stock === 0) ||
@@ -70,7 +91,7 @@ export function CompleteYourSetup({ currentProduct, selectedModel }) {
       if (NON_PHONE_SUBCATS.includes(sub)) return false;
 
       const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
-      if (isCombo && !isComboEligible(p)) return false;
+      if (isCombo && (!isComboEligible(p, effectiveModel) || p.empty_intersection)) return false;
 
       const categoryLower = (p.category || '').toLowerCase();
       const isAccessory =

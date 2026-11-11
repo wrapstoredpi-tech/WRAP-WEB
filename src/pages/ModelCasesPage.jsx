@@ -211,7 +211,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
           cat.includes('screen'));
 
       if (isCombo) {
-        if (isComboEligible(p) && (fitsThisModel || isUniversal)) {
+        if (isComboEligible(p, targetModel)) {
           combos.push(p);
         }
       } else if (isCase && fitsThisModel) {

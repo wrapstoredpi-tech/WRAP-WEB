@@ -61,13 +61,25 @@ export function ProductDetailPage({ onAddToCart }) {
   // Page title and meta (Rule 8: product "<Name> for <models> | WrapStore" plus OG image)
   useEffect(() => {
     if (product) {
+      const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
       const compList = Array.isArray(product.compatible_models) ? product.compatible_models : [];
-      const modelsStr = compList.length > 0 ? compList.slice(0, 3).join(', ') : 'All Devices';
-      const title = `${product.name} for ${modelsStr} | WrapStore`;
-      const description =
-        product.description && product.description.length >= 20
-          ? product.description
-          : `${product.name} available at WrapStore Dharmapuri.`;
+      let title;
+      let description;
+
+      if (isCombo && product.empty_intersection) {
+        console.warn(
+          `[ProductDetailPage] Combo "${product.name}" (id: ${product.id}) has an empty model intersection across its components - this combo is not available for any single phone model.`
+        );
+        title = `${product.name} | WrapStore`;
+        description = 'This combo is not available for any single phone model.';
+      } else {
+        const modelsStr = compList.length > 0 ? compList.slice(0, 3).join(', ') : 'All Devices';
+        title = `${product.name} for ${modelsStr} | WrapStore`;
+        description =
+          product.description && product.description.length >= 20
+            ? product.description
+            : `${product.name} available at WrapStore Dharmapuri.`;
+      }
       const image =
         product.image_url || (Array.isArray(product.images) && product.images[0]) || '';
       setPageMeta({ title, description, image });

@@ -77,6 +77,29 @@ export function CompleteYourPurchaseSheet() {
       (cartItems || []).map((item) => String(item.productId || item.id || item.product_id))
     );
 
+    // Rule: Never suggest a product that is already a component of the combo being added or in bag
+    const comboComponentIds = new Set();
+    const isAddedCombo = Boolean(
+      addedItem?.product?.is_combo || addedItem?.product?.product_type === 'combo'
+    );
+    if (isAddedCombo) {
+      (addedItem.product.combo_items || addedItem.product.items || []).forEach((c) => {
+        if (c.product_id) comboComponentIds.add(String(c.product_id).toLowerCase());
+        if (c.id) comboComponentIds.add(String(c.id).toLowerCase());
+        if (c.product_code) comboComponentIds.add(String(c.product_code).toLowerCase());
+      });
+    }
+
+    (cartItems || []).forEach((item) => {
+      if (item.is_combo || Array.isArray(item.combo_items) || Array.isArray(item.components)) {
+        (item.combo_items || item.components || []).forEach((c) => {
+          if (c.product_id) comboComponentIds.add(String(c.product_id).toLowerCase());
+          if (c.id) comboComponentIds.add(String(c.id).toLowerCase());
+          if (c.product_code) comboComponentIds.add(String(c.product_code).toLowerCase());
+        });
+      }
+    });
+
     const NON_PHONE_SUBCATS = [
       'watch strap',
       'watch cases',
@@ -92,14 +115,22 @@ export function CompleteYourPurchaseSheet() {
       // 2. Not already in cart
       if (inCartIds.has(String(p.id))) return false;
 
-      // 3. Must be in stock
+      // 3. Never suggest a component of the combo being added or in bag
+      if (
+        comboComponentIds.has(String(p.id).toLowerCase()) ||
+        (p.product_id && comboComponentIds.has(String(p.product_id).toLowerCase()))
+      ) {
+        return false;
+      }
+
+      // 4. Must be in stock
       const isOutOfStock =
         p.stock_status === 'OUT_OF_STOCK' ||
         (p.available_stock !== undefined && p.available_stock === 0) ||
         (p.current_stock !== undefined && p.current_stock === 0);
       if (isOutOfStock) return false;
 
-      // 4. Must be active and visible
+      // 5. Must be active and visible
       if (p.is_active === false || p.online_visible === false) return false;
 
       const sub = (p.subcategory || '').toLowerCase();
@@ -107,7 +138,7 @@ export function CompleteYourPurchaseSheet() {
       if (NON_PHONE_SUBCATS.includes(sub)) return false;
 
       const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
-      if (isCombo && !isComboEligible(p)) return false;
+      if (isCombo && (!isComboEligible(p, activeModel) || p.empty_intersection)) return false;
 
       // 5. Must be an accessory or combo
       const categoryLower = (p.category || '').toLowerCase();

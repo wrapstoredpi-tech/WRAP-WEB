@@ -337,7 +337,7 @@ export function getLiveAccessorySubcategories(products = [], subcategories = [])
  * 3. stock_status !== 'OUT_OF_STOCK'
  * 4. (available_stock ?? current_stock ?? 0) > 0
  */
-export function isComboEligible(combo) {
+export function isComboEligible(combo, targetModel = null) {
   if (!combo) return false;
   if (!combo.is_combo && combo.product_type !== 'combo') return false;
   if (combo.is_active === false || combo.online_visible === false) return false;
@@ -345,6 +345,21 @@ export function isComboEligible(combo) {
 
   const stock = combo.available_stock ?? combo.current_stock ?? 0;
   if (stock <= 0) return false;
+
+  // If the combo has an empty model intersection across its components, it fits no single phone model
+  if (combo.empty_intersection === true) {
+    return false;
+  }
+
+  // Model-specific check: if targetModel is provided, combo must be compatible with it
+  if (targetModel) {
+    if (combo.empty_intersection === true) return false;
+    const compModels = (combo.compatible_models || []).map((m) => (m || '').toLowerCase().trim());
+    const target = String(targetModel).toLowerCase().trim();
+    if (!compModels.includes(target)) {
+      return false;
+    }
+  }
 
   return true;
 }
