@@ -20,10 +20,12 @@ export function ProductDetailPage({ onAddToCart }) {
 
   const product = products.find((p) => p.id === id || p.product_id === id);
 
+  const isCombo = Boolean(product?.is_combo || product?.product_type === 'combo');
   const compatibleModels = product?.compatible_models || [];
   const isCase =
-    (product?.category || '').toLowerCase().includes('case') ||
-    (Array.isArray(product?.categories) && product.categories.some((c) => c.toLowerCase().includes('case')));
+    !isCombo &&
+    ((product?.category || '').toLowerCase().includes('case') ||
+      (Array.isArray(product?.categories) && product.categories.some((c) => c.toLowerCase().includes('case'))));
   const needsModelSelection = isCase || compatibleModels.length > 0;
 
   // Selected phone model state:
@@ -157,15 +159,23 @@ export function ProductDetailPage({ onAddToCart }) {
 
       {/* ───────────────────────────────────────────────────────────────────────────
           DESKTOP BREADCRUMBS:
-          WrapStore / Cases / <Brand> / <Model> / <Product Name>
+          For combos: Home / Combos / <name>
+          For cases: Home / Cases / <Brand> / <Model> / <Product Name>
+          For accessories: Home / <Category> / <Subcategory> / <Product Name>
           ─────────────────────────────────────────────────────────────────────────── */}
       <nav aria-label="Breadcrumb" className="hidden lg:flex text-[13px] text-[#6B6B6B] items-center gap-2 flex-wrap px-4 sm:px-0">
         <Link to="/" className="hover:text-[#141414] transition-colors">
-          WrapStore
+          Home
         </Link>
         <span className="text-[#E5E5E3] select-none">/</span>
 
-        {isCase ? (
+        {isCombo ? (
+          <>
+            <Link to="/combos" className="hover:text-[#141414] transition-colors">
+              Combos
+            </Link>
+          </>
+        ) : isCase ? (
           <>
             <Link to="/cases" className="hover:text-[#141414] transition-colors">
               Cases

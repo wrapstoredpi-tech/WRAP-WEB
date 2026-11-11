@@ -6,6 +6,7 @@ import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
 import { groupProductsByDesign, isComboEligible, getComboImage } from '../../lib/models';
+import { combosOrderable } from '../../config/store';
 
 /**
  * CompleteYourSetup Component
@@ -126,7 +127,7 @@ export function CompleteYourSetup({ currentProduct, selectedModel }) {
 
   const handleQuickAdd = (p) => {
     const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
-    const isOrderable = p.combosOrderable !== false && p.orderable !== false;
+    const isOrderable = isCombo ? Boolean(combosOrderable) : true;
     const compModels = Array.isArray(p.compatible_models) ? p.compatible_models : [];
     const isUniversal = compModels.length === 0;
 
@@ -178,7 +179,7 @@ export function CompleteYourSetup({ currentProduct, selectedModel }) {
           const compModels = Array.isArray(p.compatible_models) ? p.compatible_models : [];
           const isUniversal = compModels.length === 0;
           const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
-          const isOrderable = p.combosOrderable !== false && p.orderable !== false;
+          const isOrderable = isCombo ? Boolean(combosOrderable) : true;
 
           let buttonText = 'Add';
           let isDirectAdd = true;

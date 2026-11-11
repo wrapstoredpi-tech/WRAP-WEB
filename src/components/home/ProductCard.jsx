@@ -9,6 +9,7 @@ import { usePhoneContext } from '../../context/PhoneContext';
 import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
 import { ComboThumbnail } from '../cart/ComboThumbnail';
 import { getComboImage, modelToSlug } from '../../lib/models';
+import { combosOrderable } from '../../config/store';
 
 export function ProductCard({ product, outlinedButton = false, contextModel = null }) {
   const navigate = useNavigate();
@@ -81,6 +82,9 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
   );
   const isDirectAdd = !hasModelList;
 
+  const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
+  const isComboOrderable = isCombo ? Boolean(combosOrderable) : true;
+
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -93,7 +97,11 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
     e.stopPropagation();
     e.preventDefault();
 
-    if (product.is_combo) {
+    if (isCombo) {
+      if (!isComboOrderable) {
+        navigate(productUrl);
+        return;
+      }
       if (fitsEffectiveModel) {
         addItem(product, 1, effectiveModel);
         openSheet({ product, quantity: 1, selectedModel: effectiveModel });
@@ -197,7 +205,7 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
           </div>
 
           {/* Quick-Add Button */}
-          {isInBag ? (
+          {isInBag && (!isCombo || isComboOrderable) ? (
             <div className="w-full py-2 px-3 bg-[#F4F3F0] text-[#6B6B6B] text-[12px] font-medium rounded-[6px] text-center flex items-center justify-center gap-1.5 border border-[#E5E5E3]">
               <Check className="w-3.5 h-3.5 text-[#141414]" />
               <span>In bag</span>
@@ -212,7 +220,20 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
                   : 'bg-[#141414] hover:bg-[#B0521F] text-white'
               }`}
             >
-              {isDirectAdd ? (
+              {isCombo ? (
+                isComboOrderable ? (
+                  fitsEffectiveModel ? (
+                    <>
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>Add for {effectiveModel}</span>
+                    </>
+                  ) : (
+                    <span>View combo</span>
+                  )
+                ) : (
+                  <span>View</span>
+                )
+              ) : isDirectAdd ? (
                 <>
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Add to bag</span>
@@ -222,8 +243,6 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Add for {effectiveModel}</span>
                 </>
-              ) : product.is_combo ? (
-                <span>View combo</span>
               ) : (
                 <span>Choose model</span>
               )}

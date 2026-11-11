@@ -1,5 +1,8 @@
+export const combosOrderable = false;
+
 export const store = {
   name: 'WrapStore',
+  combosOrderable: false,
   addressLines: ['Railway Station Rd', 'Dharmapuri, Tamil Nadu 636701', 'India'],
   addressShort: 'Railway Station Rd, Dharmapuri',
   phoneDisplay: '+91 81227 47947',

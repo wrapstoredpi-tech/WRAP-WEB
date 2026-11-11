@@ -16,6 +16,7 @@ import { formatINR } from '../../lib/currency';
 import { useCart } from '../../context/CartContext';
 import { useFavorites } from '../../context/FavoritesContext';
 import { normaliseCombo } from '../../lib/useProducts';
+import { combosOrderable } from '../../config/store';
 
 /**
  * Category Filter Pills matching the approved design specification
@@ -268,6 +269,11 @@ export function FeaturedProductCard({
     e.stopPropagation();
     e.preventDefault();
     if (isOutOfStock) return;
+    const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
+    if (isCombo && !combosOrderable) {
+      navigate(`/product/${product.id}`);
+      return;
+    }
     if (isProductAdded) {
       navigate('/cart');
       return;

@@ -9,6 +9,7 @@ import {
   modelToSlug,
   groupProductsByDesign,
   isComboEligible,
+  getComboImage,
 } from '../lib/models';
 import { ProductCard } from '../components/home/ProductCard';
 import { setPageMeta } from '../lib/seo';
@@ -195,21 +196,26 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
       const fitsThisModel = compModels.includes(targetModel);
       const isUniversal = compModels.length === 0 || compModels.includes('universal');
 
+      const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
       const cat = (p.category || '').toLowerCase();
       const sub = (p.subcategory || '').toLowerCase();
-      const isCase = cat.includes('case') || sub.includes('case') || sub.includes('iphone') || sub.includes('samsung');
-      const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
+      const isCase =
+        !isCombo &&
+        (cat.includes('case') || sub.includes('case') || sub.includes('iphone') || sub.includes('samsung'));
       const isScreen =
-        sub.includes('glass') ||
-        sub.includes('screen') ||
-        sub.includes('lens') ||
-        cat.includes('glass') ||
-        cat.includes('screen');
+        !isCombo &&
+        (sub.includes('glass') ||
+          sub.includes('screen') ||
+          sub.includes('lens') ||
+          cat.includes('glass') ||
+          cat.includes('screen'));
 
-      if (isCase && fitsThisModel) {
+      if (isCombo) {
+        if (isComboEligible(p) && (fitsThisModel || isUniversal)) {
+          combos.push(p);
+        }
+      } else if (isCase && fitsThisModel) {
         cases.push(p);
-      } else if (isCombo && isComboEligible(p) && (fitsThisModel || isUniversal)) {
-        combos.push(p);
       } else if (isScreen && (fitsThisModel || isUniversal)) {
         screens.push(p);
       }
@@ -232,6 +238,9 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
     const getThumbnail = (item) => {
       if (!item) return '/subcategories/iphone.jpg';
+      if (item.is_combo || item.product_type === 'combo') {
+        return getComboImage(item);
+      }
       return item.image_url || (Array.isArray(item.images) && item.images[0]) || '/subcategories/iphone.jpg';
     };
 
@@ -343,7 +352,6 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
       return groupProductsByDesign(filtered);
     };
 
-    let grouped;
     if (activeChip === 'all' && !isAccessoryPage) {
       // Per Item 4: cases first, then screen protection, then combos; sorting applies within each group
       const casesGrouped = filterAndSortGroup(casesList);

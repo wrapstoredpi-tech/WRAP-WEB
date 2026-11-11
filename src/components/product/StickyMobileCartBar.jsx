@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, ArrowRight } from 'lucide-react';
+import { ShoppingBag, ArrowRight, MessageCircle } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
 import { formatINR } from '../../lib/currency';
+import { combosOrderable, store } from '../../config/store';
 
 export function StickyMobileCartBar({
   product,
@@ -71,6 +72,33 @@ export function StickyMobileCartBar({
   };
 
   const sellingPrice = Number(product.selling_price) || 0;
+  const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
+
+  if (isCombo && !combosOrderable) {
+    return (
+      <aside
+        aria-label="Inquire on WhatsApp"
+        className="fixed bottom-0 inset-x-0 z-40 bg-[#FAFAF9]/95 backdrop-blur-md border-t border-[#E5E5E3] p-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden shadow-lg select-none"
+      >
+        <div className="w-full max-w-[1280px] mx-auto space-y-1.5">
+          <p className="text-center text-[12px] text-[#6B6B6B] font-medium">
+            Coming soon online – available in store
+          </p>
+          <a
+            href={`https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(
+              `Hi WrapStore, I would like to inquire about the ${product.name} combo.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full h-[52px] px-6 text-[15px] font-semibold rounded-[6px] flex items-center justify-center gap-2 bg-[#141414] hover:bg-[#B0521F] text-white transition-all shadow-sm"
+          >
+            <MessageCircle className="w-4.5 h-4.5" />
+            <span>Ask on WhatsApp</span>
+          </a>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside

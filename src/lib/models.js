@@ -336,7 +336,6 @@ export function getLiveAccessorySubcategories(products = [], subcategories = [])
  * 2. is_active !== false
  * 3. stock_status !== 'OUT_OF_STOCK'
  * 4. (available_stock ?? current_stock ?? 0) > 0
- * 5. combosOrderable !== false && orderable !== false
  */
 export function isComboEligible(combo) {
   if (!combo) return false;
@@ -346,7 +345,6 @@ export function isComboEligible(combo) {
 
   const stock = combo.available_stock ?? combo.current_stock ?? 0;
   if (stock <= 0) return false;
-  if (combo.combosOrderable === false || combo.orderable === false) return false;
 
   return true;
 }

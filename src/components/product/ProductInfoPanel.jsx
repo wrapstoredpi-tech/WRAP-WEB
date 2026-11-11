@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Truck,
   Check,
+  MessageCircle,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
@@ -15,6 +16,7 @@ import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
 import { resolveColorStyle, getValidColors } from '../../lib/colors';
 import { policies } from '../../config/policies';
+import { combosOrderable, store } from '../../config/store';
 import { CompleteYourSetup } from './CompleteYourSetup';
 import { ProductAccordions } from './ProductAccordions';
 
@@ -54,6 +56,18 @@ export function ProductInfoPanel({
   const discountPercent = hasDiscount ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
 
   const compatibleModels = product.compatible_models || [];
+  const isCombo = Boolean(product?.is_combo || product?.product_type === 'combo');
+
+  const comboItems = useMemo(() => {
+    if (!isCombo) return [];
+    if (Array.isArray(product?.combo_items) && product.combo_items.length > 0) {
+      return product.combo_items;
+    }
+    if (Array.isArray(product?.items) && product.items.length > 0) {
+      return product.items;
+    }
+    return [];
+  }, [isCombo, product]);
 
   // ─── COLOUR SIBLINGS ────────────────────────────────────────────────────────
   // Products with the same name (trimmed, case-insensitive) in the same subcategory
@@ -230,9 +244,9 @@ export function ProductInfoPanel({
       )}
 
       {/* 4. COLOUR: Swatches for every colour sibling with the name under each
-          (the current one has an accent ring; tapping another opens that sibling's page,
+          (Hidden for combos; the current one has an accent ring; tapping another opens that sibling's page,
           keeping the chosen model; sold-out siblings are crossed out) */}
-      {colourSiblings.length > 0 && (
+      {!isCombo && colourSiblings.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 text-[13px]">
             <span className="text-[#6B6B6B]">Colour:</span>
@@ -297,6 +311,69 @@ export function ProductInfoPanel({
         </div>
       )}
 
+      {/* Combo: Included in this combo list */}
+      {isCombo && comboItems.length > 0 && (
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[14px] font-semibold text-[#141414] tracking-tight">
+              Included in this combo
+            </h3>
+            <span className="text-[12px] text-[#6B6B6B]">
+              {comboItems.length} {comboItems.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
+
+          <div className="border border-[#E5E5E3] rounded-[6px] bg-white divide-y divide-[#E5E5E3] overflow-hidden">
+            {comboItems.map((c, idx) => {
+              const qty = Number(c.qty_per_combo ?? c.unit_quantity ?? c.quantity ?? 1) || 1;
+              const name = c.product_name || c.name || 'Component item';
+              const photo = c.image || c.image_url || '/subcategories/iphone.jpg';
+              const isModelSpecific =
+                (c.mobile_model && c.mobile_model !== 'Universal') ||
+                (c.category || '').toLowerCase().includes('case') ||
+                (c.subcategory || '').toLowerCase().includes('iphone') ||
+                (c.subcategory || '').toLowerCase().includes('samsung');
+              const modelDisplay = isModelSpecific
+                ? (selectedModel || c.mobile_model || 'Universal')
+                : null;
+
+              return (
+                <div key={c.product_id || idx} className="p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-12 h-12 rounded-[6px] bg-[#F4F3F0] border border-[#E5E5E3] overflow-hidden shrink-0">
+                      <img
+                        src={photo}
+                        alt={name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = '/subcategories/iphone.jpg';
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-medium text-[#141414] leading-snug truncate">
+                        {name}
+                      </p>
+                      {modelDisplay && (
+                        <p className="text-[12px] text-[#6B6B6B] truncate pt-0.5">
+                          Model: {modelDisplay}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 pl-2 text-right">
+                    <span className="inline-block px-2 py-0.5 bg-[#F4F3F0] border border-[#E5E5E3] rounded-[4px] text-[12px] font-medium text-[#141414] tabular-nums">
+                      Qty: {qty}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 5. Stock line */}
       <div className="pt-0.5">
         {isOutOfStock ? (
@@ -308,41 +385,62 @@ export function ProductInfoPanel({
         )}
       </div>
 
-      {/* 6. Full-width Add to Bag (accent #B0521F, 52px; disabled until a model is chosen)
+      {/* 6. Full-width Add to Bag (accent #B0521F, 52px; or in-store WhatsApp CTA for view-only combos)
           (Visible on desktop inside right column; mobile uses the sticky bar) */}
       <div ref={buyButtonRef} className="hidden lg:block pt-1">
-        <button
-          type="button"
-          disabled={isOutOfStock || (needsModelSelection && !isModelSelected)}
-          onClick={handleAddToCart}
-          className={`w-full h-[52px] min-h-[52px] rounded-[6px] text-[15px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
-            isOutOfStock
-              ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
-              : needsModelSelection && !isModelSelected
-              ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
-              : showGoToCart
-              ? 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
-              : 'bg-[#B0521F] hover:bg-[#964317] text-white active:scale-[0.99]'
-          }`}
-        >
-          {isAdding ? (
-            <span>Adding to bag...</span>
-          ) : isOutOfStock ? (
-            <span>Out of stock</span>
-          ) : needsModelSelection && !isModelSelected ? (
-            <span>Select a phone model above</span>
-          ) : showGoToCart ? (
-            <>
-              <span>Go to Bag</span>
-              <ArrowRight className="w-4 h-4" />
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="w-4 h-4" />
-              <span>Add to Bag</span>
-            </>
-          )}
-        </button>
+        {isCombo && !combosOrderable ? (
+          <div className="space-y-3">
+            <div className="p-3.5 bg-[#F4F3F0] border border-[#E5E5E3] rounded-[6px] text-center">
+              <p className="text-[14px] font-medium text-[#141414]">
+                Coming soon online – available in store
+              </p>
+            </div>
+            <a
+              href={`https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(
+                `Hi WrapStore, I would like to inquire about the ${product.name} combo.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full h-[52px] min-h-[52px] rounded-[6px] text-[15px] font-semibold bg-[#141414] hover:bg-[#B0521F] text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              <MessageCircle className="w-4.5 h-4.5" />
+              <span>Ask on WhatsApp</span>
+            </a>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={isOutOfStock || (needsModelSelection && !isModelSelected)}
+            onClick={handleAddToCart}
+            className={`w-full h-[52px] min-h-[52px] rounded-[6px] text-[15px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+              isOutOfStock
+                ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
+                : needsModelSelection && !isModelSelected
+                ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
+                : showGoToCart
+                ? 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
+                : 'bg-[#B0521F] hover:bg-[#964317] text-white active:scale-[0.99]'
+            }`}
+          >
+            {isAdding ? (
+              <span>Adding to bag...</span>
+            ) : isOutOfStock ? (
+              <span>Out of stock</span>
+            ) : needsModelSelection && !isModelSelected ? (
+              <span>Select a phone model above</span>
+            ) : showGoToCart ? (
+              <>
+                <span>Go to Bag</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add to Bag</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* 7. The delivery line from policies config */}

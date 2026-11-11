@@ -7,6 +7,7 @@ import { useProductsContext } from '../../context/ProductsContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
 import { groupProductsByDesign, isComboEligible, getComboImage } from '../../lib/models';
+import { combosOrderable } from '../../config/store';
 
 /**
  * CompleteYourPurchaseSheet
@@ -206,7 +207,7 @@ export function CompleteYourPurchaseSheet() {
     const isUniversal =
       compModels.length === 0 || compModels.includes('Universal') || p.is_universal === true;
     const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
-    const isOrderable = p.combosOrderable !== false && p.orderable !== false;
+    const isOrderable = isCombo ? Boolean(combosOrderable) : true;
 
     if (isCombo && !isOrderable) {
       closeSheet();
@@ -406,7 +407,7 @@ export function CompleteYourPurchaseSheet() {
                       const isUniversal =
                         compModels.length === 0 || compModels.includes('Universal') || rec.is_universal === true;
                       const isCombo = Boolean(rec.is_combo || rec.product_type === 'combo');
-                      const isOrderable = rec.combosOrderable !== false && rec.orderable !== false;
+                      const isOrderable = isCombo ? Boolean(combosOrderable) : true;
 
                       let buttonText = 'Add';
                       let isDirectAdd = true;
