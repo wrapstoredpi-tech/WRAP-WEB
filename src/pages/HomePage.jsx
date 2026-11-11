@@ -15,6 +15,7 @@ import { deriveFilterOptions, PRICE_RANGES } from '../lib/useProducts';
 import { fetchBestSellersMap } from '../lib/productRowAdapter';
 import { selectDealOfTheDay } from '../lib/dealFeaturedAdapter';
 import { setPageMeta } from '../lib/seo';
+import { isComboEligible } from '../lib/models';
 import { ChevronRight } from 'lucide-react';
 
 const INITIAL_FILTERS = {
@@ -64,12 +65,7 @@ export function HomePage() {
   }, [liveProducts]);
 
   const comboProducts = useMemo(() => {
-    return liveProducts.filter(
-      (p) =>
-        (p.is_combo || p.product_type === 'combo') &&
-        p.stock_status !== 'OUT_OF_STOCK' &&
-        (p.available_stock ?? p.current_stock ?? 0) > 0
-    );
+    return liveProducts.filter(isComboEligible);
   }, [liveProducts]);
 
   const featuredProducts = useMemo(() => {
@@ -373,7 +369,7 @@ export function HomePage() {
         {/* Page SEO title, meta description, OG tags */}
         <HomeSEO />
 
-        <main className="flex-1 w-full bg-[#FAFAF9] pb-0">
+        <main className="flex-1 w-full bg-[#FAFAF9] pb-24 sm:pb-0">
           <div className="space-y-12 sm:space-y-16 lg:space-y-20">
             
             {/* 1. HERO: Full-bleed carousel from hero_slides table */}
@@ -405,8 +401,8 @@ export function HomePage() {
               </div>
             )}
 
-            {/* 5. BETTER TOGETHER (combos): Row of combo cards (hidden if < 4 items) */}
-            {comboProducts.length >= 4 && (
+            {/* 5. BETTER TOGETHER (combos): Row of combo cards (Rendered if eligible combos exist) */}
+            {comboProducts.length > 0 && (
               <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
                 <ProductScrollRow
                   title="Better together"

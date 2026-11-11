@@ -217,9 +217,13 @@ export function ProductInfoPanel({
               <CheckCircle2 className="w-3.5 h-3.5 text-[#141414]" />
               <span>Compatible with {selectedModel}</span>
             </div>
-          ) : (
+          ) : modelError ? (
             <p className="text-[12px] text-[#B0521F] font-normal pt-0.5">
               Please choose your phone model to add to bag.
+            </p>
+          ) : (
+            <p className="text-[12px] text-[#6B6B6B] font-normal pt-0.5">
+              Choose your model to add to bag
             </p>
           )}
         </div>

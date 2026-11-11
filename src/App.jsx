@@ -40,6 +40,7 @@ const StaticPage = lazy(() => import('./pages/StaticPage').then((m) => ({ defaul
 const ShippingPolicyPage = lazy(() => import('./pages/ShippingPolicyPage').then((m) => ({ default: m.ShippingPolicyPage })));
 const ReturnsPolicyPage = lazy(() => import('./pages/ReturnsPolicyPage').then((m) => ({ default: m.ReturnsPolicyPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 function RouteFallback() {
   return (
@@ -176,8 +177,8 @@ function AppContent() {
           <Route path="/terms-and-conditions" element={<StaticPage pageKey="terms" />} />
           <Route path="/terms" element={<StaticPage pageKey="terms" />} />
 
-          {/* Catch-all redirect to Home */}
-          <Route path="*" element={<HomePage />} />
+          {/* 404 Catch-all for unknown routes */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
 

@@ -80,10 +80,10 @@ export function StickyMobileCartBar({
       <div className="w-full max-w-[1280px] mx-auto">
         <button
           type="button"
-          disabled={isOutOfStock || isModelDisabled}
+          disabled={isOutOfStock}
           onClick={handleClick}
           className={`w-full h-[52px] px-6 text-[15px] font-semibold rounded-[6px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm ${
-            isOutOfStock || isModelDisabled
+            isOutOfStock
               ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
               : isInCart
               ? 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
@@ -92,8 +92,6 @@ export function StickyMobileCartBar({
         >
           {isOutOfStock ? (
             <span>Out of stock</span>
-          ) : isModelDisabled ? (
-            <span>Select a phone model above</span>
           ) : isInCart ? (
             <>
               <span>Go to Bag</span>

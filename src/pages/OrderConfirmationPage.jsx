@@ -6,6 +6,7 @@ import { groupOrderItems, CompactComboComponentList } from '../components/cart/O
 import { store } from '../config/store';
 import { policies, getDeliveryLine } from '../config/policies';
 import { supabase } from '../lib/supabase';
+import { setPageMeta } from '../lib/seo';
 
 // Lazy-load the scene for performance & bundle splitting
 const OrderConfirmedScene = lazy(() => import('../components/order/OrderConfirmedScene'));
@@ -55,6 +56,14 @@ export function OrderConfirmationPage() {
       } catch (e) {}
     }
   }, [order]);
+
+  // Set document title
+  useEffect(() => {
+    setPageMeta({
+      title: 'Order confirmed | WrapStore',
+      description: 'Your WrapStore order has been confirmed.',
+    });
+  }, []);
 
   // Screen reader initial announcement
   useEffect(() => {
@@ -235,8 +244,8 @@ export function OrderConfirmationPage() {
 
           {/* 4-Step Live Status Line: Order placed, Packed, Shipped, Delivered */}
           <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-4 sm:p-5">
-            <p className="text-[11px] font-bold text-[#737373] uppercase tracking-wider mb-4">
-              Order Fulfillment Status
+            <p className="text-[12px] font-semibold text-[#141414] mb-4">
+              Order status
             </p>
 
             <div className="relative flex items-center justify-between">
@@ -302,7 +311,7 @@ export function OrderConfirmationPage() {
           {/* Order Number & Copy Button */}
           <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[12px] text-[#737373]">Order Reference</p>
+              <p className="text-[12px] text-[#737373]">Order reference</p>
               <p className="text-[16px] font-bold text-[#141414] tracking-wide tabular-nums">
                 {orderNumber}
               </p>
@@ -361,7 +370,7 @@ export function OrderConfirmationPage() {
           {groupedItems.length > 0 && (
             <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-4 sm:p-5 space-y-3">
               <h2 className="text-[14px] font-bold text-[#141414] pb-2 border-b border-[#E5E5E3]">
-                Items Ordered ({groupedItems.length})
+                Items ordered
               </h2>
 
               <div className="divide-y divide-[#E5E5E3] max-h-[300px] overflow-y-auto pr-1">
@@ -410,7 +419,7 @@ export function OrderConfirmationPage() {
           {/* Estimated Delivery */}
           <div className="p-4 bg-white border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#6B6B6B] space-y-1.5">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-[#141414]">Estimated Delivery</p>
+              <p className="font-semibold text-[#141414]">Estimated delivery</p>
               
             </div>
             {orderState ? (
@@ -431,7 +440,7 @@ export function OrderConfirmationPage() {
           {/* Delivery Address Preview */}
           {order?.delivery && (
             <div className="p-4 bg-white border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#737373] space-y-1">
-              <p className="font-semibold text-[#141414]">Delivery Address</p>
+              <p className="font-semibold text-[#141414]">Delivery address</p>
               <p>{order.delivery.address}</p>
               <p>{order.delivery.city}{order.delivery.state ? `, ${order.delivery.state}` : ''} {order.delivery.pincode ? `- ${order.delivery.pincode}` : ''}</p>
             </div>

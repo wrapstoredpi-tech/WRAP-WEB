@@ -27,21 +27,32 @@ export function ProductDetailPage({ onAddToCart }) {
   const needsModelSelection = isCase || compatibleModels.length > 0;
 
   // Selected phone model state:
-  // 1. URL search param ?model=...
-  // 2. Prefilled from savedPhone if compatible
-  // 3. Otherwise empty prompt
+  // Priority: 1. URL search param ?model=..., 2. savedPhone if compatible, 3. Empty prompt
+  // (Must NOT modify savedPhone)
   const paramModel = searchParams.get('model');
 
-  const [selectedModel, setSelectedModel] = useState(() => {
-    if (paramModel && (!compatibleModels.length || compatibleModels.includes(paramModel))) {
-      return paramModel;
+  const resolveCompatibleModel = (input, list = []) => {
+    if (!input || !list.length) return input || '';
+    const target = modelToSlug(input);
+    const found = list.find(
+      (m) => modelToSlug(m) === target || (m || '').toLowerCase().trim() === input.toLowerCase().trim()
+    );
+    return found || null;
+  };
+
+  const initialModel = useMemo(() => {
+    if (paramModel) {
+      const match = resolveCompatibleModel(paramModel, compatibleModels);
+      if (match) return match;
     }
-    if (savedPhone?.model && (!compatibleModels.length || compatibleModels.includes(savedPhone.model))) {
-      return savedPhone.model;
+    if (savedPhone?.model) {
+      const match = resolveCompatibleModel(savedPhone.model, compatibleModels);
+      if (match) return match;
     }
     return '';
-  });
+  }, [paramModel, savedPhone?.model, compatibleModels]);
 
+  const [selectedModel, setSelectedModel] = useState(initialModel);
   const [modelError, setModelError] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -65,16 +76,10 @@ export function ProductDetailPage({ onAddToCart }) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     if (product) {
-      if (paramModel && (!compatibleModels.length || compatibleModels.includes(paramModel))) {
-        setSelectedModel(paramModel);
-      } else if (savedPhone?.model && compatibleModels.includes(savedPhone.model)) {
-        setSelectedModel(savedPhone.model);
-      } else {
-        setSelectedModel('');
-      }
+      setSelectedModel(initialModel);
       setModelError(false);
     }
-  }, [id, product, savedPhone?.model, paramModel]);
+  }, [id, product, initialModel]);
 
   // Listen for custom toast events (e.g. from share)
   useEffect(() => {

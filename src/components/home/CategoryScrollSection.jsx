@@ -75,7 +75,7 @@ export function CategoryScrollSection({
       modelTiles.push({
         id: 'find-your-model',
         name: 'Find your model',
-        caption: 'Browse all supported iPhone and Samsung series',
+        caption: 'Browse all iPhone and Samsung models',
         image: null,
         link: '/cases',
         isActionTile: true,
@@ -119,9 +119,9 @@ export function CategoryScrollSection({
   }, [liveCombosList]);
 
   // Determine available tabs
-  const hasCases = caseItems.length >= 4;
-  const hasAccessories = accessoryItems.length >= 4;
-  const hasCombos = comboItems.length >= 4;
+  const hasCases = caseItems.length > 0;
+  const hasAccessories = accessoryItems.length > 0;
+  const hasCombos = comboItems.length > 0;
 
   // Active items based on selected tab
   const activeItems = useMemo(() => {

@@ -43,6 +43,30 @@ function isGenuineOrder(ord) {
 export function AdminPage() {
   const { products, refetch } = useProductsContext();
 
+  // Enforce noindex robots meta for administrative portal
+  useEffect(() => {
+    let metaRobots = document.querySelector('meta[name="robots"]');
+    let created = false;
+    if (!metaRobots) {
+      metaRobots = document.createElement('meta');
+      metaRobots.setAttribute('name', 'robots');
+      document.head.appendChild(metaRobots);
+      created = true;
+    }
+    const prevContent = metaRobots.getAttribute('content');
+    metaRobots.setAttribute('content', 'noindex');
+
+    return () => {
+      if (created) {
+        metaRobots.remove();
+      } else if (prevContent) {
+        metaRobots.setAttribute('content', prevContent);
+      } else {
+        metaRobots.removeAttribute('content');
+      }
+    };
+  }, []);
+
   // Authentication State
   const [adminUser, setAdminUser] = useState(() => {
     try {

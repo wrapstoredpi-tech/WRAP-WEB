@@ -275,10 +275,10 @@ export function CompleteYourPurchaseSheet() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-[#141414] text-white px-4 py-2.5 rounded-[6px] shadow-lg flex items-center gap-3 animate-fadeIn text-[13px] font-medium pointer-events-auto select-none"
+          className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-white border border-[#E5E5E3] text-[#141414] px-4 py-2.5 rounded-[6px] shadow-lg flex items-center gap-3 animate-fadeIn text-[13px] font-medium pointer-events-auto select-none"
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4.5 h-4.5 text-[#16A34A] stroke-[2.2] shrink-0" />
+            <Check className="w-4 h-4 text-[#141414] stroke-[2.5] shrink-0" />
             <span>{toast.message || 'Added to bag'}</span>
           </div>
 
@@ -290,7 +290,7 @@ export function CompleteYourPurchaseSheet() {
                 closeSheet();
                 navigate('/cart');
               }}
-              className="ml-2 pl-3 border-l border-[#404040] text-[#FAFAF9] hover:text-[#B0521F] font-semibold underline underline-offset-2 transition-colors cursor-pointer"
+              className="ml-2 pl-3 border-l border-[#E5E5E3] text-[#B0521F] hover:underline font-semibold transition-colors cursor-pointer"
             >
               View bag
             </button>

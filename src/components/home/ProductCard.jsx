@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Check } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
 import { ColorSwatch, getValidColors } from '../ui/ColorSwatch';
@@ -8,9 +8,9 @@ import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
 import { ComboThumbnail } from '../cart/ComboThumbnail';
-import { getComboImage } from '../../lib/models';
+import { getComboImage, modelToSlug } from '../../lib/models';
 
-export function ProductCard({ product, outlinedButton = false }) {
+export function ProductCard({ product, outlinedButton = false, contextModel = null }) {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { items = [], addItem } = useCart();
@@ -31,6 +31,14 @@ export function ProductCard({ product, outlinedButton = false }) {
   const hasDiscount = mrp > sellingPrice;
   const discountPercent = hasDiscount ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
   const isFav = product.id ? isFavorite(product.id) : false;
+
+  // Model page context: on /cases/:brand/:model, contextModel counts as known model for quick-add
+  const effectiveModel = contextModel || savedPhone?.model || null;
+
+  // Real link URL carrying the model if contextModel is present
+  const productUrl = contextModel
+    ? `/product/${product.id}?model=${modelToSlug(contextModel)}`
+    : `/product/${product.id}`;
 
   // Sibling color dots with stock awareness (Rule 15)
   const siblingDots = useMemo(() => {
@@ -63,24 +71,22 @@ export function ProductCard({ product, outlinedButton = false }) {
     (item) => item.productId === product.id || item.product_id === product.id
   );
 
-  // Model compatibility check for quick-add (Rule 6)
-  // Products with compatible_models are model-specific (cases, tempered glass, lens protectors).
-  // Only products with NO model list add directly.
+  // Model compatibility check for quick-add
   const models = Array.isArray(product.compatible_models) ? product.compatible_models : [];
   const hasModelList = models.length > 0;
-  const fitsSavedPhone = Boolean(savedPhone?.model && models.includes(savedPhone.model));
+  const fitsEffectiveModel = Boolean(
+    effectiveModel &&
+      (models.length === 0 ||
+        models.some((m) => (m || '').toLowerCase().trim() === effectiveModel.toLowerCase().trim()))
+  );
   const isDirectAdd = !hasModelList;
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
     if (product.id) {
-      toggleFavorite(product.id, { returnUrl: `/product/${product.id}` });
+      toggleFavorite(product.id, { returnUrl: productUrl });
     }
-  };
-
-  const handleCardClick = () => {
-    navigate(`/product/${product.id}`);
   };
 
   const handleQuickAdd = (e) => {
@@ -88,11 +94,11 @@ export function ProductCard({ product, outlinedButton = false }) {
     e.preventDefault();
 
     if (product.is_combo) {
-      if (fitsSavedPhone) {
-        addItem(product, 1, savedPhone.model);
-        openSheet({ product, quantity: 1, selectedModel: savedPhone.model });
+      if (fitsEffectiveModel) {
+        addItem(product, 1, effectiveModel);
+        openSheet({ product, quantity: 1, selectedModel: effectiveModel });
       } else {
-        navigate(`/product/${product.id}`);
+        navigate(productUrl);
       }
       return;
     }
@@ -100,11 +106,11 @@ export function ProductCard({ product, outlinedButton = false }) {
     if (isDirectAdd) {
       addItem(product, 1, 'Universal');
       openSheet({ product, quantity: 1, selectedModel: 'Universal' });
-    } else if (fitsSavedPhone) {
-      addItem(product, 1, savedPhone.model);
-      openSheet({ product, quantity: 1, selectedModel: savedPhone.model });
+    } else if (fitsEffectiveModel) {
+      addItem(product, 1, effectiveModel);
+      openSheet({ product, quantity: 1, selectedModel: effectiveModel });
     } else {
-      navigate(`/product/${product.id}`);
+      navigate(productUrl);
     }
   };
 
@@ -115,9 +121,9 @@ export function ProductCard({ product, outlinedButton = false }) {
       '/subcategories/iphone.jpg';
 
   return (
-    <div
-      onClick={handleCardClick}
-      className="group flex flex-col bg-white border border-[#E5E5E3] hover:border-[#141414] rounded-[6px] overflow-hidden transition-all cursor-pointer shadow-2xs h-full"
+    <Link
+      to={productUrl}
+      className="group flex flex-col bg-white border border-[#E5E5E3] hover:border-[#141414] rounded-[6px] overflow-hidden transition-all shadow-2xs h-full text-left cursor-pointer"
       role="article"
       aria-label={`${product.name}, Price ₹${sellingPrice}`}
     >
@@ -139,7 +145,7 @@ export function ProductCard({ product, outlinedButton = false }) {
           />
         )}
 
-        {/* Quiet Guest Favorite Heart Button top-right (Rule 19: white circle, #141414 icon, filled accent when saved) */}
+        {/* Quiet Guest Favorite Heart Button top-right */}
         <button
           type="button"
           onClick={handleFavoriteClick}
@@ -160,7 +166,7 @@ export function ProductCard({ product, outlinedButton = false }) {
         <div className="space-y-1.5">
           {/* Color Dots below image (Rule 15: show all siblings, sold out crossed out) */}
           {!product.is_combo && siblingDots.length > 0 && (
-            <div className="pb-0.5">
+            <div className="pb-0.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
               <ColorSwatch colors={siblingDots} size="xs" />
             </div>
           )}
@@ -190,7 +196,7 @@ export function ProductCard({ product, outlinedButton = false }) {
             )}
           </div>
 
-          {/* Quick-Add Button (Rule 6) */}
+          {/* Quick-Add Button */}
           {isInBag ? (
             <div className="w-full py-2 px-3 bg-[#F4F3F0] text-[#6B6B6B] text-[12px] font-medium rounded-[6px] text-center flex items-center justify-center gap-1.5 border border-[#E5E5E3]">
               <Check className="w-3.5 h-3.5 text-[#141414]" />
@@ -211,10 +217,10 @@ export function ProductCard({ product, outlinedButton = false }) {
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Add to bag</span>
                 </>
-              ) : fitsSavedPhone ? (
+              ) : fitsEffectiveModel ? (
                 <>
                   <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Add for {savedPhone.model}</span>
+                  <span>Add for {effectiveModel}</span>
                 </>
               ) : product.is_combo ? (
                 <span>View combo</span>
@@ -225,7 +231,7 @@ export function ProductCard({ product, outlinedButton = false }) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 

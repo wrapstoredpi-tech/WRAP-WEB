@@ -367,7 +367,9 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
       {!isReducedHeader && (
         <aside
           aria-label="Store contact and location info"
-          className="w-full h-[36px] bg-[#141414] text-[#FAFAF9] border-b border-[#141414] flex items-center px-4 md:px-6 lg:px-8 select-none z-50 text-[12px]"
+          className={`w-full h-[36px] bg-[#141414] text-[#FAFAF9] border-b border-[#141414] items-center px-4 md:px-6 lg:px-8 select-none z-50 text-[12px] ${
+            isProductPage ? 'hidden lg:flex' : 'flex'
+          }`}
         >
           <div className="w-full max-w-[1280px] mx-auto flex items-center justify-between">
             <div className="hidden sm:flex items-center gap-1.5 truncate">
@@ -801,9 +803,11 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                         '/subcategories/iphone.jpg';
 
                       return (
-                        <div
+                        <Link
                           key={col.model}
-                          className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-2.5 transition-all"
+                          to={`/cases/apple/${col.slug}`}
+                          onClick={() => setActiveMegaMenu(null)}
+                          className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-2.5 transition-all text-left"
                         >
                           <div>
                             {/* Real Case Photo on #F4F3F0 (4:5) */}
@@ -820,7 +824,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                             </div>
 
                             {/* Model name in Poppins 600 */}
-                            <h4 className="text-[14px] font-semibold text-[#141414] line-clamp-1 leading-snug">
+                            <h4 className="text-[14px] font-semibold text-[#141414] group-hover:text-[#B0521F] transition-colors line-clamp-1 leading-snug">
                               {col.model}
                             </h4>
 
@@ -830,18 +834,14 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                             </p>
                           </div>
 
-                          {/* "Shop" link */}
+                          {/* "Shop" indicator */}
                           <div className="pt-3 mt-2 border-t border-[#E5E5E3]">
-                            <Link
-                              to={`/cases/apple/${col.slug}`}
-                              onClick={() => setActiveMegaMenu(null)}
-                              className="text-[13px] font-semibold text-[#B0521F] hover:underline flex items-center justify-between"
-                            >
+                            <span className="text-[13px] font-semibold text-[#B0521F] flex items-center justify-between">
                               <span>Shop</span>
                               <ChevronRight className="w-3.5 h-3.5" />
-                            </Link>
+                            </span>
                           </div>
-                        </div>
+                        </Link>
                       );
                     })}
 
@@ -896,9 +896,11 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                         '/subcategories/iphone.jpg';
 
                       return (
-                        <div
+                        <Link
                           key={col.model}
-                          className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-2.5 transition-all"
+                          to={`/cases/samsung/${col.slug}`}
+                          onClick={() => setActiveMegaMenu(null)}
+                          className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-2.5 transition-all text-left"
                         >
                           <div>
                             <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[4px] overflow-hidden mb-2.5 relative">
@@ -909,7 +911,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                                 className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
                               />
                             </div>
-                            <h4 className="text-[14px] font-semibold text-[#141414] line-clamp-1 leading-snug">
+                            <h4 className="text-[14px] font-semibold text-[#141414] group-hover:text-[#B0521F] transition-colors line-clamp-1 leading-snug">
                               {col.model}
                             </h4>
                             <p className="text-[12px] text-[#6B6B6B] mt-0.5">
@@ -917,16 +919,12 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                             </p>
                           </div>
                           <div className="pt-3 mt-2 border-t border-[#E5E5E3]">
-                            <Link
-                              to={`/cases/samsung/${col.slug}`}
-                              onClick={() => setActiveMegaMenu(null)}
-                              className="text-[13px] font-semibold text-[#B0521F] hover:underline flex items-center justify-between"
-                            >
+                            <span className="text-[13px] font-semibold text-[#B0521F] flex items-center justify-between">
                               <span>Shop</span>
                               <ChevronRight className="w-3.5 h-3.5" />
-                            </Link>
+                            </span>
                           </div>
-                        </div>
+                        </Link>
                       );
                     })}
 
@@ -973,9 +971,11 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {liveAccessorySubs.map((sub) => (
-                      <div
+                      <Link
                         key={sub.name}
-                        className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-3 transition-all"
+                        to={`/?category=Accessories&subcategory=${encodeURIComponent(sub.name)}`}
+                        onClick={() => setActiveMegaMenu(null)}
+                        className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-3 transition-all text-left"
                       >
                         <div>
                           <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[4px] overflow-hidden mb-3 relative">
@@ -989,7 +989,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                               className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
                             />
                           </div>
-                          <h4 className="text-[15px] font-semibold text-[#141414] leading-snug">
+                          <h4 className="text-[15px] font-semibold text-[#141414] group-hover:text-[#B0521F] transition-colors leading-snug">
                             {sub.name}
                           </h4>
                           <p className="text-[12px] text-[#6B6B6B] mt-0.5">
@@ -997,16 +997,12 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                           </p>
                         </div>
                         <div className="pt-3 mt-3 border-t border-[#E5E5E3]">
-                          <Link
-                            to={`/?category=Accessories&subcategory=${encodeURIComponent(sub.name)}`}
-                            onClick={() => setActiveMegaMenu(null)}
-                            className="text-[13px] font-semibold text-[#B0521F] hover:underline flex items-center justify-between"
-                          >
+                          <span className="text-[13px] font-semibold text-[#B0521F] flex items-center justify-between">
                             <span>Explore</span>
                             <ChevronRight className="w-3.5 h-3.5" />
-                          </Link>
+                          </span>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -1036,9 +1032,11 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                       const saveAmount = mrp - combo.selling_price;
 
                       return (
-                        <div
+                        <Link
                           key={combo.id}
-                          className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-3 transition-all"
+                          to={`/product/${combo.id}`}
+                          onClick={() => setActiveMegaMenu(null)}
+                          className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-3 transition-all text-left"
                         >
                           <div>
                             <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[4px] overflow-hidden mb-3 p-1.5 flex items-center justify-center relative">
@@ -1047,7 +1045,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                             <span className="text-[11px] font-semibold text-[#B0521F] block mb-1">
                               Combo offer
                             </span>
-                            <h4 className="text-[15px] font-semibold text-[#141414] line-clamp-2 leading-snug">
+                            <h4 className="text-[15px] font-semibold text-[#141414] group-hover:text-[#B0521F] transition-colors line-clamp-2 leading-snug">
                               {combo.name}
                             </h4>
                             <div className="flex items-baseline gap-2 mt-2">
@@ -1067,16 +1065,12 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                             )}
                           </div>
                           <div className="pt-3 mt-3 border-t border-[#E5E5E3]">
-                            <Link
-                              to={`/product/${combo.id}`}
-                              onClick={() => setActiveMegaMenu(null)}
-                              className="text-[13px] font-semibold text-[#B0521F] hover:underline flex items-center justify-between"
-                            >
+                            <span className="text-[13px] font-semibold text-[#B0521F] flex items-center justify-between">
                               <span>View bundle</span>
                               <ChevronRight className="w-3.5 h-3.5" />
-                            </Link>
+                            </span>
                           </div>
-                        </div>
+                        </Link>
                       );
                     })}
 

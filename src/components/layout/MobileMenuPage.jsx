@@ -132,9 +132,9 @@ export function MobileMenuPage({
         {/* Top-Level Group Tiles on #F4F3F0 with 6px radius */}
         <div className="space-y-3">
           {/* Tile 1: iPhone Cases */}
-          <button
-            type="button"
-            onClick={() => handleTileClick('/cases?brand=Apple')}
+          <Link
+            to="/cases?brand=Apple"
+            onClick={onClose}
             className="w-full bg-[#F4F3F0] hover:bg-[#EFECE6] border border-[#E5E5E3] rounded-[6px] h-[92px] p-4 flex items-center justify-between transition-colors cursor-pointer text-left group"
           >
             <div className="space-y-0.5">
@@ -154,13 +154,13 @@ export function MobileMenuPage({
                 loading="lazy"
               />
             </div>
-          </button>
+          </Link>
 
           {/* Tile 2: Samsung Cases (rendered ONLY with products) */}
           {hasSamsungCases && (
-            <button
-              type="button"
-              onClick={() => handleTileClick('/cases?brand=Samsung')}
+            <Link
+              to="/cases?brand=Samsung"
+              onClick={onClose}
               className="w-full bg-[#F4F3F0] hover:bg-[#EFECE6] border border-[#E5E5E3] rounded-[6px] h-[92px] p-4 flex items-center justify-between transition-colors cursor-pointer text-left group"
             >
               <div className="space-y-0.5">
@@ -180,7 +180,7 @@ export function MobileMenuPage({
                   loading="lazy"
                 />
               </div>
-            </button>
+            </Link>
           )}
 
           {/* Tile 3: Accessories -> Expands to live subcategories */}
@@ -220,29 +220,25 @@ export function MobileMenuPage({
             {/* Subcategories Expansion List */}
             {isAccessoriesExpanded && (
               <div className="border-t border-[#E5E5E3] bg-white p-3 space-y-1">
-                <button
-                  type="button"
-                  onClick={() => handleTileClick('/?category=Accessories')}
-                  className="w-full text-left px-3 py-2 text-[14px] font-semibold text-[#B0521F] hover:bg-[#FAFAF9] rounded-[4px] transition-colors cursor-pointer"
+                <Link
+                  to="/?category=Accessories"
+                  onClick={onClose}
+                  className="block w-full text-left px-3 py-2 text-[14px] font-semibold text-[#B0521F] hover:bg-[#FAFAF9] rounded-[4px] transition-colors cursor-pointer"
                 >
                   View all accessories →
-                </button>
+                </Link>
                 {liveAccessorySubs.map((sub) => (
-                  <button
+                  <Link
                     key={sub.name}
-                    type="button"
-                    onClick={() =>
-                      handleTileClick(
-                        `/?category=Accessories&subcategory=${encodeURIComponent(sub.name)}`
-                      )
-                    }
+                    to={`/?category=Accessories&subcategory=${encodeURIComponent(sub.name)}`}
+                    onClick={onClose}
                     className="w-full flex items-center justify-between px-3 py-2.5 text-[14px] text-[#141414] hover:bg-[#FAFAF9] rounded-[4px] transition-colors cursor-pointer text-left"
                   >
                     <span className="font-medium">{sub.name}</span>
                     <span className="text-[12px] text-[#6B6B6B]">
                       {sub.productCount}
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             )}
@@ -250,9 +246,9 @@ export function MobileMenuPage({
 
           {/* Tile 4: Combos (rendered ONLY if eligible combos exist) */}
           {hasCombos && (
-            <button
-              type="button"
-              onClick={() => handleTileClick('/combos')}
+            <Link
+              to="/combos"
+              onClick={onClose}
               className="w-full bg-[#F4F3F0] hover:bg-[#EFECE6] border border-[#E5E5E3] rounded-[6px] h-[92px] p-4 flex items-center justify-between transition-colors cursor-pointer text-left group"
             >
               <div className="space-y-0.5">
@@ -274,7 +270,7 @@ export function MobileMenuPage({
                   />
                 )}
               </div>
-            </button>
+            </Link>
           )}
         </div>
 

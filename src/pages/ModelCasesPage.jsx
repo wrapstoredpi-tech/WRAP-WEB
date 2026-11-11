@@ -8,6 +8,7 @@ import {
   getLiveModelsWithCases,
   modelToSlug,
   groupProductsByDesign,
+  isComboEligible,
 } from '../lib/models';
 import { ProductCard } from '../components/home/ProductCard';
 import { setPageMeta } from '../lib/seo';
@@ -20,11 +21,63 @@ const PRICE_RANGES = [
   { label: 'Over ₹1,000', min: 1000, max: Infinity },
 ];
 
+export function ModelPageSkeleton({ isAccessory = false }) {
+  return (
+    <div className="min-h-screen bg-[#FAFAF9] text-[#141414] py-6 sm:py-8">
+      <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 space-y-6">
+        {/* Breadcrumb Skeleton */}
+        <div className="h-4 w-48 bg-[#E5E5E3] rounded-[4px] animate-pulse" />
+
+        {/* 1. Centred Title in Display Serif Skeleton */}
+        <div className="text-center py-4 space-y-3">
+          <div className="h-10 w-64 sm:w-80 bg-[#E5E5E3] rounded-[6px] mx-auto animate-pulse" />
+          <div className="h-4 w-72 sm:w-96 bg-[#E5E5E3] rounded-[4px] mx-auto animate-pulse" />
+        </div>
+
+        {/* 2. Round Chips Skeleton (Row of circular chips) */}
+        {!isAccessory && (
+          <div className="py-6 flex items-center justify-center gap-6 sm:gap-8 overflow-x-auto no-scrollbar">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex flex-col items-center gap-2 shrink-0">
+                <div className="w-[72px] h-[72px] rounded-full bg-[#E5E5E3] animate-pulse" />
+                <div className="h-3 w-12 bg-[#E5E5E3] rounded-[4px] animate-pulse" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 3. Bar Skeleton */}
+        <div className="border-t border-b border-[#E5E5E3] py-3.5 flex items-center justify-between">
+          <div className="h-9 w-24 bg-[#E5E5E3] rounded-[6px] animate-pulse" />
+          <div className="h-9 w-32 bg-[#E5E5E3] rounded-[6px] animate-pulse" />
+        </div>
+
+        {/* 4. 8 Product Card Skeletons */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 pt-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div
+              key={i}
+              className="flex flex-col bg-white border border-[#E5E5E3] rounded-[6px] overflow-hidden p-2.5 sm:p-3 space-y-3"
+            >
+              <div className="w-full aspect-[4/5] bg-[#E5E5E3] rounded-[4px] animate-pulse" />
+              <div className="space-y-1.5 pt-1">
+                <div className="h-4 w-3/4 bg-[#E5E5E3] rounded-[4px] animate-pulse" />
+                <div className="h-3.5 w-1/3 bg-[#E5E5E3] rounded-[4px] animate-pulse" />
+              </div>
+              <div className="h-9 w-full bg-[#E5E5E3] rounded-[6px] animate-pulse mt-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ModelCasesPage({ isAccessoryPage = false }) {
   const { brand: brandSlug, model: modelSlug, subcategory: subcategorySlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { products = [] } = useProductsContext();
+  const { products = [], isLoading } = useProductsContext();
   const { savedPhone, selectPhone } = usePhoneContext();
 
   const brandCap = useMemo(() => {
@@ -61,18 +114,27 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
       .join(' ');
   }, [isAccessoryPage, subcategorySlug, products]);
 
+  // Set browser title only once the model resolves; never show "Model cases"
   useEffect(() => {
-    const pageTitle = isAccessoryPage
-      ? `${resolvedSubcategory || 'Accessories'} | WrapStore`
-      : `${resolvedModel || 'Model'} cases | WrapStore`;
-    const pageDesc = isAccessoryPage
-      ? `Everyday essentials and accessories for ${resolvedSubcategory || 'devices'}.`
-      : `Cases, screen protection and combos for ${resolvedModel || 'your phone'}.`;
-    setPageMeta({
-      title: pageTitle,
-      description: pageDesc,
-    });
-  }, [isAccessoryPage, resolvedSubcategory, resolvedModel]);
+    if (isAccessoryPage) {
+      if (resolvedSubcategory) {
+        setPageMeta({
+          title: `${resolvedSubcategory} | WrapStore`,
+          description: `Everyday essentials and accessories for ${resolvedSubcategory}.`,
+        });
+      }
+    } else if (resolvedModel) {
+      setPageMeta({
+        title: `${resolvedModel} cases | WrapStore`,
+        description: `Cases, screen protection and combos for ${resolvedModel}.`,
+      });
+    } else if (!isLoading && !resolvedModel) {
+      setPageMeta({
+        title: 'Model not found | WrapStore',
+        description: 'Cases and accessories for phone models at WrapStore.',
+      });
+    }
+  }, [isAccessoryPage, resolvedSubcategory, resolvedModel, isLoading]);
 
   // Filter state
   const [activeChip, setActiveChip] = useState('all'); // 'all' | 'cases' | 'screen' | 'combos'
@@ -126,7 +188,6 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
     const cases = [];
     const screens = [];
     const combos = [];
-    const all = [];
 
     products.forEach((p) => {
       if (!p) return;
@@ -147,15 +208,15 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
       if (isCase && fitsThisModel) {
         cases.push(p);
-        all.push(p);
-      } else if (isCombo && (fitsThisModel || isUniversal)) {
+      } else if (isCombo && isComboEligible(p) && (fitsThisModel || isUniversal)) {
         combos.push(p);
-        all.push(p);
       } else if (isScreen && (fitsThisModel || isUniversal)) {
         screens.push(p);
-        all.push(p);
       }
     });
+
+    // Item 4: Model page "All" order: cases, then screen protection, then combos
+    const all = [...cases, ...screens, ...combos];
 
     return {
       casesList: cases,
@@ -284,20 +345,31 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
     let grouped;
     if (activeChip === 'all' && !isAccessoryPage) {
-      // Per audit rule 12: cases first, then screen protection, then combos; sorting applies within each group
+      // Per Item 4: cases first, then screen protection, then combos; sorting applies within each group
       const casesGrouped = filterAndSortGroup(casesList);
       const screensGrouped = filterAndSortGroup(screenList);
       const combosGrouped = filterAndSortGroup(combosList);
-      grouped = [...casesGrouped, ...screensGrouped, ...combosGrouped];
+
+      const isInStock = (p) => (p.available_stock ?? p.current_stock ?? 0) > 0 && p.stock_status !== 'OUT_OF_STOCK';
+      const isOutOfStock = (p) => !isInStock(p);
+
+      const inStock = [
+        ...casesGrouped.filter(isInStock),
+        ...screensGrouped.filter(isInStock),
+        ...combosGrouped.filter(isInStock),
+      ];
+      const outOfStock = [
+        ...casesGrouped.filter(isOutOfStock),
+        ...screensGrouped.filter(isOutOfStock),
+        ...combosGrouped.filter(isOutOfStock),
+      ];
+      return [...inStock, ...outOfStock];
     } else {
-      grouped = filterAndSortGroup(activeProducts);
+      const grouped = filterAndSortGroup(activeProducts);
+      const inStock = grouped.filter((p) => (p.available_stock ?? p.current_stock ?? 0) > 0 && p.stock_status !== 'OUT_OF_STOCK');
+      const outOfStock = grouped.filter((p) => (p.available_stock ?? p.current_stock ?? 0) <= 0 || p.stock_status === 'OUT_OF_STOCK');
+      return [...inStock, ...outOfStock];
     }
-
-    // Out-of-stock designs at the end, greyed with "Sold out"
-    const inStock = grouped.filter((p) => (p.available_stock ?? p.current_stock ?? 0) > 0 && p.stock_status !== 'OUT_OF_STOCK');
-    const outOfStock = grouped.filter((p) => (p.available_stock ?? p.current_stock ?? 0) <= 0 || p.stock_status === 'OUT_OF_STOCK');
-
-    return [...inStock, ...outOfStock];
   }, [activeChip, isAccessoryPage, casesList, screenList, combosList, activeProducts, inStockOnly, selectedColor, selectedPriceRange, sortBy]);
 
   // Universal accessories for the 0-cases scenario (Rule 9 & 10: exclude non-phone, group by design)
@@ -323,23 +395,30 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
     setSelectedPriceRange(0);
   };
 
-  // If unknown model and not an accessories page
+  // 1. While loading products, show skeletons (title, chips and 8 cards)
+  if (isLoading) {
+    return <ModelPageSkeleton isAccessory={isAccessoryPage} />;
+  }
+
+  // 2. Show "Model not found" only after products have finished loading and slug still does not match
   if (!isAccessoryPage && !resolvedModel) {
     return (
       <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
-        <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 shadow-xs">
-          <h1 className="font-serif text-3xl font-normal text-[#141414]">
+        <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
             Model not found
           </h1>
-          <p className="text-[14px] text-[#6B6B6B] mt-2">
-            The phone model in your link could not be identified.
+          <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
+            The phone model in your link could not be identified. Please choose from our available models.
           </p>
-          <Link
-            to="/cases"
-            className="inline-flex items-center justify-center mt-6 w-full h-[48px] bg-[#B0521F] hover:bg-[#964317] text-white font-medium text-[14px] rounded-[6px] transition-colors"
-          >
-            Select your phone model
-          </Link>
+          <div className="pt-2">
+            <Link
+              to="/cases"
+              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+            >
+              Browse all models
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -683,7 +762,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
                       key={product.id}
                       className={isOutOfStock ? 'opacity-65 filter grayscale contrast-90 relative' : ''}
                     >
-                      <ProductCard product={product} />
+                      <ProductCard product={product} contextModel={resolvedModel} />
                       {isOutOfStock && (
                         <div className="absolute top-2 left-2 z-10 bg-[#141414]/90 text-white text-[11px] font-semibold px-2 py-0.5 rounded-[4px]">
                           Sold out
@@ -756,7 +835,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                   {universalAccessories.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard key={product.id} product={product} contextModel={resolvedModel} />
                   ))}
                 </div>
               </div>
