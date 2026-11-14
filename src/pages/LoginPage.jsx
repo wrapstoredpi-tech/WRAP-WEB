@@ -16,9 +16,6 @@ export function LoginPage() {
   const pendingFavorite = searchParams.get('pendingFavorite');
   const authNote = searchParams.get('authNote') || '';
   const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
-  const defaultMethod = searchParams.get('method') === 'email' ? 'email' : 'phone';
-  const defaultStep = searchParams.get('step') === 'verify' ? 'verify' : 'input';
-  const defaultPhone = searchParams.get('phone') || '';
 
   const pendingAction = pendingFavorite
     ? { type: 'favourite', productId: pendingFavorite }
@@ -82,9 +79,9 @@ export function LoginPage() {
       {/* Two columns on desktop: Left Form, Right Benefits Panel. Single column on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
         {/* Left Column: Form */}
-        <div className="lg:col-span-7 bg-white border border-[#E5E5E3] rounded-[8px] p-5 sm:p-8 shadow-sm">
+        <div className="lg:col-span-7 bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 shadow-sm">
           <div className="mb-6">
-            <h1 className="font-display font-normal text-[26px] sm:text-[32px] text-[#141414] tracking-[-0.01em]">
+            <h1 className="font-display font-normal text-[28px] sm:text-[32px] text-[#141414] tracking-[-0.01em]">
               Welcome to WrapStore
             </h1>
             <p className="font-sans text-[14px] text-[#6B6B6B] mt-1">
@@ -94,7 +91,7 @@ export function LoginPage() {
 
           {/* Pending Favourite Callout Banner */}
           {pendingFavorite && (
-            <div className="mb-6 p-4 rounded-[8px] bg-red-50 border border-red-200 text-[#141414] flex items-center gap-3 animate-fade-in">
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-[#141414] flex items-center gap-3 animate-fade-in">
               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
                 <Heart className="w-4 h-4 fill-red-600" />
               </div>
@@ -109,9 +106,6 @@ export function LoginPage() {
 
           <AuthForm
             defaultTab={defaultTab}
-            defaultMethod={defaultMethod}
-            defaultStep={defaultStep}
-            defaultPhone={defaultPhone}
             onSuccess={handleAuthSuccess}
             returnTo={returnTo}
             pendingAction={pendingAction}
@@ -120,7 +114,7 @@ export function LoginPage() {
         </div>
 
         {/* Right Column: Plain Benefits Panel */}
-        <div className="lg:col-span-5 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[8px] p-5 sm:p-8 space-y-6">
+        <div className="lg:col-span-5 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 space-y-6">
           <h2 className="text-[18px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-3">
             Benefits of an account
           </h2>

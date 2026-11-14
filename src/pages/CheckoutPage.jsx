@@ -72,19 +72,17 @@ export function CheckoutPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { user } = useAuth();
 
-  // Prefill Google/Email/Phone name, email and phone if signed in, keeping typed details intact
+  // Prefill Google name and email if signed in, keeping typed details intact
   useEffect(() => {
     if (user) {
       setFields((prev) => {
         const meta = user.user_metadata || {};
-        const userName = meta.full_name || meta.name || '';
+        const googleName = meta.full_name || meta.name || '';
         const userEmail = user.email || '';
-        const userPhone = (user.phone || meta.phone || '').replace(/\D/g, '').slice(-10);
         return {
           ...prev,
-          name: prev.name.trim() ? prev.name : userName,
+          name: prev.name.trim() ? prev.name : googleName,
           email: prev.email.trim() ? prev.email : userEmail,
-          phone: prev.phone.trim() ? prev.phone : userPhone,
         };
       });
     }

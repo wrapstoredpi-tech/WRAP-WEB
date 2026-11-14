@@ -101,10 +101,6 @@ export function getFirstName(user) {
   if (fullName) return fullName.trim().split(/\s+/)[0];
   if (meta.first_name) return meta.first_name.trim();
   if (user.email) return user.email.split('@')[0];
-  if (user.phone) {
-    const clean = user.phone.replace(/\D/g, '');
-    return clean.length >= 10 ? clean.slice(-10) : user.phone;
-  }
   return 'there';
 }
 
