@@ -15,7 +15,7 @@ export function ProductDetailPage({ onAddToCart }) {
   const buyButtonRef = useRef(null);
   const modelSelectRef = useRef(null);
 
-  const { products, isLoading } = useProductsContext();
+  const { products, isLoading, error, refetch } = useProductsContext();
   const { savedPhone } = usePhoneContext();
 
   const product = products.find((p) => p.id === id || p.product_id === id);
@@ -138,6 +138,25 @@ export function ProductDetailPage({ onAddToCart }) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 flex items-center justify-center">
         <p className="text-[14px] text-[#6B6B6B]">Loading product details...</p>
+      </main>
+    );
+  }
+
+  if (error && (!products || products.length === 0)) {
+    return (
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 flex flex-col items-center justify-center gap-4 text-center">
+        <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+          Couldn't load products, retrying
+        </h1>
+        <p className="text-[14px] text-[#6B6B6B] max-w-md leading-relaxed">
+          We are having trouble connecting to the product catalogue. Reconnecting automatically...
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+        >
+          Retry now
+        </button>
       </main>
     );
   }

@@ -50,6 +50,9 @@ export async function fetchHeroSlides() {
       }));
 
       updateLocalCache(formatted);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wrapstore:hero_slides_updated', { detail: formatted }));
+      }
       return formatted;
     }
 
@@ -66,6 +69,9 @@ export async function fetchHeroSlides() {
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (Array.isArray(parsed)) {
         updateLocalCache(parsed);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wrapstore:hero_slides_updated', { detail: parsed }));
+        }
         return parsed;
       }
     }

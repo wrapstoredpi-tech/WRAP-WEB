@@ -78,7 +78,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
   const { brand: brandSlug, model: modelSlug, subcategory: subcategorySlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { products = [], isLoading } = useProductsContext();
+  const { products = [], isLoading, error, refetch } = useProductsContext();
   const { savedPhone, selectPhone } = usePhoneContext();
 
   const brandCap = useMemo(() => {
@@ -406,6 +406,30 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
   // 1. While loading products, show skeletons (title, chips and 8 cards)
   if (isLoading) {
     return <ModelPageSkeleton isAccessory={isAccessoryPage} />;
+  }
+
+  // Show "Couldn't load products, retrying" if Supabase fails
+  if (error && products.length === 0) {
+    return (
+      <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+            Couldn't load products, retrying
+          </h1>
+          <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
+            We are having trouble connecting to the product catalogue. Reconnecting automatically...
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+            >
+              Retry now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // 2. Show "Model not found" only after products have finished loading and slug still does not match

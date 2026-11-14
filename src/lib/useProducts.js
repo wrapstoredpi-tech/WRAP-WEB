@@ -46,6 +46,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, supabaseConfigured } from './supabase';
 import { getValidColors, isRealColor } from './colors';
+import { fetchHeroSlides } from './heroSlides';
+
+// ─── Public Realtime Tables (Isolated channels per table) ─────────────────────
+const PUBLIC_REALTIME_TABLES = [
+  'products',
+  'product_images',
+  'combos',
+  'combo_items',
+  'categories',
+  'subcategories',
+  'hero_slides',
+];
+
+const loggedChannelStatuses = new Set();
 
 // ─── Fallback placeholder image ───────────────────────────────────────────────
 const PLACEHOLDER_IMG =
@@ -606,57 +620,71 @@ export function normaliseCombo(
  */
 export function useProducts() {
   const [products, setProducts] = useState(() => {
-    try {
-      const mockRaw =
-        typeof window !== 'undefined' &&
-        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
-      if (mockRaw) {
-        const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
-        if (Array.isArray(parsed?.products)) return parsed.products;
-      }
-    } catch {}
+    if (import.meta.env.DEV) {
+      try {
+        const mockRaw =
+          typeof window !== 'undefined' &&
+          (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+        if (mockRaw) {
+          const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+          if (Array.isArray(parsed?.products)) return parsed.products;
+        }
+      } catch {}
+    }
     return [];
   });
   const [categories, setCategories] = useState(() => {
-    try {
-      const mockRaw =
-        typeof window !== 'undefined' &&
-        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
-      if (mockRaw) {
-        const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
-        if (Array.isArray(parsed?.categories)) return parsed.categories;
-      }
-    } catch {}
+    if (import.meta.env.DEV) {
+      try {
+        const mockRaw =
+          typeof window !== 'undefined' &&
+          (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+        if (mockRaw) {
+          const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+          if (Array.isArray(parsed?.categories)) return parsed.categories;
+        }
+      } catch {}
+    }
     return [];
   });
   const [subcategories, setSubcategories] = useState(() => {
-    try {
-      const mockRaw =
-        typeof window !== 'undefined' &&
-        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
-      if (mockRaw) {
-        const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
-        if (Array.isArray(parsed?.subcategories)) return parsed.subcategories;
-      }
-    } catch {}
+    if (import.meta.env.DEV) {
+      try {
+        const mockRaw =
+          typeof window !== 'undefined' &&
+          (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+        if (mockRaw) {
+          const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+          if (Array.isArray(parsed?.subcategories)) return parsed.subcategories;
+        }
+      } catch {}
+    }
     return [];
   });
   const [isLoading, setIsLoading] = useState(() => {
-    try {
-      const mockRaw =
-        typeof window !== 'undefined' &&
-        (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
-      if (mockRaw) return false;
-    } catch {}
+    if (import.meta.env.DEV) {
+      try {
+        const mockRaw =
+          typeof window !== 'undefined' &&
+          (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+        if (mockRaw) return false;
+      } catch {}
+    }
     return true;
   });
   const [error, setError] = useState(null);
-  const channelRef = useRef(null);
+
+  const channelsRef = useRef({});
+  const retryCountsRef = useRef({});
+  const retryTimersRef = useRef({});
+  const catalogDebounceRef = useRef(null);
+  const heroDebounceRef = useRef(null);
+  const autoRetryTimerRef = useRef(null);
 
   const fetchAll = useCallback(async () => {
     if (!supabaseConfigured || !supabase) {
       setIsLoading(false);
-      setError('Supabase not configured');
+      setError("Couldn't load products, retrying");
       return;
     }
 
@@ -806,117 +834,187 @@ export function useProducts() {
       setProducts([...normalised, ...normalisedCombos]);
       setCategories(catData || []);
       setSubcategories(subData || []);
+      if (autoRetryTimerRef.current) {
+        clearTimeout(autoRetryTimerRef.current);
+        autoRetryTimerRef.current = null;
+      }
       setError(null);
     } catch (err) {
       console.error('[useProducts] fetch error:', err);
-      try {
-        const mockRaw =
-          typeof window !== 'undefined' &&
-          (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
-        if (mockRaw) {
-          const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
-          if (parsed && Array.isArray(parsed.products) && parsed.products.length > 0) {
-            setProducts(parsed.products);
-            setCategories(parsed.categories || []);
-            setSubcategories(parsed.subcategories || []);
-            setError(null);
-            return;
+      if (import.meta.env.DEV) {
+        try {
+          const mockRaw =
+            typeof window !== 'undefined' &&
+            (window.__WRAPSTORE_MOCK_CATALOG__ || localStorage.getItem('wrapstore_mock_catalog'));
+          if (mockRaw) {
+            const parsed = typeof mockRaw === 'string' ? JSON.parse(mockRaw) : mockRaw;
+            if (parsed && Array.isArray(parsed.products) && parsed.products.length > 0) {
+              setProducts(parsed.products);
+              setCategories(parsed.categories || []);
+              setSubcategories(parsed.subcategories || []);
+              setError(null);
+              return;
+            }
           }
+        } catch (mockErr) {
+          console.warn('Mock catalog fallback error:', mockErr);
         }
-      } catch (mockErr) {
-        console.warn('Mock catalog fallback error:', mockErr);
       }
-      setError(err.message || 'Failed to load products');
+      setError("Couldn't load products, retrying");
+      if (autoRetryTimerRef.current) clearTimeout(autoRetryTimerRef.current);
+      autoRetryTimerRef.current = setTimeout(() => {
+        fetchAll();
+      }, 5000);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchAll();
+  // Helper to subscribe to a single table with isolated error handling & backoff
+  const subscribeTable = useCallback((table) => {
+    if (!supabaseConfigured || !supabase) return;
+
+    // Clean up existing channel for this table if any
+    if (channelsRef.current[table]) {
+      try {
+        supabase.removeChannel(channelsRef.current[table]);
+      } catch {}
+      delete channelsRef.current[table];
+    }
+
+    const channelTopic = `ws-rt-${table}-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase.channel(channelTopic);
+
+    channel
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        (payload) => {
+          console.log(`[Realtime] ${table} change:`, payload.eventType);
+          if (table === 'hero_slides') {
+            if (heroDebounceRef.current) clearTimeout(heroDebounceRef.current);
+            heroDebounceRef.current = setTimeout(() => {
+              fetchHeroSlides();
+            }, 800);
+          } else {
+            if (catalogDebounceRef.current) clearTimeout(catalogDebounceRef.current);
+            catalogDebounceRef.current = setTimeout(() => {
+              fetchAll();
+            }, 800);
+          }
+        }
+      )
+      .subscribe((status) => {
+        // Log each channel's status (SUBSCRIBED, CHANNEL_ERROR, TIMED_OUT) once
+        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          const key = `${table}:${status}`;
+          if (!loggedChannelStatuses.has(key)) {
+            loggedChannelStatuses.add(key);
+            console.log(`[Realtime:${table}] ${status}`);
+          }
+        }
+
+        if (status === 'SUBSCRIBED') {
+          retryCountsRef.current[table] = 0;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // If a channel errors, retry it with backoff (5s, 15s, 60s), without reloading the page
+          const BACKOFF_DELAYS = [5000, 15000, 60000];
+          const attempt = retryCountsRef.current[table] || 0;
+          const delay = BACKOFF_DELAYS[Math.min(attempt, BACKOFF_DELAYS.length - 1)];
+          retryCountsRef.current[table] = attempt + 1;
+
+          if (retryTimersRef.current[table]) {
+            clearTimeout(retryTimersRef.current[table]);
+          }
+          retryTimersRef.current[table] = setTimeout(() => {
+            subscribeTable(table);
+          }, delay);
+        }
+      });
+
+    channelsRef.current[table] = channel;
   }, [fetchAll]);
 
-  // ── Realtime subscription ──────────────────────────────────────────────────
+  // Initial fetch and auto-retry cleanup
+  useEffect(() => {
+    fetchAll();
+    return () => {
+      if (autoRetryTimerRef.current) clearTimeout(autoRetryTimerRef.current);
+    };
+  }, [fetchAll]);
+
+  // Realtime: one channel PER TABLE for 7 public tables
   useEffect(() => {
     if (!supabaseConfigured || !supabase) return;
 
-    let channel = null;
+    PUBLIC_REALTIME_TABLES.forEach((table) => {
+      subscribeTable(table);
+    });
 
-    try {
-      const channelTopic = `ws-wrapstore-${Math.random().toString(36).substring(2, 9)}`;
-      channel = supabase.channel(channelTopic);
+    return () => {
+      if (catalogDebounceRef.current) clearTimeout(catalogDebounceRef.current);
+      if (heroDebounceRef.current) clearTimeout(heroDebounceRef.current);
 
-      channel
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' },
-          (payload) => {
-            console.log('[Realtime] products change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'combos' },
-          (payload) => {
-            console.log('[Realtime] combos change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'combo_items' },
-          (payload) => {
-            console.log('[Realtime] combo_items change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'product_images' },
-          (payload) => {
-            console.log('[Realtime] product_images change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' },
-          (payload) => {
-            console.log('[Realtime] categories change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'subcategories' },
-          (payload) => {
-            console.log('[Realtime] subcategories change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' },
-          (payload) => {
-            console.log('[Realtime] POS invoice recorded / product sold:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoice_items' },
-          (payload) => {
-            console.log('[Realtime] POS invoice item updated:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'online_orders' },
-          (payload) => {
-            console.log('[Realtime] online order change:', payload.eventType);
-            fetchAll();
-          })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'online_order_items' },
-          (payload) => {
-            console.log('[Realtime] online order item change:', payload.eventType);
-            fetchAll();
-          })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('[Realtime] active sync for products, stock, POS invoices, and orders');
-          }
-        });
+      Object.keys(retryTimersRef.current).forEach((table) => {
+        if (retryTimersRef.current[table]) {
+          clearTimeout(retryTimersRef.current[table]);
+        }
+      });
+      retryTimersRef.current = {};
 
-      channelRef.current = channel;
-    } catch (err) {
-      console.warn('[Realtime] subscription error:', err);
+      Object.keys(channelsRef.current).forEach((table) => {
+        const ch = channelsRef.current[table];
+        if (ch) {
+          try {
+            supabase.removeChannel(ch);
+          } catch {}
+        }
+      });
+      channelsRef.current = {};
+    };
+  }, [subscribeTable]);
+
+  // Stock safety net: refetch on visibilitychange and poll every 60s while visible
+  useEffect(() => {
+    let pollInterval = null;
+
+    const startPolling = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          fetchAll();
+        }
+      }, 60000);
+    };
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState === 'visible') {
+        fetchAll();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      if (document.visibilityState === 'visible') {
+        startPolling();
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     }
 
     return () => {
-      if (channelRef.current) {
-        try {
-          supabase.removeChannel(channelRef.current);
-        } catch {
-          // ignore cleanup errors
-        }
-        channelRef.current = null;
+      stopPolling();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
   }, [fetchAll]);
