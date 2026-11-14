@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
-import { CategoryScrollSection } from '../components/home/CategoryScrollSection';
-import { ShopByPhoneStrip } from '../components/home/ShopByPhoneStrip';
-import { ProductScrollRow } from '../components/home/ProductScrollRow';
-import { DealOfTheDaySection } from '../components/home/DealOfTheDaySection';
-import { VisitOurStoreBanner } from '../components/home/VisitOurStoreBanner';
+import { ShopByPhoneSection } from '../components/home/ShopByPhoneSection';
+import { ShopByCategoryBento } from '../components/home/ShopByCategoryBento';
+import { NewInAndCollections } from '../components/home/NewInAndCollections';
+import { HomeAboutBand } from '../components/home/HomeAboutBand';
 import { HomeSEO } from '../components/home/HomeSEO';
 import { FilterSidebar } from '../components/home/FilterSidebar';
 import { FilterBottomSheet } from '../components/home/FilterBottomSheet';
@@ -378,11 +377,14 @@ export function HomePage() {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // VIEW 1: HOME PAGE (Strict Data-Driven Flow per specifications)
-  // Order: 1. Hero, 2. Shop by category, 3. Shop by phone strip,
-  //        4. New arrivals, 5. Better together (combos), 6. Deal of the day,
-  //        7. Featured, 8. Visit our store, 9. Footer (layout)
-  // Each section hidden when empty or fewer than 4 items (except hero).
+  // VIEW 1: HOME PAGE (Rebuilt per approved WrapStore design)
+  // Sections:
+  //   1. Hero First Screen (Untouched)
+  //   2. Section 1 - Shop by phone (white band, 1px bottom border, phone SVGs)
+  //   3. Section 2 - Shop by category (Bento grid)
+  //   4. Section 3 - New in + Trending collections (Two tiers)
+  //   5. Section 4 - About WrapStore (full-bleed dark band #141414)
+  //   Footer rendered globally in App.jsx
   // ───────────────────────────────────────────────────────────────────────────
   if (!isListingMode) {
     return (
@@ -390,75 +392,21 @@ export function HomePage() {
         {/* Page SEO title, meta description, OG tags */}
         <HomeSEO />
 
-        <main className="flex-1 w-full bg-[#FAFAF9] pb-24 sm:pb-0">
-          <div className="space-y-12 sm:space-y-16 lg:space-y-20">
-            
-            {/* 1. HERO: Full-bleed carousel from hero_slides table */}
-            <HeroFirstScreen />
+        <main className="flex-1 w-full bg-[#FAFAF9]">
+          {/* Hero: Full-bleed carousel from hero_slides table (Untouched) */}
+          <HeroFirstScreen />
 
-            {/* 2. SHOP BY CATEGORY: Pill tabs + 4:5 portrait tiles row */}
-            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
-              <CategoryScrollSection
-                products={liveProducts}
-                categories={liveCategories}
-                subcategories={liveSubcategories}
-              />
-            </div>
+          {/* Section 1 - Shop by phone */}
+          <ShopByPhoneSection />
 
-            {/* 3. SHOP BY PHONE STRIP: Compact phone strip */}
-            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
-              <ShopByPhoneStrip />
-            </div>
+          {/* Section 2 - Shop by category */}
+          <ShopByCategoryBento />
 
-            {/* 4. NEW ARRIVALS: Product row (hidden if < 4 items) */}
-            {newArrivalProducts.length >= 4 && (
-              <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
-                <ProductScrollRow
-                  title="New arrivals"
-                  viewAllLink="/?view=all"
-                  viewAllText="View all"
-                  products={newArrivalProducts}
-                />
-              </div>
-            )}
+          {/* Section 3 - New in + Trending collections */}
+          <NewInAndCollections />
 
-            {/* 5. BETTER TOGETHER (combos): Row of combo cards (Rendered if eligible combos exist) */}
-            {comboProducts.length > 0 && (
-              <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
-                <ProductScrollRow
-                  title="Better together"
-                  subtitle="Protection bundles designed to work together"
-                  viewAllLink="/combos"
-                  viewAllText="View all combos"
-                  products={comboProducts}
-                  isComboRow={true}
-                />
-              </div>
-            )}
-
-            {/* 6. DEAL OF THE DAY: Existing layout and rules */}
-            {dealData && (
-              <div className="w-full">
-                <DealOfTheDaySection dealData={dealData} />
-              </div>
-            )}
-
-            {/* 7. FEATURED: Product row from online_featured (hidden if < 4 items) */}
-            {featuredProducts.length >= 4 && (
-              <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
-                <ProductScrollRow
-                  title="Featured products"
-                  viewAllLink="/?featured=1"
-                  viewAllText="View all"
-                  products={featuredProducts}
-                />
-              </div>
-            )}
-
-            {/* 8. VISIT OUR STORE: Full-bleed store banner */}
-            <VisitOurStoreBanner />
-
-          </div>
+          {/* Section 4 - About WrapStore */}
+          <HomeAboutBand />
         </main>
       </>
     );

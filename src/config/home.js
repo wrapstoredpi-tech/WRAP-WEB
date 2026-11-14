@@ -12,6 +12,14 @@
 import { deal } from './deal';
 import { featured } from './featured';
 
+export const categoryImages = {
+  cases: '/bento/audio.jpg',
+  screenProtection: '/bento/screen-protectors.jpg',
+  powerBanks: '/bento/power-banks.jpg',
+  cables: '/bento/cables.jpg',
+  watchStraps: '/subcategories/watch-strap.jpg',
+};
+
 export const homeConfig = {
   // 1. First Screen Hero (12-column grid: 5 cols left copy, 7 cols right slider)
   firstScreen: {

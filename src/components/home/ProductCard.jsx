@@ -11,7 +11,13 @@ import { ComboThumbnail } from '../cart/ComboThumbnail';
 import { getComboImage, modelToSlug } from '../../lib/models';
 import { combosOrderable } from '../../config/store';
 
-export function ProductCard({ product, outlinedButton = false, contextModel = null }) {
+export function ProductCard({
+  product,
+  outlinedButton = false,
+  contextModel = null,
+  badge = null,
+  infoLine = null,
+}) {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { items = [], addItem } = useCart();
@@ -132,12 +138,19 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
   return (
     <Link
       to={productUrl}
-      className="group flex flex-col bg-white border border-[#E5E5E3] hover:border-[#141414] rounded-[6px] overflow-hidden transition-all shadow-2xs h-full text-left cursor-pointer"
+      className="group flex flex-col bg-white border border-[#E7E5E0] hover:border-[#141414] rounded-[12px] overflow-hidden transition-all shadow-2xs h-full text-left cursor-pointer"
       role="article"
       aria-label={`${product.name}, Price ₹${sellingPrice}`}
     >
       {/* Real photo at fixed 4:5 aspect ratio on #F4F3F0 */}
       <div className="relative aspect-[4/5] w-full bg-[#F4F3F0] overflow-hidden">
+        {/* Optional New / Category Badge */}
+        {badge && (
+          <span className="absolute top-2.5 left-2.5 z-10 bg-[#141414] text-white text-[11px] font-semibold px-2 py-0.5 rounded-[4px] uppercase tracking-wider">
+            {badge}
+          </span>
+        )}
+
         {product.is_combo ? (
           <div className="w-full h-full p-2 flex items-center justify-center">
             <ComboThumbnail combo={product} className="w-full h-full" />
@@ -184,6 +197,13 @@ export function ProductCard({ product, outlinedButton = false, contextModel = nu
           <h3 className="font-sans font-medium text-[14px] sm:text-[15px] text-[#141414] group-hover:text-[#B0521F] transition-colors line-clamp-2 leading-snug">
             {product.name}
           </h3>
+
+          {/* Optional Info line under name */}
+          {infoLine && (
+            <p className="text-[12px] text-[#5A5A5A] line-clamp-1 leading-normal">
+              {infoLine}
+            </p>
+          )}
         </div>
 
         {/* Price and Quick-Add CTA */}

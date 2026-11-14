@@ -14,6 +14,7 @@ import {
 import { ProductCard } from '../components/home/ProductCard';
 import { setPageMeta } from '../lib/seo';
 import { store } from '../config/store';
+import { getCollectionBySlug } from '../config/collections';
 
 const PRICE_RANGES = [
   { label: 'All prices', min: 0, max: Infinity },
@@ -74,12 +75,23 @@ export function ModelPageSkeleton({ isAccessory = false }) {
   );
 }
 
-export function ModelCasesPage({ isAccessoryPage = false }) {
-  const { brand: brandSlug, model: modelSlug, subcategory: subcategorySlug } = useParams();
+export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = false }) {
+  const {
+    brand: brandSlug,
+    model: modelSlug,
+    subcategory: subcategorySlug,
+    slug: collectionSlug,
+  } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { products = [], isLoading, error, refetch } = useProductsContext();
   const { savedPhone, selectPhone } = usePhoneContext();
+
+  // Collection definition if on a collection page
+  const resolvedCollection = useMemo(() => {
+    if (!isCollectionPage) return null;
+    return getCollectionBySlug(collectionSlug);
+  }, [isCollectionPage, collectionSlug]);
 
   const brandCap = useMemo(() => {
     if (!brandSlug) return 'Apple';
@@ -94,9 +106,9 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
   // Resolve model slug against live model list
   const resolvedModel = useMemo(() => {
-    if (isAccessoryPage) return null;
+    if (isAccessoryPage || isCollectionPage) return null;
     return slugToModel(modelSlug, liveModels);
-  }, [isAccessoryPage, modelSlug, liveModels]);
+  }, [isAccessoryPage, isCollectionPage, modelSlug, liveModels]);
 
   // Subcategory resolution if on an accessory page
   const resolvedSubcategory = useMemo(() => {
@@ -117,7 +129,19 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
   // Set browser title only once the model resolves; never show "Model cases"
   useEffect(() => {
-    if (isAccessoryPage) {
+    if (isCollectionPage) {
+      if (resolvedCollection) {
+        setPageMeta({
+          title: `${resolvedCollection.name} | WrapStore`,
+          description: resolvedCollection.description || `Browse the ${resolvedCollection.name} collection at WrapStore.`,
+        });
+      } else if (!isLoading) {
+        setPageMeta({
+          title: 'Collection not found | WrapStore',
+          description: 'Browse all collections and cases at WrapStore.',
+        });
+      }
+    } else if (isAccessoryPage) {
       if (resolvedSubcategory) {
         setPageMeta({
           title: `${resolvedSubcategory} | WrapStore`,
@@ -135,7 +159,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
         description: 'Cases and accessories for phone models at WrapStore.',
       });
     }
-  }, [isAccessoryPage, resolvedSubcategory, resolvedModel, isLoading]);
+  }, [isCollectionPage, resolvedCollection, isAccessoryPage, resolvedSubcategory, resolvedModel, isLoading]);
 
   // Filter state
   const [activeChip, setActiveChip] = useState('all'); // 'all' | 'cases' | 'screen' | 'combos'
@@ -161,8 +185,54 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFilterDropdownOpen]);
 
-  // 1. Collect all products for this model
+  // 1. Collect all products for this model or collection
   const { casesList, screenList, combosList, allModelProducts } = useMemo(() => {
+    if (isCollectionPage) {
+      if (!resolvedCollection) {
+        return { casesList: [], screenList: [], combosList: [], allModelProducts: [] };
+      }
+      const matchKeywords = resolvedCollection.match || [];
+      const matched = products.filter((p) => {
+        if (!p || p.is_active === false || p.online_visible === false) return false;
+        const stock = p.available_stock ?? p.current_stock ?? 0;
+        if (stock <= 0 || p.stock_status === 'OUT_OF_STOCK') return false;
+
+        const isCase =
+          (p.category || '').toLowerCase().includes('case') ||
+          (p.subcategory || '').toLowerCase().includes('iphone') ||
+          (p.subcategory || '').toLowerCase().includes('samsung');
+        if (!isCase) return false;
+
+        const pName = (p.name || '').toLowerCase();
+        const pDesc = (p.description || '').toLowerCase();
+        const pCol = (p.collection || '').toLowerCase();
+        const matchesCol = matchKeywords.some(
+          (k) =>
+            pName.includes(k.toLowerCase()) ||
+            pDesc.includes(k.toLowerCase()) ||
+            pCol.includes(k.toLowerCase())
+        );
+        if (!matchesCol) return false;
+
+        // Filter to saved phone when set
+        if (savedPhone?.model) {
+          const comp = (p.compatible_models || []).map((m) => (m || '').toLowerCase().trim());
+          const targetM = savedPhone.model.toLowerCase().trim();
+          if (comp.length > 0 && !comp.includes('universal') && !comp.includes(targetM)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      return {
+        casesList: matched,
+        screenList: [],
+        combosList: [],
+        allModelProducts: matched,
+      };
+    }
+
     if (isAccessoryPage) {
       const accs = products.filter((p) => {
         if (!p) return false;
@@ -234,7 +304,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
   // 2. Build Round Chips Data (72px circle with real photo on #F4F3F0; Only chips with items)
   const chips = useMemo(() => {
-    if (isAccessoryPage) return [];
+    if (isAccessoryPage || isCollectionPage) return [];
 
     const getThumbnail = (item) => {
       if (!item) return '/subcategories/iphone.jpg';
@@ -287,7 +357,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
 
   // 3. Filter products by active chip
   const activeProducts = useMemo(() => {
-    if (isAccessoryPage) return allModelProducts;
+    if (isAccessoryPage || isCollectionPage) return allModelProducts;
     if (activeChip === 'cases') return casesList;
     if (activeChip === 'screen') return screenList;
     if (activeChip === 'combos') return combosList;
@@ -352,7 +422,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
       return groupProductsByDesign(filtered);
     };
 
-    if (activeChip === 'all' && !isAccessoryPage) {
+    if (activeChip === 'all' && !isAccessoryPage && !isCollectionPage) {
       // Per Item 4: cases first, then screen protection, then combos; sorting applies within each group
       const casesGrouped = filterAndSortGroup(casesList);
       const screensGrouped = filterAndSortGroup(screenList);
@@ -432,8 +502,32 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
     );
   }
 
-  // 2. Show "Model not found" only after products have finished loading and slug still does not match
-  if (!isAccessoryPage && !resolvedModel) {
+  // 2. Show "Collection not found" if on a collection page and slug does not match
+  if (isCollectionPage && !resolvedCollection) {
+    return (
+      <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+            Collection not found
+          </h1>
+          <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
+            The collection you requested could not be located.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/cases"
+              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#141414] hover:bg-[#B0521F] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+            >
+              Browse all cases
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Show "Model not found" only after products have finished loading and slug still does not match
+  if (!isAccessoryPage && !isCollectionPage && !resolvedModel) {
     return (
       <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
         <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
@@ -466,7 +560,13 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
         <nav className="flex items-center gap-2 text-[13px] text-[#6B6B6B] mb-6" aria-label="Breadcrumb">
           <Link to="/" className="hover:text-[#141414] transition-colors">WrapStore</Link>
           <span>/</span>
-          {isAccessoryPage ? (
+          {isCollectionPage ? (
+            <>
+              <span className="text-[#6B6B6B]">Collections</span>
+              <span>/</span>
+              <span className="text-[#141414] font-medium">{resolvedCollection?.name || collectionSlug}</span>
+            </>
+          ) : isAccessoryPage ? (
             <>
               <Link to="/?category=Accessories" className="hover:text-[#141414] transition-colors">Accessories</Link>
               <span>/</span>
@@ -486,13 +586,29 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
         {/* 1. Centred Title in Display Serif */}
         <div className="text-center py-4">
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[#141414]">
-            {isAccessoryPage ? resolvedSubcategory : `${resolvedModel} cases`}
+            {isCollectionPage
+              ? resolvedCollection?.name
+              : isAccessoryPage
+              ? resolvedSubcategory
+              : `${resolvedModel} cases`}
           </h1>
-          <p className="text-[14px] text-[#6B6B6B] mt-2 max-w-md mx-auto">
-            {isAccessoryPage
-              ? `Daily essentials and accessories for ${resolvedSubcategory.toLowerCase()}.`
-              : `Cases, screen protection and combos for ${resolvedModel}.`}
-          </p>
+          {isCollectionPage && resolvedCollection?.description && (
+            <p className="text-[15px] text-[#5A5A5A] mt-2 max-w-xl mx-auto">
+              {resolvedCollection.description}
+            </p>
+          )}
+          {isCollectionPage && savedPhone?.model && (
+            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#E7E5E0] rounded-full text-[12px] text-[#5A5A5A]">
+              <span>Filtered for <strong>{savedPhone.model}</strong></span>
+            </div>
+          )}
+          {!isCollectionPage && (
+            <p className="text-[14px] text-[#6B6B6B] mt-2 max-w-md mx-auto">
+              {isAccessoryPage
+                ? `Daily essentials and accessories for ${resolvedSubcategory.toLowerCase()}.`
+                : `Cases, screen protection and combos for ${resolvedModel}.`}
+            </p>
+          )}
         </div>
 
         {/* 2. Centred Row of Round Chips (72px circle with real photo on #F4F3F0; only chips with items) */}
@@ -535,7 +651,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
         )}
 
         {/* ─── SCENARIO A: MODEL HAS CASES ─── */}
-        {(hasCases || isAccessoryPage) ? (
+        {(hasCases || isAccessoryPage || isCollectionPage) ? (
           <div className="space-y-6">
             
             {/* 3. Bar: "Filters" button on left, sort on right. Under it: "Model: <model> ›" */}
@@ -668,7 +784,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
               </div>
 
               {/* Under filter bar: "Model: <model> ›" which opens the picker (only on model pages) */}
-              {!isAccessoryPage && resolvedModel && (
+              {!isAccessoryPage && !isCollectionPage && resolvedModel && (
                 <div className="pt-1">
                   <Link
                     to="/cases"
@@ -794,7 +910,7 @@ export function ModelCasesPage({ isAccessoryPage = false }) {
                       key={product.id}
                       className={isOutOfStock ? 'opacity-65 filter grayscale contrast-90 relative' : ''}
                     >
-                      <ProductCard product={product} contextModel={resolvedModel} />
+                      <ProductCard product={product} contextModel={resolvedModel || (isCollectionPage ? savedPhone?.model : null)} />
                       {isOutOfStock && (
                         <div className="absolute top-2 left-2 z-10 bg-[#141414]/90 text-white text-[11px] font-semibold px-2 py-0.5 rounded-[4px]">
                           Sold out

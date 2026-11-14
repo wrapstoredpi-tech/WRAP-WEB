@@ -138,6 +138,7 @@ function AppContent() {
           <Route path="/cases" element={<CasesPickerPage />} />
           <Route path="/cases/:brand" element={<CasesBrandRedirect />} />
           <Route path="/cases/:brand/:model" element={<ModelCasesPage />} />
+          <Route path="/collection/:slug" element={<ModelCasesPage isCollectionPage={true} />} />
           <Route path="/accessories" element={<ModelCasesPage isAccessoryPage={true} />} />
           <Route path="/accessories/:subcategory" element={<ModelCasesPage isAccessoryPage={true} />} />
           <Route path="/combos" element={<HomePage />} />
