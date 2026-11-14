@@ -42,7 +42,7 @@ export function NotFoundPage() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#141414] tracking-[-0.025em]">
             Page not found
           </h1>
           <p className="text-[14px] text-[#6B6B6B] leading-relaxed max-w-sm mx-auto">

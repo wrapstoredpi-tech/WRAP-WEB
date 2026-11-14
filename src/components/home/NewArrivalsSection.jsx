@@ -118,7 +118,7 @@ export function NewArrivalsSection({
     <section ref={containerRef} className="space-y-5 select-none" aria-labelledby="new-arrivals-title">
       {/* Heading & View All link */}
       <div className="flex items-center justify-between">
-        <h2 id="new-arrivals-title" className="font-display font-normal text-[30px] sm:text-[40px] leading-[1.1] tracking-[-0.01em] text-[#141414]">
+        <h2 id="new-arrivals-title" className="font-semibold text-[30px] sm:text-[40px] leading-[1.1] tracking-[-0.025em] text-[#141414]">
           {config.heading || 'New arrivals'}
         </h2>
         <Link

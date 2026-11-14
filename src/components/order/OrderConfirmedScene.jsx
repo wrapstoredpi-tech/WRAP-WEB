@@ -239,8 +239,8 @@ export function OrderConfirmedScene({
               <g transform="translate(366, 202)">
                 <rect x="0" y="0" width="56" height="20" fill="#FFF" stroke="#141414" strokeWidth="1.2" rx="1" />
                 <rect x="1" y="1" width="26" height="18" fill="#141414" />
-                <text x="14" y="13" fill="#FFF" fontSize="7" fontWeight="700" fontFamily="Poppins, sans-serif" textAnchor="middle" letterSpacing="0.4">WRAP</text>
-                <text x="41" y="13" fill="#141414" fontSize="7" fontWeight="700" fontFamily="Poppins, sans-serif" textAnchor="middle" letterSpacing="0.4">STORE</text>
+                <text x="14" y="13" fill="#FFF" fontSize="7" fontWeight="700" fontFamily="Inter, sans-serif" textAnchor="middle" letterSpacing="0.4">WRAP</text>
+                <text x="41" y="13" fill="#141414" fontSize="7" fontWeight="700" fontFamily="Inter, sans-serif" textAnchor="middle" letterSpacing="0.4">STORE</text>
               </g>
 
               {/* Rear Wheel (x=360, y=274) */}

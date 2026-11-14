@@ -174,7 +174,7 @@ export function OrderConfirmationPage() {
   if (!order) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-20 text-center space-y-4">
-        <h1 className="font-serif text-[28px] font-semibold text-[#141414]">We couldn't load this order</h1>
+        <h1 className="text-[28px] font-semibold text-[#141414] tracking-[-0.025em]">We couldn't load this order</h1>
         <p className="text-[14px] text-[#6B6B6B] max-w-md mx-auto">
           If you recently placed an order, you can track it with your order number, or continue shopping.
         </p>
@@ -300,7 +300,7 @@ export function OrderConfirmationPage() {
           
           {/* Header & Subtitle (Always visible above the fold on mobile & desktop) */}
           <div className="space-y-1.5 border-b border-[#E5E5E3] pb-4">
-            <h1 className="font-serif text-[28px] sm:text-[34px] font-bold text-[#141414] tracking-[-0.01em] leading-tight">
+            <h1 className="text-[28px] sm:text-[34px] font-semibold text-[#141414] tracking-[-0.025em] leading-tight">
               Order confirmed
             </h1>
             <p className="text-[14px] text-[#6B6B6B] leading-normal">

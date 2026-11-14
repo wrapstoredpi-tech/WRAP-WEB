@@ -145,7 +145,7 @@ export function ProductDetailPage({ onAddToCart }) {
   if (error && (!products || products.length === 0)) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 flex flex-col items-center justify-center gap-4 text-center">
-        <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#141414] tracking-[-0.025em]">
           Couldn't load products, retrying
         </h1>
         <p className="text-[14px] text-[#6B6B6B] max-w-md leading-relaxed">
@@ -164,7 +164,7 @@ export function ProductDetailPage({ onAddToCart }) {
   if (!product) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 text-center space-y-4">
-        <h1 className="font-serif text-[28px] text-[#141414]">Product not found</h1>
+        <h1 className="text-[28px] font-semibold text-[#141414] tracking-[-0.025em]">Product not found</h1>
         <p className="text-[14px] text-[#6B6B6B]">The product you requested could not be located in our catalog.</p>
         <div className="pt-2">
           <Link

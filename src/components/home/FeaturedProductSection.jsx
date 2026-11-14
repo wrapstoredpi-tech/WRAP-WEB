@@ -39,7 +39,7 @@ export function FeaturedProductSection({ product }) {
       className="w-full select-none"
     >
       {/* On Mobile: H2 sits at the top */}
-      <h2 className="lg:hidden font-display font-normal text-[30px] leading-[1.1] tracking-[-0.01em] text-[#141414] mb-6">
+      <h2 className="lg:hidden font-semibold text-[30px] leading-[1.1] tracking-[-0.025em] text-[#141414] mb-6">
         {featuredConfig.heading || 'Featured'}
       </h2>
 
@@ -63,7 +63,7 @@ export function FeaturedProductSection({ product }) {
           {/* H2 on Desktop only */}
           <h2
             id="featured-section-title"
-            className="hidden lg:block font-display font-normal text-[40px] leading-[1.1] tracking-[-0.01em] text-[#141414]"
+            className="hidden lg:block font-semibold text-[40px] leading-[1.1] tracking-[-0.025em] text-[#141414]"
           >
             {featuredConfig.heading || 'Featured'}
           </h2>

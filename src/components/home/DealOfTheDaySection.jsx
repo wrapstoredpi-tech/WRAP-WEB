@@ -19,7 +19,7 @@ export function DealOfTheDaySection({ dealData }) {
     >
       <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
         {/* On Mobile: H2 sits at the top */}
-        <h2 className="lg:hidden font-display font-normal text-[28px] sm:text-[32px] leading-[1.1] tracking-[-0.01em] text-[#141414] mb-4">
+        <h2 className="lg:hidden font-semibold text-[28px] sm:text-[32px] leading-[1.1] tracking-[-0.025em] text-[#141414] mb-4">
           {dealConfig.heading || 'Deal of the day'}
         </h2>
 
@@ -43,7 +43,7 @@ export function DealOfTheDaySection({ dealData }) {
             {/* H2 on Desktop only */}
             <h2
               id="deal-of-the-day-title"
-              className="hidden lg:block font-display font-normal text-[40px] leading-[1.1] tracking-[-0.01em] text-[#141414]"
+              className="hidden lg:block font-semibold text-[40px] leading-[1.1] tracking-[-0.025em] text-[#141414]"
             >
               {dealConfig.heading || 'Deal of the day'}
             </h2>

@@ -157,7 +157,7 @@ export function CartPage() {
           </div>
 
           <div className="space-y-1.5">
-            <h1 className="font-serif text-[28px] sm:text-[32px] text-[#141414] tracking-tight">
+            <h1 className="text-[28px] sm:text-[32px] font-semibold text-[#141414] tracking-[-0.025em]">
               Your bag is empty
             </h1>
             <p className="text-[14px] text-[#6B6B6B] max-w-xs mx-auto">
@@ -208,7 +208,7 @@ export function CartPage() {
           1. CENTRED TITLE (Display Serif)
           ─────────────────────────────────────────────────────────────────────────── */}
       <div className="text-center space-y-1">
-        <h1 className="font-serif text-[32px] sm:text-[38px] text-[#141414] tracking-tight">
+        <h1 className="text-[32px] sm:text-[38px] font-semibold text-[#141414] tracking-[-0.025em]">
           Shopping bag
         </h1>
         <p className="text-[13px] text-[#6B6B6B]">

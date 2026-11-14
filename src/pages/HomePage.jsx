@@ -360,7 +360,7 @@ export function HomePage() {
   if (error && liveProducts.length === 0 && !isLoading) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 flex flex-col items-center justify-center gap-4 text-center">
-        <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#141414] tracking-[-0.025em]">
           Couldn't load products, retrying
         </h1>
         <p className="text-[14px] text-[#6B6B6B] max-w-md leading-relaxed">

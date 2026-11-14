@@ -1,28 +1,12 @@
-/* ── Typography: @fontsource Self-Hosted Fonts (latin & latin-ext) ────────── */
-/* Poppins: 400, 500, 600, 700 with latin, latin-ext (U+20B9 Rupee sign), and devanagari */
-@import '@fontsource/poppins/latin-400.css';
-@import '@fontsource/poppins/latin-ext-400.css';
-@import '@fontsource/poppins/devanagari-400.css';
-
-@import '@fontsource/poppins/latin-500.css';
-@import '@fontsource/poppins/latin-ext-500.css';
-@import '@fontsource/poppins/devanagari-500.css';
-
-@import '@fontsource/poppins/latin-600.css';
-@import '@fontsource/poppins/latin-ext-600.css';
-@import '@fontsource/poppins/devanagari-600.css';
-
-@import '@fontsource/poppins/latin-700.css';
-@import '@fontsource/poppins/latin-ext-700.css';
-@import '@fontsource/poppins/devanagari-700.css';
-
-/* DM Serif Display: 400 (regular only) */
-@import '@fontsource/dm-serif-display/latin-400.css';
-@import '@fontsource/dm-serif-display/latin-ext-400.css';
-
-/* Pairing B for /type-test: Cormorant Garamond 500 (display only) */
-@import '@fontsource/cormorant-garamond/latin-500.css';
-@import '@fontsource/cormorant-garamond/latin-ext-500.css';
+/* ── Typography: @fontsource Self-Hosted Inter Fonts (latin & latin-ext) ────────── */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-ext-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-ext-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/latin-ext-700.css';
 
 @tailwind base;
 @tailwind components;
@@ -30,9 +14,9 @@
 
 @layer base {
   :root {
-    /* Default Pairing A */
-    --font-display: 'DM Serif Display', Georgia, serif;
-    --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
     --color-bg: #FAFAF9;
     --color-text: #141414;
@@ -51,6 +35,7 @@
     color: #141414;
     font-family: var(--font-sans);
     font-weight: 400;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -64,32 +49,34 @@
     margin: 0;
   }
 
-  /* Headlines at 28px and up: Display serif, regular 400 only */
+  /* Headlines: Inter 600 with clean negative letter-spacing per design */
   h1 {
-    font-family: var(--font-display);
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
   }
 
   h2 {
-    font-family: var(--font-display);
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
   }
 
-  /* H3: Poppins 600, 20px */
+  /* H3: Inter 600, 20px */
   h3 {
     font-family: var(--font-sans);
     font-weight: 600;
     font-size: 20px;
     line-height: 1.3;
+    letter-spacing: -0.02em;
   }
 
   h4, h5, h6 {
     font-family: var(--font-sans);
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   /* Never bold a paragraph */
@@ -98,7 +85,7 @@
     line-height: 1.6;
   }
 
-  /* Prices and all numbers use Poppins with tabular-nums, never the serif */
+  /* Prices and all numbers use Inter with tabular-nums */
   .tabular-nums, [data-price], .price-text {
     font-family: var(--font-sans) !important;
     font-variant-numeric: tabular-nums;

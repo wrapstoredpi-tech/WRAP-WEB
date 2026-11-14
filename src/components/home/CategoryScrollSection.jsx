@@ -179,7 +179,7 @@ export function CategoryScrollSection({
       {/* Top Header: Title Left, Pill Tabs + View All Link Right */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-[24px] sm:text-[30px] font-normal text-[#141414] font-serif tracking-tight">
+          <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em]">
             Shop by category
           </h2>
         </div>

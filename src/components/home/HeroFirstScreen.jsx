@@ -278,7 +278,7 @@ export function HeroFirstScreen() {
             <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 pb-7 sm:pb-10 pointer-events-auto">
               <div className="max-w-xl text-left space-y-1.5 sm:space-y-2">
                 {currentSlide.tag && (
-                  <h1 className="text-white text-[28px] sm:text-[38px] lg:text-[44px] font-normal font-serif tracking-tight leading-[1.1] drop-shadow-md">
+                  <h1 className="text-white text-[28px] sm:text-[38px] lg:text-[44px] font-semibold tracking-[-0.025em] leading-[1.1] drop-shadow-md">
                     {currentSlide.tag}
                   </h1>
                 )}

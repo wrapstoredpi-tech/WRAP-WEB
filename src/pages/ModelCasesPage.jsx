@@ -483,7 +483,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
     return (
       <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
         <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#141414] tracking-[-0.025em]">
             Couldn't load products, retrying
           </h1>
           <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
@@ -507,7 +507,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
     return (
       <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
         <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#141414] tracking-[-0.025em]">
             Collection not found
           </h1>
           <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
@@ -531,7 +531,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
     return (
       <div className="min-h-[calc(100vh-140px)] bg-[#FAFAF9] text-[#141414] py-16 px-4 flex items-center justify-center">
         <div className="max-w-md w-full text-center border border-[#E5E5E3] bg-white rounded-[6px] p-8 sm:p-10 shadow-xs space-y-4">
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#141414]">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#141414] tracking-[-0.025em]">
             Model not found
           </h1>
           <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
@@ -583,9 +583,9 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           )}
         </nav>
 
-        {/* 1. Centred Title in Display Serif */}
+        {/* 1. Centred Title in Inter Display */}
         <div className="text-center py-4">
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[#141414]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-[#141414] tracking-[-0.025em]">
             {isCollectionPage
               ? resolvedCollection?.name
               : isAccessoryPage
@@ -810,7 +810,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3]">
-                    <h3 className="font-serif text-xl font-normal text-[#141414]">Filter cases</h3>
+                    <h3 className="text-xl font-semibold text-[#141414] tracking-[-0.02em]">Filter cases</h3>
                     <button
                       type="button"
                       onClick={() => setIsFilterSheetOpen(false)}
@@ -940,7 +940,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           /* ─── SCENARIO B: MODEL WITH NO CASES ─── */
           <div className="py-8 space-y-12">
             <div className="max-w-xl mx-auto border border-[#E5E5E3] bg-white rounded-[6px] p-8 text-center shadow-xs space-y-4">
-              <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#141414]">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-[#141414] tracking-[-0.025em]">
                 No cases for {resolvedModel} yet
               </h2>
               <p className="text-[14px] text-[#6B6B6B] leading-relaxed">
@@ -973,7 +973,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
             {universalAccessories.length > 0 && (
               <div className="space-y-6 pt-6 border-t border-[#E5E5E3]">
                 <div className="text-center">
-                  <h3 className="font-serif text-2xl font-normal text-[#141414]">
+                  <h3 className="text-2xl font-semibold text-[#141414] tracking-[-0.02em]">
                     Universal accessories
                   </h3>
                   <p className="text-[13px] text-[#6B6B6B] mt-1">

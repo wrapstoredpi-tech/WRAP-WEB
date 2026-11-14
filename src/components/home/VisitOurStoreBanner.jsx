@@ -33,7 +33,7 @@ export function VisitOurStoreBanner() {
         <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-end">
           <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 pb-8 sm:pb-12 pointer-events-auto">
             <div className="max-w-xl text-left space-y-1.5">
-              <h2 className="text-white text-[30px] sm:text-[42px] font-normal font-serif tracking-tight leading-[1.1] drop-shadow-md">
+              <h2 className="text-white text-[30px] sm:text-[42px] font-semibold tracking-[-0.025em] leading-[1.1] drop-shadow-md">
                 Visit our store
               </h2>
 

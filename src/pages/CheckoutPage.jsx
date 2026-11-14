@@ -241,7 +241,7 @@ export function CheckoutPage() {
             <div className="w-12 h-12 rounded-[6px] bg-[#FAFAF9] border border-[#E5E5E3] flex items-center justify-center mx-auto text-[#6B6B6B]">
               <Lock className="w-6 h-6 text-[#141414]" />
             </div>
-            <h1 className="font-serif text-[28px] text-[#141414]">
+            <h1 className="text-[28px] font-semibold text-[#141414] tracking-[-0.025em]">
               Your bag is empty
             </h1>
             <p className="text-[14px] text-[#6B6B6B]">
@@ -300,7 +300,7 @@ export function CheckoutPage() {
         
         {/* Centred Title in Display Serif */}
         <div className="text-center space-y-1">
-          <h1 className="font-serif text-[32px] sm:text-[38px] text-[#141414] tracking-tight">
+          <h1 className="text-[32px] sm:text-[38px] font-semibold text-[#141414] tracking-[-0.025em]">
             Checkout
           </h1>
           <p className="text-[13px] text-[#6B6B6B]">
@@ -871,7 +871,7 @@ export function CheckoutPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 id="checkout-auth-title" className="font-display text-[24px] font-normal text-[#141414] mb-1">
+            <h3 id="checkout-auth-title" className="text-[24px] font-semibold text-[#141414] tracking-[-0.025em] mb-1">
               Sign in to WrapStore
             </h3>
             <p className="text-[13px] text-[#6B6B6B] mb-5">

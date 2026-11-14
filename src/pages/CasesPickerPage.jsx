@@ -177,7 +177,7 @@ export function CasesPickerPage() {
           {!selectedBrand && (
             <div className="max-w-xl mx-auto py-2">
               <div className="text-center mb-6">
-                <h1 className="font-serif text-3xl font-normal text-[#141414]">
+                <h1 className="text-3xl font-semibold text-[#141414] tracking-[-0.025em]">
                   Select your brand
                 </h1>
                 <p className="text-[14px] text-[#6B6B6B] mt-1.5">
@@ -250,7 +250,7 @@ export function CasesPickerPage() {
               )}
 
               <div>
-                <h1 className="font-serif text-2xl font-normal text-[#141414]">
+                <h1 className="text-2xl font-semibold text-[#141414] tracking-[-0.025em]">
                   Select your {selectedBrand === 'Apple' ? 'iPhone' : 'Samsung Galaxy'} model
                 </h1>
                 <p className="text-[13px] text-[#6B6B6B] mt-1">
@@ -451,7 +451,7 @@ export function CasesPickerPage() {
             )}
 
             <div>
-              <h1 className="font-serif text-3xl font-normal text-[#141414]">
+              <h1 className="text-3xl font-semibold text-[#141414] tracking-[-0.025em]">
                 Select your {activeBrand === 'Apple' ? 'iPhone' : 'Samsung Galaxy'} model
               </h1>
               <p className="text-[14px] text-[#6B6B6B] mt-1">

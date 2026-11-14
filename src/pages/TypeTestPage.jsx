@@ -4,8 +4,16 @@ import { formatINR } from '../lib/currency';
 
 const PAIRINGS = [
   {
+    id: 'Inter',
+    name: 'Inter (WrapStore Standard)',
+    displayFont: "'Inter', sans-serif",
+    sansFont: "'Inter', sans-serif",
+    headlineWeight: 600,
+    description: 'Inter 600 for headlines + Inter 400-600 for body, nav, buttons, and prices with tight -0.025em tracking.',
+  },
+  {
     id: 'A',
-    name: 'Pairing A (Default)',
+    name: 'Pairing A (Legacy)',
     displayFont: "'DM Serif Display', Georgia, serif",
     sansFont: "'Poppins', sans-serif",
     headlineWeight: 400,
@@ -13,7 +21,7 @@ const PAIRINGS = [
   },
   {
     id: 'B',
-    name: 'Pairing B',
+    name: 'Pairing B (Legacy)',
     displayFont: "'Cormorant Garamond', Georgia, serif",
     sansFont: "'Poppins', sans-serif",
     headlineWeight: 500,
@@ -21,7 +29,7 @@ const PAIRINGS = [
   },
   {
     id: 'C',
-    name: 'Pairing C',
+    name: 'Pairing C (Legacy)',
     displayFont: "'Poppins', sans-serif",
     sansFont: "'Poppins', sans-serif",
     headlineWeight: 700,
@@ -30,7 +38,7 @@ const PAIRINGS = [
 ];
 
 export function TypeTestPage() {
-  const [activePairingId, setActivePairingId] = useState('A');
+  const [activePairingId, setActivePairingId] = useState('Inter');
 
   // Apply chosen pairing to root CSS variables for live site-wide preview
   const handleApplyPairing = (pairing) => {

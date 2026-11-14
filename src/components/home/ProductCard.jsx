@@ -24,31 +24,9 @@ export function ProductCard({
   const { savedPhone } = usePhoneContext();
   const { openSheet } = usePurchaseSheet();
 
-  if (!product) return null;
-
-  const isOutOfStock =
-    product.stock_status === 'OUT_OF_STOCK' ||
-    (product.available_stock ?? product.current_stock ?? 0) <= 0;
-
-  // Rule: Do not show out of stock items
-  if (isOutOfStock) return null;
-
-  const mrp = product.mrp || product.original_value || product.raw_mrp || 0;
-  const sellingPrice = product.selling_price || 0;
-  const hasDiscount = mrp > sellingPrice;
-  const discountPercent = hasDiscount ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
-  const isFav = product.id ? isFavorite(product.id) : false;
-
-  // Model page context: on /cases/:brand/:model, contextModel counts as known model for quick-add
-  const effectiveModel = contextModel || savedPhone?.model || null;
-
-  // Real link URL carrying the model if contextModel is present
-  const productUrl = contextModel
-    ? `/product/${product.id}?model=${modelToSlug(contextModel)}`
-    : `/product/${product.id}`;
-
-  // Sibling color dots with stock awareness (Rule 15)
+  // Sibling color dots with stock awareness (Rule 15) - Hook must run unconditionally
   const siblingDots = useMemo(() => {
+    if (!product) return [];
     if (!product.allSiblings || product.allSiblings.length === 0) {
       const raw = product.aggregatedColors || getValidColors(product);
       return (raw || []).map((c) => ({
@@ -72,6 +50,29 @@ export function ProductCard({
     });
     return dots;
   }, [product]);
+
+  if (!product) return null;
+
+  const isOutOfStock =
+    product.stock_status === 'OUT_OF_STOCK' ||
+    (product.available_stock ?? product.current_stock ?? 0) <= 0;
+
+  // Rule: Do not show out of stock items
+  if (isOutOfStock) return null;
+
+  const mrp = product.mrp || product.original_value || product.raw_mrp || 0;
+  const sellingPrice = product.selling_price || 0;
+  const hasDiscount = mrp > sellingPrice;
+  const discountPercent = hasDiscount ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
+  const isFav = product.id ? isFavorite(product.id) : false;
+
+  // Model page context: on /cases/:brand/:model, contextModel counts as known model for quick-add
+  const effectiveModel = contextModel || savedPhone?.model || null;
+
+  // Real link URL carrying the model if contextModel is present
+  const productUrl = contextModel
+    ? `/product/${product.id}?model=${modelToSlug(contextModel)}`
+    : `/product/${product.id}`;
 
   // Check if item is already in the bag
   const isInBag = items.some(

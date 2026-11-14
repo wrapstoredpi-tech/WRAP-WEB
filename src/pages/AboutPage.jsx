@@ -18,7 +18,7 @@ export function AboutPage() {
       
       {/* 1. Header / Intro */}
       <div className="space-y-4 pb-8 border-b border-[#E5E5E3]">
-        <h1 className="font-display font-normal text-[34px] sm:text-[42px] lg:text-[48px] text-[#141414] leading-[1.08] tracking-[-0.01em]">
+        <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-semibold text-[#141414] leading-[1.08] tracking-[-0.025em]">
           About WrapStore
         </h1>
         <p className="font-sans text-[16px] sm:text-[18px] text-[#525252] leading-relaxed max-w-2xl">

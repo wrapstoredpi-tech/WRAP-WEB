@@ -69,7 +69,7 @@ export function ProductScrollRow({
               {subtitle}
             </p>
           )}
-          <h2 className="text-[24px] sm:text-[30px] font-normal text-[#141414] font-serif tracking-tight">
+          <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em]">
             {title}
           </h2>
         </div>

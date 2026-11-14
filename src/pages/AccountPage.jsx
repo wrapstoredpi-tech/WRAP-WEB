@@ -120,7 +120,7 @@ export function AccountPage() {
       {/* Account Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#E5E5E3] mb-8">
         <div>
-          <h1 className="font-display font-normal text-[28px] sm:text-[34px] text-[#141414] tracking-[-0.01em]">
+          <h1 className="text-[28px] sm:text-[34px] font-semibold text-[#141414] tracking-[-0.025em]">
             Hello, {firstName || 'there'}
           </h1>
           <p className="font-sans text-[14px] text-[#6B6B6B]">

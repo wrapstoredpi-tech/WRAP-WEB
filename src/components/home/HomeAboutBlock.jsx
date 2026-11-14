@@ -14,7 +14,7 @@ export function HomeAboutBlock() {
         <div className="md:col-span-7 space-y-4">
           <h2
             id="home-about-heading"
-            className="font-display font-normal text-[30px] sm:text-[40px] text-[#141414] tracking-[-0.01em] leading-[1.1]"
+            className="font-semibold text-[30px] sm:text-[40px] text-[#141414] tracking-[-0.025em] leading-[1.1]"
           >
             About WrapStore
           </h2>

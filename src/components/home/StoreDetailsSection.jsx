@@ -41,7 +41,7 @@ export function StoreDetailsSection() {
           <div className="space-y-1.5">
             <h2
               id="store-details-title"
-              className="font-display font-normal text-[30px] sm:text-[40px] text-[#141414] tracking-[-0.01em] leading-[1.1]"
+              className="font-semibold text-[30px] sm:text-[40px] text-[#141414] tracking-[-0.025em] leading-[1.1]"
             >
               Contact and store
             </h2>

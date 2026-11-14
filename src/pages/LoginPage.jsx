@@ -81,7 +81,7 @@ export function LoginPage() {
         {/* Left Column: Form */}
         <div className="lg:col-span-7 bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 shadow-sm">
           <div className="mb-6">
-            <h1 className="font-display font-normal text-[28px] sm:text-[32px] text-[#141414] tracking-[-0.01em]">
+            <h1 className="text-[28px] sm:text-[32px] font-semibold text-[#141414] tracking-[-0.025em]">
               Welcome to WrapStore
             </h1>
             <p className="font-sans text-[14px] text-[#6B6B6B] mt-1">

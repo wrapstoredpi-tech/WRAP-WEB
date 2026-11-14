@@ -74,7 +74,7 @@ export function IntroTestPage() {
             <span className="text-[12px] font-semibold tracking-wider text-[#B0521F] uppercase">
               Temporary QA Route
             </span>
-            <h1 className="font-display text-[32px] sm:text-[40px] text-[#141414] leading-[1.1] mt-1">
+            <h1 className="text-[32px] sm:text-[40px] font-semibold text-[#141414] tracking-[-0.025em] leading-[1.1] mt-1">
               Logo Intro Animation Inspector
             </h1>
             <p className="font-sans text-[14px] text-[#525252] mt-1">

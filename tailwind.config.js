@@ -18,8 +18,9 @@ export default {
         },
       },
       fontFamily: {
-        display: ['var(--font-display)'],
-        sans: ['var(--font-sans)'],
+        display: ['var(--font-display)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['var(--font-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontSize: {
         display: ['56px', { lineHeight: '60px', letterSpacing: '-0.01em' }],

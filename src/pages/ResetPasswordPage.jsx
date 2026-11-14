@@ -44,7 +44,7 @@ export function ResetPasswordPage() {
   return (
     <main className="flex-1 max-w-[540px] w-full mx-auto px-4 sm:px-6 py-12 sm:py-20">
       <div className="bg-white border border-[#E5E5E3] rounded-[6px] p-6 sm:p-8 shadow-sm">
-        <h1 className="font-display font-normal text-[26px] sm:text-[30px] text-[#141414] tracking-[-0.01em] mb-2">
+        <h1 className="text-[26px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em] mb-2">
           Set new password
         </h1>
         <p className="font-sans text-[14px] text-[#6B6B6B] mb-6">
