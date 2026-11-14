@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown, X, MessageCircle, ArrowRight, Check } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, X, MessageCircle, ArrowRight, Check, PackageSearch } from 'lucide-react';
 import { useProductsContext } from '../context/ProductsContext';
 import { usePhoneContext } from '../context/PhoneContext';
 import {
@@ -234,14 +234,37 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
     }
 
     if (isAccessoryPage) {
+      const normSub = (resolvedSubcategory || subcategorySlug || '').toLowerCase().replace(/-/g, ' ');
       const accs = products.filter((p) => {
         if (!p) return false;
+        const isOutOfStock = p.stock_status === 'OUT_OF_STOCK' || (p.available_stock ?? p.current_stock ?? 0) <= 0;
+        if (p.is_active === false || p.online_visible === false) return false;
+
         const sub = (p.subcategory || '').toLowerCase();
         const cat = (p.category || '').toLowerCase();
-        const matchesSub = resolvedSubcategory ? sub === resolvedSubcategory.toLowerCase() : true;
-        const isAcc = cat.includes('accessor') || sub.includes('protector') || sub.includes('cable');
-        return isAcc && matchesSub;
+        const name = (p.name || '').toLowerCase();
+
+        const isAcc = cat.includes('accessor') || sub.includes('protector') || sub.includes('cable') || sub.includes('glass') || sub.includes('strap');
+        if (!isAcc && !cat.includes('mobile cases')) return false;
+
+        if (!normSub || normSub === 'accessories') return isAcc;
+
+        if (normSub.includes('glass') || normSub.includes('screen') || normSub.includes('protect')) {
+          return sub.includes('glass') || sub.includes('screen') || sub.includes('protect') || name.includes('tempered') || name.includes('glass');
+        }
+        if (normSub.includes('power')) {
+          return sub.includes('power') || name.includes('power bank');
+        }
+        if (normSub.includes('cable') || normSub.includes('charger')) {
+          return sub.includes('cable') || sub.includes('charger') || name.includes('cable');
+        }
+        if (normSub.includes('watch') || normSub.includes('strap')) {
+          return sub.includes('watch') || sub.includes('strap') || name.includes('strap');
+        }
+
+        return sub.includes(normSub) || name.includes(normSub);
       });
+
       return {
         casesList: [],
         screenList: accs,
@@ -650,8 +673,43 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           </div>
         )}
 
-        {/* ─── SCENARIO A: MODEL HAS CASES ─── */}
-        {(hasCases || isAccessoryPage || isCollectionPage) ? (
+        {/* ─── SCENARIO: NO PRODUCTS IN THIS CATEGORY / ACCESSORY ─── */}
+        {((isAccessoryPage || isCollectionPage) && allModelProducts.length === 0 && !isLoading) ? (
+          <div className="py-16 sm:py-20 px-4 max-w-lg mx-auto text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-[#F4F2EE] border border-[#E7E5E0] mx-auto flex items-center justify-center text-[#141414]">
+              <PackageSearch className="w-7 h-7 stroke-[1.5]" />
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-semibold text-[#141414] tracking-[-0.025em]">
+              No product found
+            </h2>
+
+            <p className="text-[14px] sm:text-[15px] text-[#6B6B6B] leading-relaxed max-w-md mx-auto">
+              We don't have products in {resolvedSubcategory ? `"${resolvedSubcategory}"` : 'this category'} online right now. Feel free to contact us on WhatsApp to check store availability.
+            </p>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <a
+                href={`https://wa.me/${store.whatsappNumber || '918122747947'}?text=${encodeURIComponent(
+                  `Hi, I am looking for ${resolvedSubcategory || 'accessories'} at WrapStore.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto min-h-[46px] px-6 bg-[#25D366] hover:bg-[#20BD5A] text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
+              >
+                <MessageCircle className="w-4 h-4 fill-white" />
+                <span>Contact us</span>
+              </a>
+
+              <Link
+                to="/cases"
+                className="w-full sm:w-auto min-h-[46px] px-5 border border-[#E5E5E3] hover:border-[#141414] bg-white text-[#141414] text-[14px] font-medium rounded-[6px] transition-colors flex items-center justify-center cursor-pointer"
+              >
+                Browse phone cases
+              </Link>
+            </div>
+          </div>
+        ) : (hasCases || (isAccessoryPage && allModelProducts.length > 0) || isCollectionPage) ? (
           <div className="space-y-6">
             
             {/* 3. Bar: "Filters" button on left, sort on right. Under it: "Model: <model> ›" */}
