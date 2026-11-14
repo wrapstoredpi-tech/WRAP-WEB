@@ -241,7 +241,7 @@ export function CasesPickerPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectModel(savedPhone.model)}
-                    className="min-h-[40px] px-4 bg-[#B0521F] hover:bg-[#964317] text-white text-[13px] font-medium rounded-[6px] transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    className="min-h-[40px] px-4 bg-[#141414] hover:bg-black text-white text-[13px] font-medium rounded-[6px] transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
                   >
                     <span>Continue with {savedPhone.model}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -442,7 +442,7 @@ export function CasesPickerPage() {
                 <button
                   type="button"
                   onClick={() => handleSelectModel(savedPhone.model)}
-                  className="min-h-[42px] px-5 bg-[#B0521F] hover:bg-[#964317] text-white text-[14px] font-medium rounded-[6px] transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+                  className="min-h-[42px] px-5 bg-[#141414] hover:bg-black text-white text-[14px] font-medium rounded-[6px] transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
                 >
                   <span>Continue with {savedPhone.model}</span>
                   <ArrowRight className="w-4 h-4" />

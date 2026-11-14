@@ -62,6 +62,7 @@ const BENTO_CATEGORIES = [
     image: '/bento/chargers-adapters.jpg',
     alt: 'Chargers and Adapters - Dual fast charging wall adapter',
     link: '/?category=Accessories&subcategory=Adapters',
+    imagePosition: '85% 62%',
   },
   {
     id: 'other-accessories',
@@ -70,6 +71,7 @@ const BENTO_CATEGORIES = [
     image: '/bento/other-accessories.jpg',
     alt: 'Other Accessories - Desktop phone stand and smartwatch band',
     link: '/?category=Accessories',
+    imagePosition: '95% 25%',
   },
 ];
 
@@ -105,7 +107,8 @@ function BentoCard({
           width={800}
           height={600}
           loading="lazy"
-          className="w-full h-full object-cover object-right-bottom transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+          style={category.imagePosition ? { objectPosition: category.imagePosition } : undefined}
+          className={`w-full h-full object-cover ${category.imagePosition ? '' : 'object-right-bottom'} transition-transform duration-500 ease-out group-hover:scale-[1.04]`}
         />
         {/* Subtle cream gradient in top-left to keep text and button 100% readable */}
         <div

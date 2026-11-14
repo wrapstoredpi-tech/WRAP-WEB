@@ -368,7 +368,7 @@ export function HomePage() {
         </p>
         <button
           onClick={() => refetch()}
-          className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+          className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#141414] hover:bg-black text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
         >
           Retry now
         </button>

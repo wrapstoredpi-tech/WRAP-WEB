@@ -239,7 +239,7 @@ export function ProductCard({
               className={`w-full py-2 px-3 text-[12px] sm:text-[13px] font-semibold rounded-[6px] transition-colors text-center cursor-pointer flex items-center justify-center gap-1.5 ${
                 outlinedButton
                   ? 'border border-[#141414] text-[#141414] hover:bg-[#141414] hover:text-white bg-transparent'
-                  : 'bg-[#141414] hover:bg-[#B0521F] text-white'
+                  : 'bg-[#141414] hover:bg-[#2A2A2A] text-white'
               }`}
             >
               {isCombo ? (

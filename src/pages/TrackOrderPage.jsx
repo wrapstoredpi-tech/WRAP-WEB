@@ -151,7 +151,7 @@ export function TrackOrderPage() {
         <button
           type="submit"
           disabled={isSearching}
-          className="min-h-[44px] px-6 py-2.5 bg-[#B0521F] hover:bg-[#994518] text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          className="min-h-[44px] px-6 py-2.5 bg-[#141414] hover:bg-black text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {isSearching ? (
             <span>Looking up...</span>

@@ -208,7 +208,7 @@ export function TypeTestPage() {
                     </span>
                     <button
                       type="button"
-                      className="w-full min-h-[44px] px-6 py-2.5 bg-[#B0521F] text-white text-[16px] font-semibold rounded-[6px]"
+                      className="w-full min-h-[44px] px-6 py-2.5 bg-[#141414] hover:bg-black text-white text-[16px] font-semibold rounded-[6px]"
                     >
                       Shop cases
                     </button>

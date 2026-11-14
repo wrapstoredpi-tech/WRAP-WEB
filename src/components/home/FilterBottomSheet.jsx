@@ -236,7 +236,7 @@ export function FilterBottomSheet({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 min-h-[44px] bg-[#B0521F] text-white text-[14px] font-semibold rounded-[6px]"
+            className="flex-1 min-h-[44px] bg-[#141414] hover:bg-black text-white text-[14px] font-semibold rounded-[6px] transition-colors"
           >
             Show results ({totalResultsCount})
           </button>

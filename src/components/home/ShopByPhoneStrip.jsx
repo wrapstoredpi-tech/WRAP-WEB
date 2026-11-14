@@ -38,7 +38,7 @@ export function ShopByPhoneStrip() {
         <div className="w-full sm:w-auto shrink-0">
           <Link
             to={destination}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#141414] hover:bg-[#B0521F] text-white text-[13px] sm:text-[14px] font-semibold rounded-[6px] transition-colors text-center cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] sm:text-[14px] font-semibold rounded-[6px] transition-colors text-center cursor-pointer"
           >
             <span>{buttonLabel}</span>
             <ArrowRight className="w-3.5 h-3.5" />

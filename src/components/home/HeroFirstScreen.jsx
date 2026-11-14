@@ -260,9 +260,13 @@ export function HeroFirstScreen() {
                     />
                   )}
 
-                  {/* Dark gradient scrim on bottom for readability */}
+                  {/* Dark gradient scrim on left and bottom for readability */}
                   <div
-                    className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none"
+                    className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/20 to-transparent pointer-events-none"
+                    aria-hidden="true"
+                  />
+                  <div
+                    className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"
                     aria-hidden="true"
                   />
                 </div>
@@ -271,11 +275,11 @@ export function HeroFirstScreen() {
           </div>
 
           {/* ─────────────────────────────────────────────────────────────────
-              Text Bottom-Left Aligned to Shared Container
+              Text Center-Left Aligned to Shared Container
               Headline (DM Serif Display), tag_subtitle as one line, one button
               ───────────────────────────────────────────────────────────────── */}
-          <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-end">
-            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 pb-7 sm:pb-10 pointer-events-auto">
+          <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-center">
+            <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 pointer-events-auto">
               <div className="max-w-xl text-left space-y-1.5 sm:space-y-2">
                 {currentSlide.tag && (
                   <h1 className="text-white text-[28px] sm:text-[38px] lg:text-[44px] font-semibold tracking-[-0.025em] leading-[1.1] drop-shadow-md">
@@ -290,7 +294,7 @@ export function HeroFirstScreen() {
                 <div className="pt-2">
                   <Link
                     to={rewrittenLink}
-                    className="inline-flex items-center justify-center px-6 py-2.5 sm:py-3 bg-[#B0521F] hover:bg-[#964317] text-white text-[13px] sm:text-[14px] font-semibold rounded-[6px] transition-colors shadow-md cursor-pointer"
+                    className="inline-flex items-center justify-center px-6 py-2.5 sm:py-3 bg-[#141414] hover:bg-black text-white text-[13px] sm:text-[14px] font-semibold rounded-[6px] transition-colors shadow-md cursor-pointer border border-white/10"
                   >
                     {getHeroButtonText(rewrittenLink)}
                   </Link>

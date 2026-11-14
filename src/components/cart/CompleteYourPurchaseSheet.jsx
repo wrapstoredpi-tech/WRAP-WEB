@@ -531,7 +531,7 @@ export function CompleteYourPurchaseSheet() {
                   closeSheet();
                   navigate('/cart');
                 }}
-                className="w-full h-[48px] bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] sm:text-[15px] rounded-[6px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.99]"
+                className="w-full h-[48px] bg-[#141414] hover:bg-black text-white font-semibold text-[14px] sm:text-[15px] rounded-[6px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.99]"
               >
                 <span>Go to bag</span>
                 <ArrowRight className="w-4 h-4" />

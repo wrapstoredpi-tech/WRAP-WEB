@@ -169,7 +169,7 @@ export function CartPage() {
           <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               to="/cases"
-              className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 bg-[#B0521F] hover:bg-[#964317] text-white text-[14px] font-semibold rounded-[6px] transition-colors shadow-sm"
+              className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 bg-[#141414] hover:bg-black text-white text-[14px] font-semibold rounded-[6px] transition-colors shadow-sm"
             >
               Find your model
             </Link>
@@ -511,7 +511,7 @@ export function CartPage() {
                 type="button"
                 disabled={hasStockWarnings || items.length === 0}
                 onClick={handleProceedToCheckout}
-                className="w-full h-[48px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white text-[15px] font-semibold rounded-[6px] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-[0.99]"
+                className="w-full h-[48px] px-6 bg-[#141414] hover:bg-black text-white text-[15px] font-semibold rounded-[6px] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-[0.99]"
               >
                 <span>Proceed to Checkout</span>
                 <ArrowRight className="w-4 h-4" />
@@ -574,7 +574,7 @@ export function CartPage() {
             type="button"
             disabled={hasStockWarnings || items.length === 0}
             onClick={handleProceedToCheckout}
-            className="h-[48px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-[48px] px-6 bg-[#141414] hover:bg-black text-white font-semibold text-[14px] rounded-[6px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <span>Checkout</span>
             <ArrowRight className="w-4 h-4" />

@@ -153,7 +153,7 @@ export function ProductDetailPage({ onAddToCart }) {
         </p>
         <button
           onClick={() => refetch()}
-          className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+          className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#141414] hover:bg-black text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
         >
           Retry now
         </button>
@@ -169,7 +169,7 @@ export function ProductDetailPage({ onAddToCart }) {
         <div className="pt-2">
           <Link
             to="/cases"
-            className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-[#B0521F] text-white text-[14px] font-semibold rounded-[6px] hover:bg-[#964317] transition-colors"
+            className="inline-flex items-center min-h-[44px] px-6 py-2.5 bg-[#141414] text-white text-[14px] font-semibold rounded-[6px] hover:bg-black transition-colors"
           >
             Browse Cases
           </Link>

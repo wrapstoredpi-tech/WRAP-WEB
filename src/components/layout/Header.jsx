@@ -861,7 +861,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                         <Link
                           to="/cases?brand=Apple"
                           onClick={() => setActiveMegaMenu(null)}
-                          className="w-full py-2 px-3 bg-[#141414] text-white hover:bg-[#B0521F] rounded-[6px] text-[13px] font-semibold transition-colors block"
+                          className="w-full py-2 px-3 bg-[#141414] text-white hover:bg-[#2A2A2A] rounded-[6px] text-[13px] font-semibold transition-colors block"
                         >
                           Find your model
                         </Link>
@@ -942,7 +942,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                         <Link
                           to="/cases?brand=Samsung"
                           onClick={() => setActiveMegaMenu(null)}
-                          className="w-full py-2 px-3 bg-[#141414] text-white hover:bg-[#B0521F] rounded-[6px] text-[13px] font-semibold transition-colors block"
+                          className="w-full py-2 px-3 bg-[#141414] text-white hover:bg-[#2A2A2A] rounded-[6px] text-[13px] font-semibold transition-colors block"
                         >
                           Find your model
                         </Link>
@@ -1089,7 +1089,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                         <Link
                           to="/combos"
                           onClick={() => setActiveMegaMenu(null)}
-                          className="w-full py-2.5 px-4 bg-[#141414] text-white hover:bg-[#B0521F] rounded-[6px] text-[13px] font-semibold transition-colors block"
+                          className="w-full py-2.5 px-4 bg-[#141414] text-white hover:bg-[#2A2A2A] rounded-[6px] text-[13px] font-semibold transition-colors block"
                         >
                           View all combos
                         </Link>

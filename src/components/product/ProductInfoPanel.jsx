@@ -424,7 +424,7 @@ export function ProductInfoPanel({
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full h-[52px] min-h-[52px] rounded-[6px] text-[15px] font-semibold bg-[#141414] hover:bg-[#B0521F] text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              className="w-full h-[52px] min-h-[52px] rounded-[6px] text-[15px] font-semibold bg-[#141414] hover:bg-[#2A2A2A] text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
             >
               <MessageCircle className="w-4.5 h-4.5" />
               <span>Ask on WhatsApp</span>
@@ -442,7 +442,7 @@ export function ProductInfoPanel({
                 ? 'bg-[#E5E5E3] text-[#6B6B6B] cursor-not-allowed'
                 : showGoToCart
                 ? 'bg-[#141414] hover:bg-[#262626] text-white active:scale-[0.99]'
-                : 'bg-[#B0521F] hover:bg-[#964317] text-white active:scale-[0.99]'
+                : 'bg-[#141414] hover:bg-black text-white active:scale-[0.99]'
             }`}
           >
             {isAdding ? (

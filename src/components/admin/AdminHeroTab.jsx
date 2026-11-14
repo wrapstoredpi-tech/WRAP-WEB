@@ -744,24 +744,29 @@ export function AdminHeroTab() {
                     )}
 
                     {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/20 to-transparent pointer-events-none" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
-                    {/* Live Badge Pill Preview */}
+                    {/* Live Slide Content Preview (Center-Left) */}
                     {(currentPreviewSlide.tag || currentPreviewSlide.tagSubtitle) && (
-                      <div className="absolute left-1/2 -translate-x-1/2 bottom-5 sm:bottom-6 z-20 pointer-events-none max-w-[90%] text-center">
-                        {currentPreviewSlide.tag && (
-                          <div className="bg-white text-[#141414] px-4 py-1 sm:px-5 sm:py-1.5 rounded-full shadow-lg inline-flex items-center justify-center">
-                            <span className="font-extrabold text-[13px] sm:text-[16px] tracking-tight leading-none text-[#141414]">
+                      <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-center px-6">
+                        <div className="max-w-xs text-left space-y-1">
+                          {currentPreviewSlide.tag && (
+                            <h3 className="text-white text-[16px] sm:text-[20px] font-normal font-serif tracking-tight leading-[1.1] drop-shadow-md">
                               {currentPreviewSlide.tag}
+                            </h3>
+                          )}
+                          {currentPreviewSlide.tagSubtitle && (
+                            <p className="text-white/90 text-[11px] sm:text-[12px] font-normal truncate drop-shadow-sm">
+                              {currentPreviewSlide.tagSubtitle}
+                            </p>
+                          )}
+                          <div className="pt-1.5">
+                            <span className="inline-flex items-center justify-center px-3 py-1 bg-[#141414] text-white text-[11px] font-semibold rounded-[4px] shadow-md border border-white/10">
+                              Shop now
                             </span>
                           </div>
-                        )}
-                        {currentPreviewSlide.tagSubtitle && (
-                          <div className="bg-white/95 text-[#141414] px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-normal shadow-md flex items-center justify-center gap-1 mt-1 border border-black/5 whitespace-nowrap mx-auto">
-                            <span>{currentPreviewSlide.tagSubtitle}</span>
-                            <span>→</span>
-                          </div>
-                        )}
+                        </div>
                       </div>
                     )}
 

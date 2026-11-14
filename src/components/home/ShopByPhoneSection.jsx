@@ -217,7 +217,9 @@ export function ShopByPhoneSection() {
                       handleModelClick(item);
                     }
                   }}
-                  className={`w-[140px] sm:w-[152px] h-[172px] sm:h-[184px] bg-[#F3F1ED] rounded-[24px] border transition-all duration-300 ease-out overflow-hidden flex flex-col items-center justify-center p-3 relative shadow-2xs ${
+                  className={`w-[140px] sm:w-[152px] h-[172px] sm:h-[184px] ${
+                    activeBrand === 'Apple' ? 'bg-white' : 'bg-[#F3F1ED]'
+                  } rounded-[24px] border transition-all duration-300 ease-out overflow-hidden flex flex-col items-center justify-center relative shadow-2xs ${
                     isSelected
                       ? 'border-[#141414] ring-2 ring-[#141414]/15 shadow-sm'
                       : 'border-[#E7E5E0] hover:border-[#141414] hover:shadow-md group-hover:-translate-y-1.5'
@@ -226,18 +228,22 @@ export function ShopByPhoneSection() {
                 >
                   {/* Subtle brand tag for Series cards */}
                   {item.badge && (
-                    <span className="absolute top-2.5 right-2.5 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/90 text-[#141414] border border-[#E7E5E0] shadow-2xs">
+                    <span className="absolute top-2.5 right-2.5 z-10 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/90 text-[#141414] border border-[#E7E5E0] shadow-2xs">
                       {item.badge}
                     </span>
                   )}
 
-                  {/* Centered realistic backside product image */}
-                  <div className="w-full h-full flex items-center justify-center p-1">
+                  {/* Phone hero card visual */}
+                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
                     <img
                       src={item.image}
                       alt={item.alt || `${item.model} realistic backside`}
                       loading="lazy"
-                      className="max-h-[142px] sm:max-h-[154px] w-auto max-w-[88%] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-out group-hover:scale-[1.04]"
+                      className={`w-full h-full ${
+                        activeBrand === 'Samsung' || (item.image && item.image.includes('samsung'))
+                          ? 'max-h-[142px] sm:max-h-[154px] w-auto max-w-[88%] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.08)]'
+                          : 'object-cover'
+                      } transition-transform duration-300 ease-out group-hover:scale-[1.05]`}
                     />
                   </div>
                 </div>

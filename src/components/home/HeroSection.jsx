@@ -142,7 +142,7 @@ export function HeroSection({ onExploreClick }) {
                       navigate(heroSettings.buttonLink || '/?category=Mobile%20Cases');
                     }
                   }}
-                  className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 bg-[#B0521F] hover:bg-[#994518] text-white text-[16px] font-semibold rounded-[6px] transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 bg-[#141414] hover:bg-black text-white text-[16px] font-semibold rounded-[6px] transition-colors cursor-pointer"
                 >
                   {heroSettings.buttonText || 'Shop cases'}
                 </button>

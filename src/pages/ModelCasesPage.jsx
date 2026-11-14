@@ -492,7 +492,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           <div className="pt-2">
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#141414] hover:bg-black text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
             >
               Retry now
             </button>
@@ -540,7 +540,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           <div className="pt-2">
             <Link
               to="/cases"
-              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
+              className="inline-flex items-center justify-center min-h-[46px] px-6 bg-[#141414] hover:bg-black text-white font-semibold text-[14px] rounded-[6px] transition-colors shadow-xs"
             >
               Browse all models
             </Link>
@@ -891,7 +891,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
                     <button
                       type="button"
                       onClick={() => setIsFilterSheetOpen(false)}
-                      className="flex-1 h-[48px] bg-[#B0521F] text-white rounded-[6px] text-[14px] font-medium"
+                      className="flex-1 h-[48px] bg-[#141414] hover:bg-black text-white rounded-[6px] text-[14px] font-medium"
                     >
                       Apply filters
                     </button>
@@ -928,7 +928,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="mt-4 px-4 py-2 bg-[#B0521F] text-white text-[13px] font-medium rounded-[6px] hover:bg-[#964317] transition-colors cursor-pointer"
+                  className="mt-4 px-4 py-2 bg-[#141414] hover:bg-black text-white text-[13px] font-medium rounded-[6px] transition-colors cursor-pointer"
                 >
                   Clear all filters
                 </button>

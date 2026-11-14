@@ -404,7 +404,7 @@ export function AuthForm({
         <button
           type="submit"
           disabled={isLoading || isGoogleLoading}
-          className="w-full min-h-[44px] px-5 py-2.5 bg-[#B0521F] hover:bg-[#994518] disabled:bg-[#E5E5E3] text-white disabled:text-[#6B6B6B] text-[15px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+          className="w-full min-h-[44px] px-5 py-2.5 bg-[#141414] hover:bg-black disabled:bg-[#E5E5E3] text-white disabled:text-[#6B6B6B] text-[15px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
         >
           {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
           <span>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ArrowRight, Smartphone, Headphones, Layers } from 'lucide-react';
 import {
   getLiveModelsWithCases,
   getModelCaseDesigns,
@@ -169,14 +169,14 @@ export function CategoryScrollSection({
     }
   }, [activeTab]);
 
-  // Rule: Hide section when it would be empty or have fewer than 4 items
-  if (activeItems.length < 4) {
+  // Rule: Hide section only when all categories have no items at all
+  if (caseItems.length === 0 && accessoryItems.length === 0 && comboItems.length === 0) {
     return null;
   }
 
   return (
     <section aria-label="Shop by category" className="w-full select-none group/category-row relative">
-      {/* Top Header: Title Left, Pill Tabs + View All Link Right */}
+      {/* Top Header: Title Left, Pill Tabs Right */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-[24px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em]">
@@ -184,20 +184,22 @@ export function CategoryScrollSection({
           </h2>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
-          {/* Pill tabs (active pill filled #141414 with white text) */}
-          <div className="flex items-center gap-2 p-1 bg-[#F4F3F0] rounded-full border border-[#E5E5E3]">
+        {/* Category Navigation Pills: [ Cases | Accessories | Combos ] */}
+        <div className="flex items-center max-w-full overflow-x-auto no-scrollbar shrink-0 py-0.5">
+          {/* Horizontal pill-shaped container (#F3F2F0, rounded-999px, subtle border, h-[48px] on desktop, 4px internal padding) */}
+          <div className="h-[44px] sm:h-[48px] p-[4px] bg-[#F3F2F0] rounded-[999px] border border-black/[0.04] flex items-center gap-1 shrink-0">
             {hasCases && (
               <button
                 type="button"
                 onClick={() => setActiveTab('cases')}
-                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all cursor-pointer ${
+                className={`h-full px-3.5 sm:px-4.5 rounded-[999px] flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
                   activeTab === 'cases'
-                    ? 'bg-[#141414] text-white shadow-xs'
-                    : 'text-[#6B6B6B] hover:text-[#141414]'
+                    ? 'bg-[#171717] text-white shadow-xs'
+                    : 'text-[#686868] hover:text-[#171717] bg-transparent'
                 }`}
               >
-                Cases
+                <Smartphone className="w-4 h-4 shrink-0 stroke-[1.75]" />
+                <span>Cases</span>
               </button>
             )}
 
@@ -205,13 +207,14 @@ export function CategoryScrollSection({
               <button
                 type="button"
                 onClick={() => setActiveTab('accessories')}
-                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all cursor-pointer ${
+                className={`h-full px-3.5 sm:px-4.5 rounded-[999px] flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
                   activeTab === 'accessories'
-                    ? 'bg-[#141414] text-white shadow-xs'
-                    : 'text-[#6B6B6B] hover:text-[#141414]'
+                    ? 'bg-[#171717] text-white shadow-xs'
+                    : 'text-[#686868] hover:text-[#171717] bg-transparent'
                 }`}
               >
-                Accessories
+                <Headphones className="w-4 h-4 shrink-0 stroke-[1.75]" />
+                <span>Accessories</span>
               </button>
             )}
 
@@ -219,147 +222,158 @@ export function CategoryScrollSection({
               <button
                 type="button"
                 onClick={() => setActiveTab('combos')}
-                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all cursor-pointer ${
+                className={`h-full px-3.5 sm:px-4.5 rounded-[999px] flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
                   activeTab === 'combos'
-                    ? 'bg-[#141414] text-white shadow-xs'
-                    : 'text-[#6B6B6B] hover:text-[#141414]'
+                    ? 'bg-[#171717] text-white shadow-xs'
+                    : 'text-[#686868] hover:text-[#171717] bg-transparent'
                 }`}
               >
-                Combos
+                <Layers className="w-4 h-4 shrink-0 stroke-[1.75]" />
+                <span>Combos</span>
               </button>
             )}
           </div>
-
-          {/* View All on Right */}
-          <Link
-            to={viewAllLink}
-            className="text-[13px] sm:text-[14px] font-medium text-[#6B6B6B] hover:text-[#B0521F] flex items-center gap-1 transition-colors shrink-0"
-          >
-            <span>View all</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </div>
 
       {/* Horizontal Scroll-Snap Row of Photo Cards */}
       <div className="relative min-w-0 w-full">
-        {/* Desktop Left Chevron Button */}
-        {activeItems.length > 4 && (
-          <button
-            type="button"
-            onClick={() => scrollByDirection('left')}
-            aria-label="Scroll left"
-            className="hidden lg:flex absolute -left-4 top-[35%] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#141414] hover:text-[#B0521F] shadow-md border border-[#E5E5E3] items-center justify-center opacity-0 group-hover/category-row:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        )}
+        {activeItems.length === 0 ? (
+          <div className="py-12 text-center text-[14px] text-[#6B6B6B] border border-[#E5E5E3] rounded-[6px] bg-[#F4F3F0]/50">
+            No items available in this category.
+          </div>
+        ) : (
+          <>
+            {/* Desktop Left Chevron Button */}
+            {activeItems.length > 4 && (
+              <button
+                type="button"
+                onClick={() => scrollByDirection('left')}
+                aria-label="Scroll left"
+                className="hidden lg:flex absolute -left-4 top-[35%] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#141414] hover:text-[#B0521F] shadow-md border border-[#E5E5E3] items-center justify-center opacity-0 group-hover/category-row:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
 
-        {/* Desktop Right Chevron Button */}
-        {activeItems.length > 4 && (
-          <button
-            type="button"
-            onClick={() => scrollByDirection('right')}
-            aria-label="Scroll right"
-            className="hidden lg:flex absolute -right-4 top-[35%] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#141414] hover:text-[#B0521F] shadow-md border border-[#E5E5E3] items-center justify-center opacity-0 group-hover/category-row:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        )}
+            {/* Desktop Right Chevron Button */}
+            {activeItems.length > 4 && (
+              <button
+                type="button"
+                onClick={() => scrollByDirection('right')}
+                aria-label="Scroll right"
+                className="hidden lg:flex absolute -right-4 top-[35%] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#141414] hover:text-[#B0521F] shadow-md border border-[#E5E5E3] items-center justify-center opacity-0 group-hover/category-row:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
 
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowLeft') scrollByDirection('left');
-            if (e.key === 'ArrowRight') scrollByDirection('right');
-          }}
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar py-1 focus:outline-none"
-        >
-          {activeItems.map((item) => {
-            if (item.isActionTile) {
-              return (
-                <Link
-                  key={item.id}
-                  to={item.link}
-                  className="snap-start shrink-0 w-[72vw] sm:w-[45vw] md:w-[calc((100%-32px)/3)] lg:w-[calc((100%-48px)/4)] group block"
-                >
-                  <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[6px] border border-[#E5E5E3] group-hover:border-[#141414] p-5 flex flex-col justify-between transition-all">
-                    <div className="space-y-1.5 my-auto text-center">
-                      <span className="text-[12px] font-medium text-[#6B6B6B] block">Looking for more?</span>
-                      <h3 className="font-semibold text-[17px] text-[#141414] leading-snug">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') scrollByDirection('left');
+                if (e.key === 'ArrowRight') scrollByDirection('right');
+              }}
+              className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar py-1 focus:outline-none"
+            >
+              {activeItems.map((item) => {
+                if (item.isActionTile) {
+                  return (
+                    <Link
+                      key={item.id}
+                      to={item.link}
+                      className="snap-start shrink-0 w-[72vw] sm:w-[45vw] md:w-[calc((100%-32px)/3)] lg:w-[calc((100%-48px)/4)] group block"
+                    >
+                      <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[6px] border border-[#E5E5E3] group-hover:border-[#141414] p-5 flex flex-col justify-between transition-all">
+                        <div className="space-y-1.5 my-auto text-center">
+                          <span className="text-[12px] font-medium text-[#6B6B6B] block">Looking for more?</span>
+                          <h3 className="font-semibold text-[17px] text-[#141414] leading-snug">
+                            {item.name}
+                          </h3>
+                          <p className="text-[12px] text-[#6B6B6B] leading-relaxed max-w-[200px] mx-auto">
+                            {item.caption}
+                          </p>
+                        </div>
+                        <div className="pt-3 border-t border-[#E5E5E3]">
+                          <span className="w-full py-2.5 px-3 bg-[#141414] text-white group-hover:bg-[#2A2A2A] rounded-[6px] text-[13px] font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <span>Select phone</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-2.5 invisible">
+                        <h3 className="font-medium text-[15px]">&nbsp;</h3>
+                        <p className="text-[12px]">&nbsp;</p>
+                      </div>
+                    </Link>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.link}
+                    className="snap-start shrink-0 w-[72vw] sm:w-[45vw] md:w-[calc((100%-32px)/3)] lg:w-[calc((100%-48px)/4)] group block"
+                  >
+                    {/* Photo Card: 4:5 ratio, background #F4F3F0, 6px radius */}
+                    <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[6px] overflow-hidden border border-[#E5E5E3] relative">
+                      {item.combo ? (
+                        <div className="w-full h-full p-2 flex items-center justify-center">
+                          <ComboThumbnail combo={item.combo} className="w-full h-full" />
+                        </div>
+                      ) : (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = '/subcategories/iphone.jpg';
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                        />
+                      )}
+                    </div>
+
+                    {/* Caption under card: Name in Poppins 500, small caption */}
+                    <div className="mt-2.5">
+                      <h3 className="font-medium text-[15px] sm:text-[16px] text-[#141414] group-hover:text-[#B0521F] transition-colors truncate">
                         {item.name}
                       </h3>
-                      <p className="text-[12px] text-[#6B6B6B] leading-relaxed max-w-[200px] mx-auto">
+                      <p className="text-[12px] sm:text-[13px] text-[#6B6B6B] mt-0.5">
                         {item.caption}
                       </p>
                     </div>
-                    <div className="pt-3 border-t border-[#E5E5E3]">
-                      <span className="w-full py-2.5 px-3 bg-[#141414] text-white group-hover:bg-[#B0521F] rounded-[6px] text-[13px] font-semibold transition-colors flex items-center justify-center gap-1.5">
-                        <span>Select phone</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2.5 invisible">
-                    <h3 className="font-medium text-[15px]">&nbsp;</h3>
-                    <p className="text-[12px]">&nbsp;</p>
-                  </div>
-                </Link>
-              );
-            }
+                  </Link>
+                );
+              })}
+            </div>
 
-            return (
-              <Link
-                key={item.id}
-                to={item.link}
-                className="snap-start shrink-0 w-[72vw] sm:w-[45vw] md:w-[calc((100%-32px)/3)] lg:w-[calc((100%-48px)/4)] group block"
-              >
-                {/* Photo Card: 4:5 ratio, background #F4F3F0, 6px radius */}
-                <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[6px] overflow-hidden border border-[#E5E5E3] relative">
-                  {item.combo ? (
-                    <div className="w-full h-full p-2 flex items-center justify-center">
-                      <ComboThumbnail combo={item.combo} className="w-full h-full" />
-                    </div>
-                  ) : (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.src = '/subcategories/iphone.jpg';
-                      }}
-                      className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
-                    />
-                  )}
-                </div>
-
-                {/* Caption under card: Name in Poppins 500, small caption */}
-                <div className="mt-2.5">
-                  <h3 className="font-medium text-[15px] sm:text-[16px] text-[#141414] group-hover:text-[#B0521F] transition-colors truncate">
-                    {item.name}
-                  </h3>
-                  <p className="text-[12px] sm:text-[13px] text-[#6B6B6B] mt-0.5">
-                    {item.caption}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Thin 2px scroll position progress bar */}
-        {activeItems.length > 1 && (
-          <div className="w-24 sm:w-32 h-[2px] bg-[#E5E5E3] rounded-full mx-auto mt-6 overflow-hidden">
-            <div
-              className="h-full bg-[#141414] rounded-full transition-all duration-100"
-              style={{
-                width: `${Math.max(20, scrollProgress)}%`,
-              }}
-            />
-          </div>
+            {/* Thin 2px scroll position progress bar */}
+            {activeItems.length > 1 && (
+              <div className="w-24 sm:w-32 h-[2px] bg-[#E5E5E3] rounded-full mx-auto mt-6 overflow-hidden">
+                <div
+                  className="h-full bg-[#141414] rounded-full transition-all duration-100"
+                  style={{
+                    width: `${Math.max(20, scrollProgress)}%`,
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
+
+        {/* Center-aligned View All button below the scroll */}
+        <div className="mt-7 flex justify-center">
+          <Link
+            to={viewAllLink}
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#141414] hover:bg-black text-white text-[14px] font-medium transition-all duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 cursor-pointer active:scale-[0.98]"
+          >
+            <span>View all</span>
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
       </div>
     </section>
   );

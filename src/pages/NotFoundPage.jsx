@@ -59,7 +59,7 @@ export function NotFoundPage() {
           </Link>
           <Link
             to="/cases"
-            className="w-full sm:w-auto min-h-[46px] px-6 bg-[#B0521F] hover:bg-[#964317] text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            className="w-full sm:w-auto min-h-[46px] px-6 bg-[#141414] hover:bg-black text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
           >
             <span>Find your model</span>
             <ArrowRight className="w-4 h-4" />
