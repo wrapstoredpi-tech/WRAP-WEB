@@ -33,6 +33,7 @@ import {
   getLiveCombos,
   modelToSlug,
 } from '../../lib/models';
+import { getPhoneImage } from '../../config/shopByPhoneData';
 import { ComboThumbnail } from '../cart/ComboThumbnail';
 
 export function Header({ _activeCategory = 'All', onCategorySelect }) {
@@ -210,6 +211,37 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
     setActiveDropdown(null);
     await signOut();
     navigate('/');
+  };
+
+  const handleLogoClick = (e) => {
+    // Allow standard browser action for auxiliary clicks (middle click, Cmd/Ctrl click)
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+      return;
+    }
+    e.preventDefault();
+
+    // 1. Clear any pending mega menu hover timer immediately
+    if (megaMenuTimeoutRef.current) {
+      clearTimeout(megaMenuTimeoutRef.current);
+    }
+
+    // 2. Immediately close all menus/overlays
+    setActiveMegaMenu(null);
+    setActiveDropdown(null);
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen(false);
+
+    // 3. Reset category filter if parent provided callback
+    if (onCategorySelect) {
+      onCategorySelect('All');
+    }
+
+    // 4. Smooth scroll if already on homepage without query, otherwise navigate immediately
+    if (location.pathname === '/' && !location.search) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate('/');
+    }
   };
 
   // Mega menu hover delay handler (120ms debounce)
@@ -420,8 +452,8 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
           <div className="lg:hidden h-[56px] px-4 flex items-center justify-between relative">
             <Link
               to="/"
-              onClick={() => onCategorySelect && onCategorySelect('All')}
-              className="inline-flex items-center py-1"
+              onClick={handleLogoClick}
+              className="inline-flex items-center py-1 cursor-pointer"
               aria-label="WrapStore Home"
             >
               <Logo size="sm" />
@@ -451,8 +483,8 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
             <div className="absolute left-1/2 -translate-x-1/2 pointer-events-auto">
               <Link
                 to="/"
-                onClick={() => onCategorySelect && onCategorySelect('All')}
-                className="inline-flex items-center py-1"
+                onClick={handleLogoClick}
+                className="inline-flex items-center py-1 cursor-pointer"
                 aria-label="WrapStore Home"
               >
                 <Logo size="sm" />
@@ -511,8 +543,8 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
             <div className="absolute left-1/2 -translate-x-1/2 pointer-events-auto">
               <Link
                 to="/"
-                onClick={() => onCategorySelect && onCategorySelect('All')}
-                className="inline-flex items-center py-1"
+                onClick={handleLogoClick}
+                className="inline-flex items-center py-1 cursor-pointer"
                 aria-label="WrapStore Home"
               >
                 <Logo size="sm" />
@@ -553,8 +585,8 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
               <div className="flex items-center justify-between h-[72px]">
                 <Link
                   to="/"
-                  onClick={() => onCategorySelect && onCategorySelect('All')}
-                  className="inline-flex items-center py-1 shrink-0"
+                  onClick={handleLogoClick}
+                  className="inline-flex items-center py-1 shrink-0 cursor-pointer"
                   aria-label="WrapStore Home"
                 >
                   <Logo size="md" />
@@ -568,8 +600,8 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
               {/* Left: Logo */}
               <Link
                 to="/"
-                onClick={() => onCategorySelect && onCategorySelect('All')}
-                className="inline-flex items-center py-1 shrink-0"
+                onClick={handleLogoClick}
+                className="inline-flex items-center py-1 shrink-0 cursor-pointer"
                 aria-label="WrapStore Home"
               >
                 <Logo size="md" />
@@ -798,6 +830,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                     {/* Live Model Columns (max 6) */}
                     {appleMenuColumns.map((col) => {
                       const photo =
+                        getPhoneImage(col.model, 'Apple') ||
                         col.heroProduct?.image_url ||
                         (Array.isArray(col.heroProduct?.images) && col.heroProduct.images[0]) ||
                         '/subcategories/iphone.jpg';
@@ -810,8 +843,8 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                           className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-2.5 transition-all text-left"
                         >
                           <div>
-                            {/* Real Case Photo on #F4F3F0 (4:5) */}
-                            <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[4px] overflow-hidden mb-2.5 relative">
+                            {/* Realistic Phone Cover Photo on White (4:5) */}
+                            <div className="w-full aspect-[4/5] bg-white rounded-[4px] overflow-hidden mb-2.5 relative flex items-center justify-center">
                               <img
                                 src={photo}
                                 alt={col.model}
@@ -891,6 +924,7 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                   <div className="grid grid-cols-7 gap-4">
                     {samsungMenuColumns.map((col) => {
                       const photo =
+                        getPhoneImage(col.model, 'Samsung') ||
                         col.heroProduct?.image_url ||
                         (Array.isArray(col.heroProduct?.images) && col.heroProduct.images[0]) ||
                         '/subcategories/iphone.jpg';
@@ -903,12 +937,12 @@ export function Header({ _activeCategory = 'All', onCategorySelect }) {
                           className="group flex flex-col justify-between bg-white rounded-[6px] border border-[#E5E5E3] hover:border-[#141414] p-2.5 transition-all text-left"
                         >
                           <div>
-                            <div className="w-full aspect-[4/5] bg-[#F4F3F0] rounded-[4px] overflow-hidden mb-2.5 relative">
+                            <div className="w-full aspect-[4/5] bg-white rounded-[4px] overflow-hidden mb-2.5 relative flex items-center justify-center">
                               <img
                                 src={photo}
                                 alt={col.model}
                                 loading="lazy"
-                                className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                                className="w-full h-full object-contain group-hover:scale-103 transition-transform duration-300"
                               />
                             </div>
                             <h4 className="text-[14px] font-semibold text-[#141414] group-hover:text-[#B0521F] transition-colors line-clamp-1 leading-snug">

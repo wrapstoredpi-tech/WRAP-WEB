@@ -5,7 +5,8 @@ import { usePhoneContext } from '../context/PhoneContext';
 import { ImageGallery } from '../components/product/ImageGallery';
 import { ProductInfoPanel } from '../components/product/ProductInfoPanel';
 import { StickyMobileCartBar } from '../components/product/StickyMobileCartBar';
-import { modelToSlug } from '../lib/models';
+import { modelToSlug, sortModels } from '../lib/models';
+import { parseModels } from '../lib/useProducts';
 import { setPageMeta } from '../lib/seo';
 
 export function ProductDetailPage({ onAddToCart }) {
@@ -16,21 +17,124 @@ export function ProductDetailPage({ onAddToCart }) {
   const modelSelectRef = useRef(null);
 
   const { products, isLoading, error, refetch } = useProductsContext();
-  const { savedPhone } = usePhoneContext();
+  const { savedPhone, selectPhone } = usePhoneContext();
 
   const product = products.find((p) => p.id === id || p.product_id === id);
 
-  const isCombo = Boolean(product?.is_combo || product?.product_type === 'combo');
-  const compatibleModels = product?.compatible_models || [];
+  // Active product state for instantaneous in-memory image and detail switching
+  const [activeProduct, setActiveProduct] = useState(product);
+
+  useEffect(() => {
+    setActiveProduct(product);
+  }, [product]);
+
+  const currentProduct = activeProduct || product;
+
+  // Sibling / collection products representing model variations of this product design
+  const relatedProducts = useMemo(() => {
+    if (!currentProduct || !products?.length) return [];
+
+    const cleanStr = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const currentCollectionClean = cleanStr(currentProduct.collection);
+    const currentNameClean = cleanStr(currentProduct.name);
+    const currentSubClean = cleanStr(currentProduct.subcategory || currentProduct.category);
+
+    // 1. If product belongs to a collection (e.g. "Anti - Yellow"), match all products in that collection
+    if (currentCollectionClean && currentCollectionClean !== 'null' && currentCollectionClean !== 'undefined') {
+      const colMatches = products.filter((p) => {
+        const pColClean = cleanStr(p.collection);
+        return pColClean === currentCollectionClean;
+      });
+      if (colMatches.length > 0) return colMatches;
+    }
+
+    // 2. Otherwise match products having identical normalized name in same subcategory
+    if (currentNameClean) {
+      const nameMatches = products.filter((p) => {
+        const pNameClean = cleanStr(p.name);
+        const pSubClean = cleanStr(p.subcategory || p.category);
+        return pNameClean === currentNameClean && (!currentSubClean || !pSubClean || pSubClean === currentSubClean);
+      });
+      if (nameMatches.length > 0) return nameMatches;
+    }
+
+    return [currentProduct];
+  }, [products, currentProduct]);
+
+  // Aggregate all models across related products and map model -> product
+  const { availableModels, modelToProductMap } = useMemo(() => {
+    const map = new Map();
+    const modelsList = [];
+
+    if (!relatedProducts.length && !currentProduct) {
+      return { availableModels: [], modelToProductMap: map };
+    }
+
+    const getProductModels = (p) => {
+      if (Array.isArray(p?.compatible_models) && p.compatible_models.length > 0) {
+        return p.compatible_models;
+      }
+      if (p?.mobile_model && p.mobile_model !== 'Universal') {
+        return parseModels(p.mobile_model);
+      }
+      return [];
+    };
+
+    // First add current product's models so current product has priority
+    if (currentProduct) {
+      const curModels = getProductModels(currentProduct);
+      curModels.forEach((m) => {
+        const trimmed = (m || '').trim();
+        if (!trimmed || trimmed.toLowerCase() === 'universal') return;
+        if (!map.has(trimmed)) {
+          map.set(trimmed, currentProduct);
+          modelsList.push(trimmed);
+        }
+      });
+    }
+
+    // Then add all related products' models
+    relatedProducts.forEach((p) => {
+      const pModels = getProductModels(p);
+      pModels.forEach((m) => {
+        const trimmed = (m || '').trim();
+        if (!trimmed || trimmed.toLowerCase() === 'universal') return;
+
+        if (!map.has(trimmed)) {
+          map.set(trimmed, p);
+          modelsList.push(trimmed);
+        } else {
+          // If already mapped, prefer current product or an in-stock product
+          const existing = map.get(trimmed);
+          if (p.id === currentProduct?.id) {
+            map.set(trimmed, p);
+          } else if (
+            (p.available_stock ?? p.current_stock ?? 0) > 0 &&
+            (existing.available_stock ?? existing.current_stock ?? 0) <= 0
+          ) {
+            map.set(trimmed, p);
+          }
+        }
+      });
+    });
+
+    const sorted = sortModels(modelsList);
+    return { availableModels: sorted, modelToProductMap: map };
+  }, [relatedProducts, currentProduct]);
+
+  const isCombo = Boolean(currentProduct?.is_combo || currentProduct?.product_type === 'combo');
+  const compatibleModels = (Array.isArray(currentProduct?.compatible_models) && currentProduct.compatible_models.length > 0)
+    ? currentProduct.compatible_models
+    : parseModels(currentProduct?.mobile_model);
   const isCase =
     !isCombo &&
-    ((product?.category || '').toLowerCase().includes('case') ||
-      (Array.isArray(product?.categories) && product.categories.some((c) => c.toLowerCase().includes('case'))));
-  const needsModelSelection = isCase || compatibleModels.length > 0;
+    ((currentProduct?.category || '').toLowerCase().includes('case') ||
+      (Array.isArray(currentProduct?.categories) && currentProduct.categories.some((c) => c.toLowerCase().includes('case'))));
+  const needsModelSelection = isCase || availableModels.length > 0 || compatibleModels.length > 0;
 
   // Selected phone model state:
   // Priority: 1. URL search param ?model=..., 2. savedPhone if compatible, 3. Empty prompt
-  // (Must NOT modify savedPhone)
   const paramModel = searchParams.get('model');
 
   const resolveCompatibleModel = (input, list = []) => {
@@ -43,57 +147,110 @@ export function ProductDetailPage({ onAddToCart }) {
   };
 
   const initialModel = useMemo(() => {
+    const listToCheck = availableModels.length > 0 ? availableModels : compatibleModels;
     if (paramModel) {
-      const match = resolveCompatibleModel(paramModel, compatibleModels);
+      const match = resolveCompatibleModel(paramModel, listToCheck);
       if (match) return match;
     }
     if (savedPhone?.model) {
-      const match = resolveCompatibleModel(savedPhone.model, compatibleModels);
+      const match = resolveCompatibleModel(savedPhone.model, listToCheck);
       if (match) return match;
     }
     return '';
-  }, [paramModel, savedPhone?.model, compatibleModels]);
+  }, [paramModel, savedPhone?.model, availableModels, compatibleModels]);
 
   const [selectedModel, setSelectedModel] = useState(initialModel);
   const [modelError, setModelError] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const isModelSwitchRef = useRef(false);
+  const prevIdRef = useRef(null);
 
-  // Page title and meta (Rule 8: product "<Name> for <models> | WrapStore" plus OG image)
+  // Handle phone model change in the dropdown
+  const handleModelChange = (newModel) => {
+    if (!newModel) {
+      setSelectedModel('');
+      return;
+    }
+
+    isModelSwitchRef.current = true;
+    setSelectedModel(newModel);
+    setModelError(false);
+
+    if (newModel && selectPhone) {
+      selectPhone(currentProduct?.mobile_brand || 'Apple', newModel);
+    }
+
+    // Find the corresponding variant product in the collection
+    const targetProduct = modelToProductMap.get(newModel);
+    if (targetProduct) {
+      // 1. Immediately switch the active product in local state so image & details update with zero latency
+      setActiveProduct(targetProduct);
+
+      // 2. Update the URL in the address bar
+      if (targetProduct.id !== id) {
+        navigate(`/product/${targetProduct.id}?model=${encodeURIComponent(newModel)}`, { replace: true });
+      }
+    }
+  };
+
+  // Sync active product if paramModel changes or matches a different variant
   useEffect(() => {
-    if (product) {
-      const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
-      const compList = Array.isArray(product.compatible_models) ? product.compatible_models : [];
+    if (paramModel && modelToProductMap.has(paramModel)) {
+      const matchProd = modelToProductMap.get(paramModel);
+      if (matchProd && matchProd.id !== currentProduct?.id) {
+        setActiveProduct(matchProd);
+      }
+    }
+  }, [paramModel, modelToProductMap, currentProduct?.id]);
+
+  // Page title and meta
+  useEffect(() => {
+    if (currentProduct) {
+      const isCombo = Boolean(currentProduct.is_combo || currentProduct.product_type === 'combo');
+      const compList = availableModels.length > 0 ? availableModels : compatibleModels;
       let title;
       let description;
 
-      if (isCombo && product.empty_intersection) {
+      if (isCombo && currentProduct.empty_intersection) {
         console.warn(
-          `[ProductDetailPage] Combo "${product.name}" (id: ${product.id}) has an empty model intersection across its components - this combo is not available for any single phone model.`
+          `[ProductDetailPage] Combo "${currentProduct.name}" (id: ${currentProduct.id}) has an empty model intersection across its components - this combo is not available for any single phone model.`
         );
-        title = `${product.name} | WrapStore`;
+        title = `${currentProduct.name} | WrapStore`;
         description = 'This combo is not available for any single phone model.';
       } else {
         const modelsStr = compList.length > 0 ? compList.slice(0, 3).join(', ') : 'All Devices';
-        title = `${product.name} for ${modelsStr} | WrapStore`;
+        title = `${currentProduct.name} for ${modelsStr} | WrapStore`;
         description =
-          product.description && product.description.length >= 20
-            ? product.description
-            : `${product.name} available at WrapStore Dharmapuri.`;
+          currentProduct.description && currentProduct.description.length >= 20
+            ? currentProduct.description
+            : `${currentProduct.name} available at WrapStore Dharmapuri.`;
       }
       const image =
-        product.image_url || (Array.isArray(product.images) && product.images[0]) || '';
+        currentProduct.image_url || (Array.isArray(currentProduct.images) && currentProduct.images[0]) || '';
       setPageMeta({ title, description, image });
     }
-  }, [product]);
+  }, [currentProduct, availableModels, compatibleModels]);
 
-  // Scroll to top on id change
+  // Scroll to top only on new product navigations, not on in-page model variant changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    if (product) {
+    if (isModelSwitchRef.current) {
+      isModelSwitchRef.current = false;
+      prevIdRef.current = id;
+      return;
+    }
+    if (prevIdRef.current !== id) {
+      prevIdRef.current = id;
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [id]);
+
+  // Sync selectedModel on initial load or when initialModel changes externally
+  useEffect(() => {
+    if (!isModelSwitchRef.current && initialModel) {
       setSelectedModel(initialModel);
       setModelError(false);
     }
-  }, [id, product, initialModel]);
+  }, [initialModel]);
 
   // Listen for custom toast events (e.g. from share)
   useEffect(() => {
@@ -107,7 +264,9 @@ export function ProductDetailPage({ onAddToCart }) {
 
   const isModelSelected = Boolean(
     selectedModel &&
-      (!compatibleModels.length || compatibleModels.includes(selectedModel))
+      (!availableModels.length && !compatibleModels.length
+        ? true
+        : availableModels.includes(selectedModel) || compatibleModels.includes(selectedModel))
   );
 
   // Derive brand for breadcrumbs
@@ -117,14 +276,14 @@ export function ProductDetailPage({ onAddToCart }) {
       if (/iphone/i.test(selectedModel)) return 'Apple';
       if (/galaxy|samsung/i.test(selectedModel)) return 'Samsung';
     }
-    if (product?.mobile_brand) return product.mobile_brand;
+    if (currentProduct?.mobile_brand) return currentProduct.mobile_brand;
     return 'Apple';
-  }, [savedPhone, selectedModel, product]);
+  }, [savedPhone, selectedModel, currentProduct]);
 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: product?.name || 'WrapStore Case',
+        title: currentProduct?.name || 'WrapStore Case',
         url: window.location.href,
       }).catch(() => {});
     } else {
@@ -161,7 +320,7 @@ export function ProductDetailPage({ onAddToCart }) {
     );
   }
 
-  if (!product) {
+  if (!currentProduct) {
     return (
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-20 text-center space-y-4">
         <h1 className="text-[28px] font-semibold text-[#141414] tracking-[-0.025em]">Product not found</h1>
@@ -233,19 +392,19 @@ export function ProductDetailPage({ onAddToCart }) {
         ) : (
           <>
             <Link
-              to={`/?category=${encodeURIComponent(product.category || 'Accessories')}`}
+              to={`/?category=${encodeURIComponent(currentProduct.category || 'Accessories')}`}
               className="hover:text-[#141414] transition-colors"
             >
-              {product.category || 'Accessories'}
+              {currentProduct.category || 'Accessories'}
             </Link>
-            {product.subcategory && (
+            {currentProduct.subcategory && (
               <>
                 <span className="text-[#E5E5E3] select-none">/</span>
                 <Link
-                  to={`/?category=${encodeURIComponent(product.category || 'Accessories')}&subcategory=${encodeURIComponent(product.subcategory)}`}
+                  to={`/?category=${encodeURIComponent(currentProduct.category || 'Accessories')}&subcategory=${encodeURIComponent(currentProduct.subcategory)}`}
                   className="hover:text-[#141414] transition-colors"
                 >
-                  {product.subcategory}
+                  {currentProduct.subcategory}
                 </Link>
               </>
             )}
@@ -254,7 +413,7 @@ export function ProductDetailPage({ onAddToCart }) {
 
         <span className="text-[#E5E5E3] select-none">/</span>
         <span className="text-[#141414] font-medium truncate max-w-[240px]">
-          {product.name}
+          {currentProduct.name}
         </span>
       </nav>
 
@@ -268,8 +427,8 @@ export function ProductDetailPage({ onAddToCart }) {
         {/* Left Column (~55%): Full width on mobile (no side margins), Sticky on Desktop */}
         <div className="w-full lg:w-[55%] shrink-0 lg:sticky lg:top-[96px] self-start">
           <ImageGallery
-            images={product.images}
-            product={product}
+            images={currentProduct.images}
+            product={currentProduct}
             onShare={handleShare}
           />
         </div>
@@ -277,7 +436,7 @@ export function ProductDetailPage({ onAddToCart }) {
         {/* Right Column (~45%): Scrolls naturally, padded on mobile */}
         <div className="w-full lg:w-[45%] px-4 sm:px-0">
           <ProductInfoPanel
-            product={product}
+            product={currentProduct}
             onAddToCart={onAddToCart}
             buyButtonRef={buyButtonRef}
             selectedModel={selectedModel}
@@ -287,6 +446,9 @@ export function ProductDetailPage({ onAddToCart }) {
             modelSelectRef={modelSelectRef}
             isModelSelected={isModelSelected}
             needsModelSelection={needsModelSelection}
+            availableModels={availableModels}
+            modelToProductMap={modelToProductMap}
+            onModelChange={handleModelChange}
           />
         </div>
 
@@ -296,7 +458,7 @@ export function ProductDetailPage({ onAddToCart }) {
           STICKY MOBILE 52px ADD TO BAG BAR (< 1024px)
           ─────────────────────────────────────────────────────────────────────────── */}
       <StickyMobileCartBar
-        product={product}
+        product={currentProduct}
         selectedModel={selectedModel}
         isModelSelected={isModelSelected}
         needsModelSelection={needsModelSelection}

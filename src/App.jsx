@@ -55,6 +55,12 @@ function LegacyCasesRedirect() {
   const navigate = useNavigate();
 
   React.useEffect(() => {
+    // Only perform legacy query redirects if on the root homepage ('/')
+    // If user is on '/cases', '/accessories', or any other active route, do not intercept!
+    if (location.pathname !== '/' && location.pathname !== '') {
+      return;
+    }
+
     const params = new URLSearchParams(location.search);
     const category = params.get('category');
     const subcategory = params.get('subcategory');
@@ -98,7 +104,7 @@ function LegacyCasesRedirect() {
       navigate('/combos', { replace: true });
       return;
     }
-  }, [location, navigate]);
+  }, [location.pathname, location.search, navigate]);
 
   return null;
 }

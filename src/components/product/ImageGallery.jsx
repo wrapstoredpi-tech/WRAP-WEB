@@ -26,6 +26,11 @@ export function ImageGallery({ images = [], product, className = '', onShare }) 
 
   const currentImage = displayImages[Math.min(selectedIndex, displayImages.length - 1)] || FALLBACK_PLACEHOLDER;
 
+  // Reset image index to primary whenever product id changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [product?.id]);
+
   // Handle ESC key for fullscreen lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {

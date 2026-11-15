@@ -1,42 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
   Tag,
   Check,
   Search,
-  ExternalLink,
-  ChevronDown,
-  RotateCcw,
   Zap,
+  X,
 } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
 import { supabase } from '../../lib/supabase';
-import { getPinnedFeaturedId, getPinnedDealId } from '../../lib/dealFeaturedAdapter';
+import { getPinnedDealId } from '../../lib/dealFeaturedAdapter';
 
 export function AdminFeaturedTab({
   products = [],
   onRefreshProducts,
 }) {
-  const [pinnedFeaturedId, setPinnedFeaturedId] = useState(() => getPinnedFeaturedId());
   const [pinnedDealId, setPinnedDealId] = useState(() => getPinnedDealId());
   const [search, setSearch] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
-  const [isUpdatingDb, setIsUpdatingDb] = useState(false);
+  const [updatingProductIds, setUpdatingProductIds] = useState(new Set());
+  const [optimisticOverrides, setOptimisticOverrides] = useState({});
 
   const showNotification = (msg) => {
     setSavedMessage(msg);
     setTimeout(() => setSavedMessage(''), 3000);
   };
 
-  const handlePinFeatured = (productId) => {
-    const newId = pinnedFeaturedId === productId ? null : productId;
-    setPinnedFeaturedId(newId);
-    if (newId) {
-      localStorage.setItem('wrapstore_pinned_featured_id', newId);
-      showNotification('Featured spotlight product updated!');
-    } else {
-      localStorage.removeItem('wrapstore_pinned_featured_id');
-      showNotification('Featured spotlight reset to automatic rotation');
+  const getIsFeatured = (product) => {
+    if (optimisticOverrides[product.id] !== undefined) {
+      return optimisticOverrides[product.id];
+    }
+    return Boolean(product.online_featured);
+  };
+
+  // Toggle online_featured in Supabase
+  const handleToggleOnlineFeatured = async (product) => {
+    const currentStatus = getIsFeatured(product);
+    const newStatus = !currentStatus;
+
+    // Apply optimistic override immediately for fast UI feedback
+    setOptimisticOverrides((prev) => ({ ...prev, [product.id]: newStatus }));
+    setUpdatingProductIds((prev) => new Set(prev).add(product.id));
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ online_featured: newStatus })
+        .eq('id', product.id);
+
+      if (error) throw error;
+
+      showNotification(
+        newStatus
+          ? `Added "${product.name}" to Featured Products`
+          : `Removed "${product.name}" from Featured Products`
+      );
+
+      if (onRefreshProducts) {
+        await onRefreshProducts();
+      }
+    } catch (err) {
+      console.error('Error updating online_featured in Supabase:', err);
+      // Revert optimistic override on error
+      setOptimisticOverrides((prev) => {
+        const next = { ...prev };
+        delete next[product.id];
+        return next;
+      });
+      showNotification(`Failed to update ${product.name}: ${err.message || 'Database error'}`);
+    } finally {
+      setUpdatingProductIds((prev) => {
+        const next = new Set(prev);
+        next.delete(product.id);
+        return next;
+      });
     }
   };
 
@@ -52,30 +89,10 @@ export function AdminFeaturedTab({
     }
   };
 
-  const handleToggleOnlineFeaturedDb = async (product) => {
-    setIsUpdatingDb(true);
-    const newStatus = !product.online_featured;
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({ online_featured: newStatus })
-        .eq('id', product.id);
-
-      if (error) throw error;
-      showNotification(`Updated ${product.name} featured flag in database`);
-      if (onRefreshProducts) onRefreshProducts();
-    } catch (err) {
-      console.error('Error updating online_featured in Supabase:', err);
-      showNotification('Saved to session. (Database update synced)');
-    } finally {
-      setIsUpdatingDb(false);
-    }
-  };
-
-  // Find currently active featured and deal products
-  const activeFeaturedProduct = products.find((p) => p.id === pinnedFeaturedId) ||
-    products.find((p) => p.online_featured === true) ||
-    products[0];
+  // All active featured products (source of truth: online_featured === true)
+  const featuredProducts = useMemo(() => {
+    return products.filter(getIsFeatured);
+  }, [products, optimisticOverrides]);
 
   const activeDealProduct = products.find((p) => p.id === pinnedDealId) ||
     products.find((p) => (p.mrp && p.mrp > p.selling_price) || (p.discount_percentage && p.discount_percentage > 0)) ||
@@ -113,107 +130,153 @@ export function AdminFeaturedTab({
       </div>
 
       {/* 2 Spotlight Cards (Live Previews) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card 1: Featured Product Spotlight */}
-        <div className="bg-white border border-[#E5E5E3] rounded-[8px] p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3]">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-[4px] bg-[#141414] text-white flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-[#B0521F]" />
-              </div>
-              <div>
-                <h3 className="text-[14px] font-semibold text-[#141414]">Featured Spotlight</h3>
-                <span className="text-[11px] text-[#6B6B6B]">Highlighted card on the homepage</span>
-              </div>
-            </div>
-            {pinnedFeaturedId && (
-              <span className="text-[11px] font-semibold text-[#B0521F] bg-[#B0521F]/10 px-2 py-0.5 rounded-[4px]">
-                Pinned by Admin
-              </span>
-            )}
-          </div>
-
-          {activeFeaturedProduct && (
-            <div className="flex items-center gap-4 p-3 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px]">
-              <img
-                src={activeFeaturedProduct.image_url}
-                alt={activeFeaturedProduct.name}
-                className="w-16 h-20 object-cover rounded-[4px] border border-[#E5E5E3] bg-white"
-              />
-              <div className="flex-1 min-w-0">
-                <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] font-medium">
-                  {activeFeaturedProduct.category}
-                </span>
-                <h4 className="text-[14px] font-semibold text-[#141414] truncate">
-                  {activeFeaturedProduct.name}
-                </h4>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-[15px] font-semibold text-[#141414] tabular-nums">
-                    {formatINR(activeFeaturedProduct.selling_price)}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        {/* Card 1: Featured Products (Supports Multiple Products) */}
+        <div className="bg-white border border-[#E5E5E3] rounded-[8px] p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3]">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-[4px] bg-[#141414] text-white flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-[#B0521F]" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold text-[#141414]">
+                    Featured Products ({featuredProducts.length})
+                  </h3>
+                  <span className="text-[11px] text-[#6B6B6B]">
+                    Active products showcased across the storefront
                   </span>
-                  {activeFeaturedProduct.mrp > activeFeaturedProduct.selling_price && (
-                    <span className="text-[12px] text-[#6B6B6B] line-through tabular-nums">
-                      {formatINR(activeFeaturedProduct.mrp)}
-                    </span>
-                  )}
                 </div>
               </div>
+              <span className="text-[11px] font-semibold text-[#141414] bg-[#F5F5F3] px-2 py-0.5 rounded-[4px] border border-[#E5E5E3]">
+                {featuredProducts.length} Active
+              </span>
             </div>
-          )}
 
-          <div className="text-[12px] text-[#6B6B6B]">
-            Select any product from the catalog below to pin it as the Featured Spotlight.
+            {/* List or Empty State */}
+            <div className="mt-3">
+              {featuredProducts.length === 0 ? (
+                <div className="py-8 px-4 text-center border border-dashed border-[#E5E5E3] rounded-[6px] bg-[#FAFAF9]">
+                  <Sparkles className="w-6 h-6 text-[#9E9E9C] mx-auto mb-2 opacity-60" />
+                  <p className="text-[13px] font-medium text-[#141414]">
+                    No featured products selected
+                  </p>
+                  <p className="text-[12px] text-[#6B6B6B] mt-0.5">
+                    Click &ldquo;Pin Featured&rdquo; on any item in the catalogue below to feature it.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {featuredProducts.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 p-2.5 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] hover:border-[#141414]/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={p.image_url}
+                          alt={p.name}
+                          className="w-12 h-14 object-cover rounded-[4px] border border-[#E5E5E3] bg-white shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-[13px] font-semibold text-[#141414] truncate">
+                              {p.name}
+                            </h4>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
+                              <Check className="w-2.5 h-2.5 text-emerald-600" />
+                              Featured
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-2 mt-0.5">
+                            <span className="text-[13px] font-semibold text-[#141414] tabular-nums">
+                              {formatINR(p.selling_price)}
+                            </span>
+                            {p.mrp > p.selling_price && (
+                              <span className="text-[11px] text-[#6B6B6B] line-through tabular-nums">
+                                {formatINR(p.mrp)}
+                              </span>
+                            )}
+                            <span className="text-[11px] text-[#8C8C8C] truncate">
+                              · {p.category || 'Accessories'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={updatingProductIds.has(p.id)}
+                        onClick={() => handleToggleOnlineFeatured(p)}
+                        aria-label={`Remove ${p.name} from Featured`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100/80 border border-red-200 rounded-[4px] transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                        title="Remove from featured"
+                      >
+                        <X className="w-3 h-3" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="text-[12px] text-[#6B6B6B] pt-3 border-t border-[#E5E5E3]">
+            Featured products are displayed dynamically on the storefront. Add as many as needed without limit.
           </div>
         </div>
 
-        {/* Card 2: Deal of the Day Spotlight */}
-        <div className="bg-white border border-[#E5E5E3] rounded-[8px] p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3]">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-[4px] bg-[#B0521F] text-white flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white" />
+        {/* Card 2: Deal of the Day Spotlight (Independent) */}
+        <div className="bg-white border border-[#E5E5E3] rounded-[8px] p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3]">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-[4px] bg-[#B0521F] text-white flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold text-[#141414]">Deal of the Day</h3>
+                  <span className="text-[11px] text-[#6B6B6B]">Daily discounted item banner</span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-[14px] font-semibold text-[#141414]">Deal of the Day</h3>
-                <span className="text-[11px] text-[#6B6B6B]">Daily discounted item banner</span>
-              </div>
+              {pinnedDealId && (
+                <span className="text-[11px] font-semibold text-[#B0521F] bg-[#B0521F]/10 px-2 py-0.5 rounded-[4px]">
+                  Pinned by Admin
+                </span>
+              )}
             </div>
-            {pinnedDealId && (
-              <span className="text-[11px] font-semibold text-[#B0521F] bg-[#B0521F]/10 px-2 py-0.5 rounded-[4px]">
-                Pinned by Admin
-              </span>
+
+            {activeDealProduct && (
+              <div className="flex items-center gap-4 p-3 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] mt-3">
+                <img
+                  src={activeDealProduct.image_url}
+                  alt={activeDealProduct.name}
+                  className="w-16 h-20 object-cover rounded-[4px] border border-[#E5E5E3] bg-white shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] font-medium">
+                    {activeDealProduct.category}
+                  </span>
+                  <h4 className="text-[14px] font-semibold text-[#141414] truncate">
+                    {activeDealProduct.name}
+                  </h4>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-[15px] font-semibold text-[#141414] tabular-nums">
+                      {formatINR(activeDealProduct.selling_price)}
+                    </span>
+                    {activeDealProduct.mrp > activeDealProduct.selling_price && (
+                      <span className="text-[12px] text-[#6B6B6B] line-through tabular-nums">
+                        {formatINR(activeDealProduct.mrp)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          {activeDealProduct && (
-            <div className="flex items-center gap-4 p-3 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px]">
-              <img
-                src={activeDealProduct.image_url}
-                alt={activeDealProduct.name}
-                className="w-16 h-20 object-cover rounded-[4px] border border-[#E5E5E3] bg-white"
-              />
-              <div className="flex-1 min-w-0">
-                <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] font-medium">
-                  {activeDealProduct.category}
-                </span>
-                <h4 className="text-[14px] font-semibold text-[#141414] truncate">
-                  {activeDealProduct.name}
-                </h4>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-[15px] font-semibold text-[#141414] tabular-nums">
-                    {formatINR(activeDealProduct.selling_price)}
-                  </span>
-                  {activeDealProduct.mrp > activeDealProduct.selling_price && (
-                    <span className="text-[12px] text-[#6B6B6B] line-through tabular-nums">
-                      {formatINR(activeDealProduct.mrp)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="text-[12px] text-[#6B6B6B]">
+          <div className="text-[12px] text-[#6B6B6B] pt-3 border-t border-[#E5E5E3]">
             Select any discounted product from the catalog below to pin it as the Deal of the Day.
           </div>
         </div>
@@ -251,16 +314,15 @@ export function AdminFeaturedTab({
                 <th className="py-3 px-4 font-medium">Category / Brand</th>
                 <th className="py-3 px-4 font-medium">Price</th>
                 <th className="py-3 px-4 font-medium">Stock</th>
-                <th className="py-3 px-4 font-medium text-center">Featured Spotlight</th>
+                <th className="py-3 px-4 font-medium text-center">Featured</th>
                 <th className="py-3 px-4 font-medium text-center">Deal of the Day</th>
-                <th className="py-3 px-4 font-medium text-right">DB Flag</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E5E3]">
               {filteredProducts.map((p) => {
-                const isPinnedFeatured = pinnedFeaturedId === p.id;
+                const isFeatured = getIsFeatured(p);
                 const isPinnedDeal = pinnedDealId === p.id;
-                const hasDiscount = p.mrp > p.selling_price || (p.discount_percentage && p.discount_percentage > 0);
+                const isUpdatingThis = updatingProductIds.has(p.id);
 
                 return (
                   <tr key={p.id} className="hover:bg-[#FAFAF9]/60 transition-colors">
@@ -287,22 +349,33 @@ export function AdminFeaturedTab({
                     <td className="py-3 px-4 text-[#6B6B6B]">
                       {p.available_stock ?? p.current_stock ?? 0} in stock
                     </td>
-                    {/* Featured Pin Button */}
+                    {/* Featured Toggle Button */}
                     <td className="py-3 px-4 text-center">
                       <button
                         type="button"
-                        onClick={() => handlePinFeatured(p.id)}
-                        className={`inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold rounded-[4px] transition-colors cursor-pointer ${
-                          isPinnedFeatured
-                            ? 'bg-[#141414] text-white shadow-sm'
-                            : 'border border-[#E5E5E3] hover:border-[#141414] text-[#141414] bg-white'
-                        }`}
+                        disabled={isUpdatingThis}
+                        onClick={() => handleToggleOnlineFeatured(p)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-[4px] transition-all cursor-pointer ${
+                          isFeatured
+                            ? 'bg-[#141414] text-white hover:bg-black shadow-xs'
+                            : 'border border-[#E5E5E3] hover:border-[#141414] text-[#141414] bg-white hover:bg-[#FAFAF9]'
+                        } ${isUpdatingThis ? 'opacity-60 cursor-wait' : ''}`}
+                        title={isFeatured ? 'Click to remove from featured' : 'Click to feature this product'}
                       >
-                        <Sparkles className="w-3 h-3 text-[#B0521F]" />
-                        <span>{isPinnedFeatured ? 'Pinned Featured' : 'Pin Featured'}</span>
+                        {isFeatured ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-white" />
+                            <span>Featured</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-[#B0521F]" />
+                            <span>Pin Featured</span>
+                          </>
+                        )}
                       </button>
                     </td>
-                    {/* Deal Pin Button */}
+                    {/* Deal Pin Button (Independent) */}
                     <td className="py-3 px-4 text-center">
                       <button
                         type="button"
@@ -315,22 +388,6 @@ export function AdminFeaturedTab({
                       >
                         <Tag className="w-3 h-3 text-[#B0521F]" />
                         <span>{isPinnedDeal ? 'Pinned Deal' : 'Pin Deal'}</span>
-                      </button>
-                    </td>
-                    {/* Database Online Featured Toggle */}
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        type="button"
-                        disabled={isUpdatingDb}
-                        onClick={() => handleToggleOnlineFeaturedDb(p)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-[4px] border cursor-pointer transition-colors ${
-                          p.online_featured
-                            ? 'bg-amber-50 text-amber-800 border-amber-300'
-                            : 'bg-white text-[#6B6B6B] border-[#E5E5E3] hover:text-[#141414]'
-                        }`}
-                        title="Toggle online_featured column in Supabase"
-                      >
-                        {p.online_featured ? 'Featured in DB' : 'Not in DB'}
                       </button>
                     </td>
                   </tr>

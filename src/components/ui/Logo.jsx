@@ -24,7 +24,7 @@ export function Logo({
 
   return (
     <div
-      className={`inline-flex items-center select-none ${className}`}
+      className={`inline-flex items-center select-none cursor-pointer pointer-events-auto ${className}`}
       aria-label="WRAPSTORE"
       {...props}
     >

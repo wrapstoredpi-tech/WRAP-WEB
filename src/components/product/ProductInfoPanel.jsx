@@ -14,7 +14,7 @@ import { usePurchaseSheet } from '../../context/PurchaseSheetContext';
 import { useProductsContext } from '../../context/ProductsContext';
 import { usePhoneContext } from '../../context/PhoneContext';
 import { formatINR } from '../../lib/currency';
-import { resolveColorStyle, getValidColors } from '../../lib/colors';
+import { resolveColorStyle, getValidColors, isRealColor } from '../../lib/colors';
 import { policies } from '../../config/policies';
 import { combosOrderable, store } from '../../config/store';
 import { CompleteYourSetup } from './CompleteYourSetup';
@@ -31,6 +31,9 @@ export function ProductInfoPanel({
   modelSelectRef,
   isModelSelected,
   needsModelSelection,
+  availableModels = [],
+  modelToProductMap = new Map(),
+  onModelChange,
 }) {
   const navigate = useNavigate();
   const { products } = useProductsContext();
@@ -70,9 +73,21 @@ export function ProductInfoPanel({
   }, [isCombo, product]);
 
   // ─── COLOUR SIBLINGS ────────────────────────────────────────────────────────
-  // Products with the same name (trimmed, case-insensitive) in the same subcategory
+  // Only display colour swatches if there are genuinely 2+ different real colours
+  // (e.g. Black, White, Burgundy, Pink) - never for 'Standard', 'Universal', or model variants.
   const colourSiblings = useMemo(() => {
-    if (!product) return [];
+    if (!product || isCombo) return [];
+
+    const getProductColor = (p) => {
+      const valids = getValidColors(p.color_variants || p.color);
+      if (valids.length > 0 && isRealColor(valids[0])) return valids[0];
+      if (p.color && isRealColor(p.color)) return p.color;
+      return null;
+    };
+
+    const currentColour = getProductColor(product);
+    if (!currentColour) return [];
+
     const currentName = (product.name || '').trim().toLowerCase();
     const currentSub = (product.subcategory || product.category || '').trim().toLowerCase();
 
@@ -82,12 +97,19 @@ export function ProductInfoPanel({
       return pName === currentName && pSub === currentSub;
     });
 
-    if (matches.length <= 1) {
-      // If no distinct siblings by name, check color_variants or colors
-      return [product];
-    }
-    return matches;
-  }, [products, product]);
+    const validSiblings = matches.filter((p) => Boolean(getProductColor(p)));
+    const seen = new Set();
+    const distinct = [];
+    validSiblings.forEach((p) => {
+      const c = getProductColor(p).toLowerCase();
+      if (!seen.has(c)) {
+        seen.add(c);
+        distinct.push(p);
+      }
+    });
+
+    return distinct.length > 1 ? distinct : [];
+  }, [products, product, isCombo]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
@@ -223,7 +245,9 @@ export function ProductInfoPanel({
                 const newModel = e.target.value;
                 setSelectedModel(newModel);
                 setModelError(false);
-                if (newModel && selectPhone) {
+                if (onModelChange) {
+                  onModelChange(newModel);
+                } else if (newModel && selectPhone) {
                   selectPhone(product.mobile_brand || 'Apple', newModel);
                 }
               }}
@@ -234,11 +258,19 @@ export function ProductInfoPanel({
               }`}
             >
               <option value="">Choose your phone model</option>
-              {compatibleModels.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
+              {(availableModels.length > 0 ? availableModels : compatibleModels).map((m) => {
+                const modelProduct = modelToProductMap instanceof Map ? modelToProductMap.get(m) : null;
+                const isOutOfStockModel = modelProduct && (
+                  modelProduct.stock_status === 'OUT_OF_STOCK' ||
+                  (modelProduct.available_stock !== undefined && modelProduct.available_stock === 0) ||
+                  (modelProduct.current_stock !== undefined && modelProduct.current_stock === 0)
+                );
+                return (
+                  <option key={m} value={m}>
+                    {m}{isOutOfStockModel ? ' (Out of stock)' : ''}
+                  </option>
+                );
+              })}
             </select>
             <ChevronDown className="w-4 h-4 text-[#6B6B6B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -260,10 +292,8 @@ export function ProductInfoPanel({
         </div>
       )}
 
-      {/* 4. COLOUR: Swatches for every colour sibling with the name under each
-          (Hidden for combos; the current one has an accent ring; tapping another opens that sibling's page,
-          keeping the chosen model; sold-out siblings are crossed out) */}
-      {!isCombo && colourSiblings.length > 0 && (
+      {/* 4. COLOUR: Swatches for genuine colour options */}
+      {!isCombo && colourSiblings.length > 1 && (
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 text-[13px]">
             <span className="text-[#6B6B6B]">Colour:</span>

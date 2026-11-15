@@ -49,8 +49,8 @@ export function ShopByCategoryBento() {
               className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500"
             />
 
-            {/* Subtle dark gradient scrim at the bottom for crystal-clear readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+            {/* Opacity gradient layer between image and text for crystal-clear readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 via-40% to-transparent pointer-events-none" />
 
             {/* Bottom Content & Round White Arrow Button */}
             <div className="absolute bottom-6 left-6 right-6 z-10 flex items-end justify-between gap-4">
@@ -58,7 +58,7 @@ export function ShopByCategoryBento() {
                 <h3 className="text-white text-[26px] sm:text-[28px] font-semibold leading-tight group-hover:text-white/95 transition-colors">
                   Phone cases
                 </h3>
-                <p className="text-white/85 text-[13px] sm:text-[14px] mt-1 font-normal">
+                <p className="text-white/90 text-[13px] sm:text-[14px] mt-1 font-normal">
                   Clear, leather, carbon and printed · from {formatINR(casesMinPrice || 299)}
                 </p>
               </div>
@@ -82,12 +82,16 @@ export function ShopByCategoryBento() {
                 alt="Screen protection"
                 className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500 pointer-events-none"
               />
+
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-2 relative z-10">
                 <div>
                   <h3 className="text-[17px] sm:text-[18px] font-semibold text-[#141414] leading-snug">
                     Screen protection
                   </h3>
-                  <p className="text-[12px] sm:text-[13px] text-[#666666] mt-0.5">
+                  <p className="text-[12px] sm:text-[13px] text-[#4A4A4A] font-medium mt-0.5">
                     Tempered glass from ₹299
                   </p>
                 </div>
@@ -108,12 +112,16 @@ export function ShopByCategoryBento() {
                 alt="Power banks"
                 className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500 pointer-events-none"
               />
+
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-2 relative z-10">
                 <div>
                   <h3 className="text-[17px] sm:text-[18px] font-semibold text-[#141414] leading-snug">
                     Power banks
                   </h3>
-                  <p className="text-[12px] sm:text-[13px] text-[#666666] mt-0.5">
+                  <p className="text-[12px] sm:text-[13px] text-[#4A4A4A] font-medium mt-0.5">
                     Magnetic, MagSafe-ready
                   </p>
                 </div>
@@ -134,12 +142,16 @@ export function ShopByCategoryBento() {
                 alt="Cables"
                 className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500 pointer-events-none"
               />
+
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-2 relative z-10">
                 <div>
                   <h3 className="text-[17px] sm:text-[18px] font-semibold text-[#141414] leading-snug">
                     Cables
                   </h3>
-                  <p className="text-[12px] sm:text-[13px] text-[#666666] mt-0.5">
+                  <p className="text-[12px] sm:text-[13px] text-[#4A4A4A] font-medium mt-0.5">
                     Fast charging from ₹249
                   </p>
                 </div>
@@ -160,12 +172,16 @@ export function ShopByCategoryBento() {
                 alt="Watch straps"
                 className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500 pointer-events-none"
               />
+
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-2 relative z-10">
                 <div>
                   <h3 className="text-[17px] sm:text-[18px] font-semibold text-[#141414] leading-snug">
                     Watch straps
                   </h3>
-                  <p className="text-[12px] sm:text-[13px] text-[#666666] mt-0.5">
+                  <p className="text-[12px] sm:text-[13px] text-[#4A4A4A] font-medium mt-0.5">
                     Magnetic · 3 colours
                   </p>
                 </div>
@@ -190,14 +206,15 @@ export function ShopByCategoryBento() {
               alt="Phone cases"
               className="absolute inset-0 w-full h-full object-cover object-center"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+            {/* Opacity gradient layer between image and text */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 via-40% to-transparent pointer-events-none" />
 
             <div className="absolute bottom-5 left-5 right-5 z-10 flex items-end justify-between gap-3">
               <div>
                 <h3 className="text-white text-[22px] sm:text-[24px] font-semibold leading-tight">
                   Phone cases
                 </h3>
-                <p className="text-white/85 text-[12px] sm:text-[13px] mt-1 font-normal">
+                <p className="text-white/90 text-[12px] sm:text-[13px] mt-1 font-normal">
                   Clear, leather, carbon and printed · from {formatINR(casesMinPrice || 299)}
                 </p>
               </div>
@@ -221,12 +238,15 @@ export function ShopByCategoryBento() {
                 alt="Screen protection"
                 className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
               />
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-1.5 relative z-10">
                 <div>
                   <h3 className="text-[14px] sm:text-[15px] font-semibold text-[#141414] leading-snug">
                     Screen protection
                   </h3>
-                  <p className="text-[11px] text-[#666666] mt-0.5 leading-tight">
+                  <p className="text-[11px] text-[#4A4A4A] font-medium mt-0.5 leading-tight">
                     Tempered glass from ₹299
                   </p>
                 </div>
@@ -247,12 +267,15 @@ export function ShopByCategoryBento() {
                 alt="Power banks"
                 className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
               />
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-1.5 relative z-10">
                 <div>
                   <h3 className="text-[14px] sm:text-[15px] font-semibold text-[#141414] leading-snug">
                     Power banks
                   </h3>
-                  <p className="text-[11px] text-[#666666] mt-0.5 leading-tight">
+                  <p className="text-[11px] text-[#4A4A4A] font-medium mt-0.5 leading-tight">
                     Magnetic, MagSafe-ready
                   </p>
                 </div>
@@ -273,12 +296,15 @@ export function ShopByCategoryBento() {
                 alt="Cables"
                 className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
               />
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-1.5 relative z-10">
                 <div>
                   <h3 className="text-[14px] sm:text-[15px] font-semibold text-[#141414] leading-snug">
                     Cables
                   </h3>
-                  <p className="text-[11px] text-[#666666] mt-0.5 leading-tight">
+                  <p className="text-[11px] text-[#4A4A4A] font-medium mt-0.5 leading-tight">
                     Fast charging from ₹249
                   </p>
                 </div>
@@ -299,17 +325,20 @@ export function ShopByCategoryBento() {
                 alt="Watch straps"
                 className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
               />
+              {/* Opacity layer between image and text for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/65 via-50% to-transparent pointer-events-none" />
+
               <div className="flex items-start justify-between gap-1.5 relative z-10">
                 <div>
                   <h3 className="text-[14px] sm:text-[15px] font-semibold text-[#141414] leading-snug">
                     Watch straps
                   </h3>
-                  <p className="text-[11px] text-[#666666] mt-0.5 leading-tight">
+                  <p className="text-[11px] text-[#4A4A4A] font-medium mt-0.5 leading-tight">
                     Magnetic · 3 colours
                   </p>
                 </div>
                 <div className="w-7 h-7 rounded-full bg-white shadow-2xs flex items-center justify-center text-[#141414] shrink-0">
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
             </Link>

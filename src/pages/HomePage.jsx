@@ -3,6 +3,7 @@ import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
 import { ShopByPhoneSection } from '../components/home/ShopByPhoneSection';
 import { ShopByCategoryBento } from '../components/home/ShopByCategoryBento';
+import { FeaturedProductsSection } from '../components/home/FeaturedProductsSection';
 import { NewInAndCollections } from '../components/home/NewInAndCollections';
 import { HomeAboutBand } from '../components/home/HomeAboutBand';
 import { HomeSEO } from '../components/home/HomeSEO';
@@ -300,6 +301,11 @@ export function HomePage() {
       );
     }
 
+    // Filter by online_featured when ?featured=1
+    if (featuredQuery) {
+      result = result.filter((p) => p.online_featured === true);
+    }
+
     // Sorting
     if (sortBy === 'price_asc') {
       result.sort((a, b) => a.selling_price - b.selling_price);
@@ -401,6 +407,9 @@ export function HomePage() {
 
           {/* Section 2 - Shop by category */}
           <ShopByCategoryBento />
+
+          {/* Featured Products Showcase */}
+          <FeaturedProductsSection />
 
           {/* Section 3 - New in + Trending collections */}
           <NewInAndCollections />

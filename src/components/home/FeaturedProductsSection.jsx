@@ -15,8 +15,7 @@ import { supabase, supabaseConfigured } from '../../lib/supabase';
 import { formatINR } from '../../lib/currency';
 import { useCart } from '../../context/CartContext';
 import { useFavorites } from '../../context/FavoritesContext';
-import { normaliseCombo } from '../../lib/useProducts';
-import { combosOrderable } from '../../config/store';
+import { useProductsContext } from '../../context/ProductsContext';
 
 /**
  * Category Filter Pills matching the approved design specification
@@ -64,10 +63,7 @@ function matchesCategoryFilter(product, activeFilter) {
         prodName.includes('tempered') ||
         prodName.includes('screen protector') ||
         prodName.includes('lens protector') ||
-        prodName.includes('glass') ||
-        (product.combo_items || []).some((it) =>
-          (it.product_name || '').toLowerCase().includes('temper')
-        )
+        prodName.includes('glass')
       );
 
     case 'chargers-adapters':
@@ -101,7 +97,6 @@ function matchesCategoryFilter(product, activeFilter) {
       );
 
     case 'other-accessories': {
-      // Accessories that are not in the dedicated pills above
       const isSpecificPill =
         matchesCategoryFilter(product, 'mobile-cases') ||
         matchesCategoryFilter(product, 'screen-protectors') ||
@@ -119,7 +114,7 @@ function matchesCategoryFilter(product, activeFilter) {
 }
 
 /**
- * Skeleton Loader Card matching the exact card dimensions to avoid layout shifts
+ * Skeleton Loader Card matching exact card dimensions to avoid layout shifts
  */
 export function FeaturedProductSkeleton() {
   return (
@@ -144,96 +139,32 @@ export function FeaturedProductSkeleton() {
 }
 
 /**
- * Individual Product Card for the Featured Products and New Arrivals Grid
+ * Individual Product Card for the Featured Products Grid
  */
 export function FeaturedProductCard({
   product,
-  isWishlisted,
+  isWishlisted = false,
   onToggleWishlist,
-  isAdded: propIsAdded,
+  isAdded = false,
   onAddToCart,
 }) {
   const navigate = useNavigate();
-  const { cartItems, addItem } = useCart();
-  const [imageError, setImageError] = useState(false);
+  const { addItem } = useCart();
   const [localAdded, setLocalAdded] = useState(false);
-
-  // Check if item is in cart
-  const isInCart = useMemo(() => {
-    return (
-      Array.isArray(cartItems) &&
-      cartItems.some(
-        (item) =>
-          String(item.productId) === String(product?.id) ||
-          String(item.id) === String(product?.id)
-      )
-    );
-  }, [cartItems, product?.id]);
-
-  const isProductAdded = Boolean(propIsAdded || isInCart || localAdded);
-
-  useEffect(() => {
-    if (isInCart) {
-      setLocalAdded(true);
-    } else {
-      setLocalAdded(false);
-    }
-  }, [isInCart]);
-
-  // Extract all distinct images for this product
-  const images = useMemo(() => {
-    const rawList = [];
-    if (Array.isArray(product?.images) && product.images.length > 0) {
-      rawList.push(...product.images);
-    }
-    if (product?.image_url) {
-      rawList.push(product.image_url);
-    }
-    if (Array.isArray(product?.combo_items)) {
-      product.combo_items.forEach((it) => {
-        if (it.image) rawList.push(it.image);
-      });
-    }
-
-    const seen = new Set();
-    const result = [];
-    rawList.filter(Boolean).forEach((url) => {
-      if (!seen.has(url)) {
-        seen.add(url);
-        result.push(url);
-      }
-    });
-
-    return result.length > 0 ? result : [product?.image_url || ''];
-  }, [product?.images, product?.image_url, product?.combo_items]);
-
+  const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Auto-scroll images smoothly when there are 2 or more images
-  useEffect(() => {
-    if (images.length <= 1) return;
+  const isProductAdded = isAdded || localAdded;
 
-    const delay =
-      Math.abs(
-        String(product?.id || '')
-          .split('')
-          .reduce((acc, c) => acc + c.charCodeAt(0), 0)
-      ) % 800;
-
-    let intervalId;
-    const timeoutId = setTimeout(() => {
-      intervalId = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % images.length);
-      }, 2600);
-    }, delay);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [images.length, product?.id]);
-
-  if (!product) return null;
+  const images = useMemo(() => {
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.filter(Boolean);
+    }
+    if (product.image_url) {
+      return [product.image_url];
+    }
+    return [];
+  }, [product.images, product.image_url]);
 
   const sellingPrice = Number(product.selling_price) || 0;
   const rawMrp = Number(product.mrp) || 0;
@@ -269,11 +200,6 @@ export function FeaturedProductCard({
     e.stopPropagation();
     e.preventDefault();
     if (isOutOfStock) return;
-    const isCombo = Boolean(product.is_combo || product.product_type === 'combo');
-    if (isCombo && !combosOrderable) {
-      navigate(`/product/${product.id}`);
-      return;
-    }
     if (isProductAdded) {
       navigate('/cart');
       return;
@@ -310,14 +236,6 @@ export function FeaturedProductCard({
             strokeWidth={isWishlisted ? 2.2 : 1.8}
           />
         </button>
-
-        {product.is_combo && (
-          <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-30 pointer-events-none">
-            <span className="inline-flex items-center text-[10px] sm:text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-[4px] bg-[#B0521F] text-white select-none">
-              Combo
-            </span>
-          </div>
-        )}
 
         {/* Product Image or Carousel */}
         {images.length > 1 ? (
@@ -437,10 +355,12 @@ export function FeaturedProductCard({
 
 /**
  * Main FeaturedProductsSection Component
+ * Supports multiple simultaneously featured products from Supabase (online_featured = true)
  */
-export function FeaturedProductsSection() {
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function FeaturedProductsSection({ products: propProducts = null }) {
+  const { products: contextProducts = [], isLoading: contextLoading } = useProductsContext() || {};
+  const [dbProducts, setDbProducts] = useState([]);
+  const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
 
@@ -473,6 +393,29 @@ export function FeaturedProductsSection() {
     }, 2800);
   }, []);
 
+  // Filter context products reactively
+  const contextFeatured = useMemo(() => {
+    return (contextProducts || []).filter(
+      (p) =>
+        !p.is_combo &&
+        p.online_featured === true &&
+        p.online_visible !== false &&
+        p.is_active !== false &&
+        p.approval_status !== 'REJECTED' &&
+        (p.available_stock ?? p.current_stock ?? 0) > 0 &&
+        p.stock_status !== 'OUT_OF_STOCK'
+    );
+  }, [contextProducts]);
+
+  // Determine final product list
+  const products = useMemo(() => {
+    if (propProducts && Array.isArray(propProducts)) return propProducts;
+    if (contextProducts && contextProducts.length > 0) return contextFeatured;
+    return dbProducts;
+  }, [propProducts, contextProducts, contextFeatured, dbProducts]);
+
+  const isLoading = (contextLoading && products.length === 0) || (isLoadingDb && products.length === 0);
+
   // Update category scroll button visibility
   const updateScrollButtons = useCallback(() => {
     const el = pillContainerRef.current;
@@ -501,76 +444,66 @@ export function FeaturedProductsSection() {
     el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
-  // ── Database Fetching with Strict Eligibility Rules ────────────────────────
-  // Conditions: online_featured = true, online_visible = true, is_active = true
+  // Direct Supabase query fallback for online_featured = true products
   const fetchFeaturedProducts = useCallback(async () => {
     if (!supabaseConfigured || !supabase) {
-      setIsLoading(false);
-      setError('Database connection not configured');
+      setIsLoadingDb(false);
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingDb(true);
     setError(null);
 
     try {
-      // 1. Fetch eligible products and active combos in parallel
-      const [
-        { data: rawProducts, error: prodErr },
-        { data: rawCombos, error: comboErr },
-        { data: rawComboItems, error: comboItemsErr },
-      ] = await Promise.all([
-        supabase
-          .from('products')
-          .select(
-            `id,
-             product_id,
-             name,
-             category_id,
-             subcategory_id,
-             selling_price,
-             mrp,
-             discount_percentage,
-             current_stock,
-             reserved_stock,
-             online_visible,
-             online_featured,
-             is_active,
-             approval_status,
-             seo_slug,
-             created_at,
-             updated_at`
-          )
-          .eq('online_featured', true)
-          .eq('online_visible', true)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('combos')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('combo_items')
-          .select('*'),
-      ]);
+      // Fetch products where online_featured = true, online_visible = true, is_active = true
+      const { data: rawProducts, error: prodErr } = await supabase
+        .from('products')
+        .select(
+          `id,
+           product_id,
+           name,
+           category_id,
+           subcategory_id,
+           selling_price,
+           mrp,
+           discount_percentage,
+           current_stock,
+           reserved_stock,
+           online_visible,
+           online_featured,
+           is_active,
+           approval_status,
+           seo_slug,
+           created_at,
+           updated_at`
+        )
+        .eq('online_featured', true)
+        .eq('online_visible', true)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       if (prodErr) throw prodErr;
-      if (comboErr) {
-        console.warn('[FeaturedProductsSection] combos fetch error:', comboErr.message);
-      }
-      if (comboItemsErr) {
-        console.warn('[FeaturedProductsSection] combo_items fetch error:', comboItemsErr.message);
-      }
 
-      if ((!rawProducts || rawProducts.length === 0) && (!rawCombos || rawCombos.length === 0)) {
-        setProducts([]);
-        setIsLoading(false);
+      if (!rawProducts || rawProducts.length === 0) {
+        setDbProducts([]);
+        setIsLoadingDb(false);
         return;
       }
 
-      // 2. Fetch categories, subcategories, and product_images in parallel
-      const productIds = rawProducts.map((p) => p.id);
+      // Filter rejected or out-of-stock items
+      const eligibleRaw = rawProducts.filter((p) => {
+        const stock = Math.max(0, (p.current_stock || 0) - (p.reserved_stock || 0));
+        return p.approval_status !== 'REJECTED' && stock > 0;
+      });
+
+      if (eligibleRaw.length === 0) {
+        setDbProducts([]);
+        setIsLoadingDb(false);
+        return;
+      }
+
+      // Fetch categories, subcategories, and images
+      const productIds = eligibleRaw.map((p) => p.id);
       const [catRes, subRes, imgRes] = await Promise.all([
         supabase.from('categories').select('id, name').eq('is_active', true),
         supabase.from('subcategories').select('id, name, category_id').eq('is_active', true),
@@ -590,25 +523,19 @@ export function FeaturedProductsSection() {
         imgMap[img.product_id].push(img);
       });
 
-      // 3. Normalize products with pricing and image resolution
-      const normalized = rawProducts.map((p) => {
+      const normalized = eligibleRaw.map((p) => {
         const images = imgMap[p.id] || [];
-        // Primary image selection: is_primary=true, else first sorted image
         const primaryImg =
           images.find((img) => img.is_primary)?.public_url || images[0]?.public_url || null;
 
         const sellingPrice = Number(p.selling_price) || 0;
         const rawMrp = Number(p.mrp) || 0;
-
-        // Calculate discount only when both prices are valid and MRP exceeds selling price
         const hasDiscount = rawMrp > sellingPrice;
         const calculatedDiscount = hasDiscount
           ? Math.round(((rawMrp - sellingPrice) / rawMrp) * 100)
           : 0;
         const discountPercentage = calculatedDiscount > 0 ? calculatedDiscount : (p.discount_percentage || 0);
-
         const availableStock = Math.max(0, (p.current_stock || 0) - (p.reserved_stock || 0));
-        const isOutOfStock = availableStock <= 0;
 
         return {
           id: p.id,
@@ -626,42 +553,20 @@ export function FeaturedProductsSection() {
           images: images.map((i) => i.public_url).filter(Boolean),
           available_stock: availableStock,
           current_stock: availableStock,
-          stock_status: isOutOfStock ? 'OUT_OF_STOCK' : 'IN_STOCK',
-          is_out_of_stock: isOutOfStock,
+          stock_status: 'IN_STOCK',
+          is_out_of_stock: false,
           seo_slug: p.seo_slug,
           created_at: p.created_at,
+          online_featured: true,
         };
       });
 
-      // Normalize combos and combine
-      const comboItemsMap = {};
-      (rawComboItems || []).forEach((ci) => {
-        if (!comboItemsMap[ci.combo_id]) comboItemsMap[ci.combo_id] = [];
-        comboItemsMap[ci.combo_id].push(ci);
-      });
-
-      const prodMap = Object.fromEntries(normalized.map((p) => [p.id, p]));
-      const normalizedCombos = (rawCombos || []).map((c) => {
-        const comboObj = normaliseCombo(c, prodMap, catMap, subMap, comboItemsMap);
-        const sellingPrice = Number(comboObj.selling_price) || 0;
-        const rawMrp = Number(comboObj.raw_mrp ?? comboObj.mrp) || 0;
-        const hasDiscount = rawMrp > sellingPrice;
-        const discountPercentage = comboObj.discount_percentage || 0;
-        const availableStock = comboObj.available_stock || 10;
-
-        return {
-          ...comboObj,
-          has_discount: hasDiscount && discountPercentage > 0,
-          is_out_of_stock: availableStock <= 0,
-        };
-      });
-
-      setProducts([...normalized, ...normalizedCombos]);
+      setDbProducts(normalized);
     } catch (err) {
-      console.error('[FeaturedProductsSection] Error fetching products:', err);
+      console.error('[FeaturedProductsSection] Error fetching featured products:', err);
       setError(err.message || 'Failed to load featured products');
     } finally {
-      setIsLoading(false);
+      setIsLoadingDb(false);
     }
   }, []);
 
@@ -669,7 +574,6 @@ export function FeaturedProductsSection() {
     fetchFeaturedProducts();
   }, [fetchFeaturedProducts]);
 
-  // Handle Add to Cart using existing CartContext
   const handleAddToCart = (product) => {
     if (!product || product.is_out_of_stock) return;
 
@@ -685,235 +589,230 @@ export function FeaturedProductsSection() {
     }
   };
 
-  // Handle Wishlist Toggle
   const handleToggleWishlist = (productId) => {
     toggleFavorite(productId, { returnUrl: '/' });
   };
 
-  // Client-side filtering across already fetched products (avoids repeated DB roundtrips)
+  // Client-side category filtering across featured products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => matchesCategoryFilter(p, activeFilter));
   }, [products, activeFilter]);
 
-  // Display up to 8 products in the 4-column desktop grid (2 rows of 4)
-  const displayedProducts = useMemo(() => {
-    return filteredProducts.slice(0, 8);
-  }, [filteredProducts]);
+  // Display all eligible featured products without arbitrary limits
+  const displayedProducts = filteredProducts;
+
+  // If not loading and zero featured products exist across catalogue, hide section gracefully
+  if (!isLoading && products.length === 0) {
+    return null;
+  }
 
   return (
     <section
       aria-labelledby="featured-products-heading"
-      className="w-full select-none"
+      className="w-full select-none py-10 md:py-16"
     >
-      {/* ── Section Header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 sm:mb-8">
-        <div>
-          {/* Eyebrow */}
-          <p className="font-sans text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.15em] text-[#71717A] mb-1.5 sm:mb-2">
-            FEATURED PRODUCTS
-          </p>
-
-          {/* Heading */}
-          <h2
-            id="featured-products-heading"
-            className="font-sans font-bold text-[30px] sm:text-[40px] lg:text-[46px] text-[#141414] leading-[1.08] tracking-[-0.02em]"
-          >
-            Handpicked for<br className="hidden sm:inline" /> a Better Everyday
-          </h2>
-        </div>
-
-        {/* View All Categories CTA (Desktop / Tablet) */}
-        <Link
-          to="/?view=all"
-          className="hidden sm:inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 self-start md:self-auto shrink-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 cursor-pointer group"
-        >
-          <span>View All Categories</span>
-          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-        </Link>
-      </div>
-
-      {/* ── Category Filter Bar with Horizontal Carousel Controls ──────────── */}
-      <div className="relative mb-6 sm:mb-8 flex items-center gap-3 min-w-0 w-full overflow-hidden">
-        {/* Horizontally Scrollable Category Pills */}
-        <div
-          ref={pillContainerRef}
-          role="tablist"
-          aria-label="Filter featured products by category"
-          className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 min-w-0 flex-1"
-        >
-          {CATEGORY_PILLS.map((pill) => {
-            const isActive = activeFilter === pill.id;
-            return (
-              <button
-                key={pill.id}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveFilter(pill.id)}
-                className={`px-4 sm:px-5 py-2 rounded-full font-sans text-[13px] sm:text-[14px] whitespace-nowrap transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 ${
-                  isActive
-                    ? 'bg-[#141414] text-white font-medium shadow-sm'
-                    : 'bg-[#EFEFEB] text-[#4A4A4A] hover:bg-[#E5E3DD] hover:text-[#141414] font-medium'
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Carousel Arrow Controls (Desktop / Tablet) */}
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0 pl-1">
-          <button
-            type="button"
-            onClick={() => handleScroll('left')}
-            disabled={!canScrollLeft}
-            aria-label="Scroll categories left"
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-              canScrollLeft
-                ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
-                : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
-            }`}
-          >
-            <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleScroll('right')}
-            disabled={!canScrollRight}
-            aria-label="Scroll categories right"
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-              canScrollRight
-                ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
-                : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
-            }`}
-          >
-            <ChevronRight className="w-4 h-4 stroke-[2.2]" />
-          </button>
-        </div>
-      </div>
-
-      {/* ── Product Grid or Status States ──────────────────────────────────── */}
-      {isLoading ? (
-        /* Loading Skeleton Grid */
-        <div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5 lg:gap-6"
-          aria-label="Loading featured products"
-        >
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <FeaturedProductSkeleton key={idx} />
-          ))}
-        </div>
-      ) : error ? (
-        /* Error State with Retry */
-        <div className="w-full bg-white rounded-[20px] border border-[#ECEAE5] p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-[#FAFAF9] flex items-center justify-center text-[#B0521F]">
-            <RefreshCw className="w-6 h-6 stroke-[1.8]" />
-          </div>
-          <div className="space-y-1 max-w-md">
-            <h3 className="font-sans font-semibold text-[17px] text-[#141414]">
-              Unable to load featured products
-            </h3>
-            <p className="font-sans text-[13px] text-[#6B6B6B]">
-              {error}
+      <div className="w-full max-w-[1280px] mx-auto px-4 md:px-8">
+        {/* ── Section Header (matches Shop by category font & styling) ── */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 md:mb-8">
+          <div>
+            <h2
+              id="featured-products-heading"
+              className="text-[26px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em] leading-tight"
+            >
+              Featured Products
+            </h2>
+            <p className="text-[14px] sm:text-[15px] text-[#5A5A5A] mt-1">
+              Handpicked for a better everyday.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={fetchFeaturedProducts}
-            className="px-5 py-2.5 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] font-medium transition-colors cursor-pointer"
+
+          {/* View All Featured CTA (Desktop / Tablet) */}
+          <Link
+            to="/?featured=1"
+            className="hidden sm:inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 self-start md:self-auto shrink-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 cursor-pointer group"
           >
-            Retry Loading
-          </button>
+            <span>View All Featured</span>
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          </Link>
         </div>
-      ) : displayedProducts.length === 0 ? (
-        /* Clean Empty State */
-        <div className="w-full bg-white rounded-[22px] border border-[#ECEAE5]/80 p-8 sm:p-14 text-center flex flex-col items-center justify-center space-y-4">
-          <div className="w-14 h-14 rounded-full bg-[#F5F5F3] flex items-center justify-center text-[#6B6B6B]">
-            <ShoppingBag className="w-6 h-6 stroke-[1.6]" />
+
+        {/* ── Category Filter Bar with Horizontal Carousel Controls ──────────── */}
+        <div className="relative mb-6 sm:mb-8 flex items-center gap-3 min-w-0 w-full overflow-hidden">
+          <div
+            ref={pillContainerRef}
+            role="tablist"
+            aria-label="Filter featured products by category"
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 min-w-0 flex-1"
+          >
+            {CATEGORY_PILLS.map((pill) => {
+              const isActive = activeFilter === pill.id;
+              return (
+                <button
+                  key={pill.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveFilter(pill.id)}
+                  className={`px-4 sm:px-5 py-2 rounded-full font-sans text-[13px] sm:text-[14px] whitespace-nowrap transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 ${
+                    isActive
+                      ? 'bg-[#141414] text-white font-medium shadow-sm'
+                      : 'bg-[#EFEFEB] text-[#4A4A4A] hover:bg-[#E5E3DD] hover:text-[#141414] font-medium'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
           </div>
-          <div className="space-y-1.5 max-w-md">
-            <h3 className="font-sans font-semibold text-[17px] sm:text-[18px] text-[#141414]">
-              No featured products in this category right now
-            </h3>
-            <p className="font-sans text-[13px] sm:text-[14px] text-[#6B6B6B] leading-relaxed">
-              We update our handpicked collection regularly. Browse all our available products or switch back to All.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 pt-1">
+
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0 pl-1">
             <button
               type="button"
-              onClick={() => setActiveFilter('all')}
-              className="px-5 py-2 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] font-medium transition-colors cursor-pointer"
+              onClick={() => handleScroll('left')}
+              disabled={!canScrollLeft}
+              aria-label="Scroll categories left"
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                canScrollLeft
+                  ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
+                  : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
+              }`}
             >
-              Show All Products
+              <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
             </button>
-            <Link
-              to="/?view=all"
-              className="px-5 py-2 rounded-full bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#141414] text-[13px] font-medium transition-colors"
+            <button
+              type="button"
+              onClick={() => handleScroll('right')}
+              disabled={!canScrollRight}
+              aria-label="Scroll categories right"
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                canScrollRight
+                  ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
+                  : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
+              }`}
             >
-              Browse Catalog
-            </Link>
+              <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+            </button>
           </div>
         </div>
-      ) : (
-        /* 4-Column Product Grid (Desktop: 4 columns, 2 rows max 8 products) */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5 lg:gap-6">
-          {displayedProducts.map((product) => (
-            <FeaturedProductCard
-              key={product.id}
-              product={product}
-              isWishlisted={isFavorite(product.id)}
-              onToggleWishlist={handleToggleWishlist}
-              isAdded={
-                addedIds.has(product.id) ||
-                (Array.isArray(cartItems) &&
-                  cartItems.some(
-                    (item) => String(item.productId) === String(product.id)
-                  ))
-              }
-              onAddToCart={handleAddToCart}
-            />
-          ))}
-        </div>
-      )}
 
-      {/* Mobile-only CTA button placed after all cards */}
-      <div className="mt-6 flex sm:hidden justify-center">
-        <Link
-          to="/?view=all"
-          className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
-        >
-          <span>View All Categories</span>
-          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-        </Link>
-      </div>
-
-      {/* ── Accessible Floating Feedback Toast ───────────────────────────────── */}
-      {toastMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 bg-[#141414] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-[13px] animate-in fade-in slide-in-from-bottom-2 duration-200"
-        >
-          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-            <Check className="w-3 h-3 text-white stroke-[2.5]" />
+        {/* ── Product Grid or Status States ──────────────────────────────────── */}
+        {isLoading ? (
+          <div
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5 lg:gap-6"
+            aria-label="Loading featured products"
+          >
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <FeaturedProductSkeleton key={idx} />
+            ))}
           </div>
-          <div>
-            <p className="font-medium text-white">{toastMessage.title}</p>
-            {toastMessage.desc && (
-              <p className="text-[12px] text-white/70 line-clamp-1">{toastMessage.desc}</p>
+        ) : error ? (
+          <div className="w-full bg-white rounded-[20px] border border-[#ECEAE5] p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-[#FAFAF9] flex items-center justify-center text-[#B0521F]">
+              <RefreshCw className="w-6 h-6 stroke-[1.8]" />
+            </div>
+            <div className="space-y-1 max-w-md">
+              <h3 className="font-sans font-semibold text-[17px] text-[#141414]">
+                Unable to load featured products
+              </h3>
+              <p className="font-sans text-[13px] text-[#6B6B6B]">
+                {error}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchFeaturedProducts}
+              className="px-5 py-2.5 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] font-medium transition-colors cursor-pointer"
+            >
+              Retry Loading
+            </button>
+          </div>
+        ) : displayedProducts.length === 0 ? (
+          <div className="w-full bg-white rounded-[22px] border border-[#ECEAE5]/80 p-8 sm:p-14 text-center flex flex-col items-center justify-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-[#F5F5F3] flex items-center justify-center text-[#6B6B6B]">
+              <ShoppingBag className="w-6 h-6 stroke-[1.6]" />
+            </div>
+            <div className="space-y-1.5 max-w-md">
+              <h3 className="font-sans font-semibold text-[17px] sm:text-[18px] text-[#141414]">
+                No featured products in this category right now
+              </h3>
+              <p className="font-sans text-[13px] sm:text-[14px] text-[#6B6B6B] leading-relaxed">
+                We update our handpicked collection regularly. Browse all our available products or switch back to All.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setActiveFilter('all')}
+                className="px-5 py-2 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white text-[13px] font-medium transition-colors cursor-pointer"
+              >
+                Show All Featured
+              </button>
+              <Link
+                to="/?view=all"
+                className="px-5 py-2 rounded-full bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#141414] text-[13px] font-medium transition-colors"
+              >
+                Browse Catalog
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5 lg:gap-6">
+            {displayedProducts.map((product) => (
+              <FeaturedProductCard
+                key={product.id}
+                product={product}
+                isWishlisted={isFavorite(product.id)}
+                onToggleWishlist={handleToggleWishlist}
+                isAdded={
+                  addedIds.has(product.id) ||
+                  (Array.isArray(cartItems) &&
+                    cartItems.some(
+                      (item) => String(item.productId) === String(product.id)
+                    ))
+                }
+                onAddToCart={handleAddToCart}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Mobile-only CTA button placed after all cards */}
+        <div className="mt-6 flex sm:hidden justify-center">
+          <Link
+            to="/?featured=1"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
+          >
+            <span>View All Featured</span>
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
+        {/* ── Accessible Floating Feedback Toast ───────────────────────────────── */}
+        {toastMessage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-6 right-6 z-50 bg-[#141414] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-[13px] animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Check className="w-3 h-3 text-white stroke-[2.5]" />
+            </div>
+            <div>
+              <p className="font-medium text-white">{toastMessage.title}</p>
+              {toastMessage.desc && (
+                <p className="text-[12px] text-white/70 line-clamp-1">{toastMessage.desc}</p>
+              )}
+            </div>
+            {toastMessage.actionHref && (
+              <Link
+                to={toastMessage.actionHref}
+                className="ml-2 px-2.5 py-1 rounded bg-white text-[#141414] font-medium text-[12px] hover:bg-white/90 transition-colors shrink-0"
+              >
+                {toastMessage.actionText}
+              </Link>
             )}
           </div>
-          {toastMessage.actionHref && (
-            <Link
-              to={toastMessage.actionHref}
-              className="ml-2 px-2.5 py-1 rounded bg-white text-[#141414] font-medium text-[12px] hover:bg-white/90 transition-colors shrink-0"
-            >
-              {toastMessage.actionText}
-            </Link>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
