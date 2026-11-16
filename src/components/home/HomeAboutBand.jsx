@@ -6,8 +6,8 @@ import { store } from '../../config/store';
 export function HomeAboutBand() {
   const address = store.addressLines ? store.addressLines.join(', ') : store.addressShort;
   const hours = store.hours || '10:00 AM – 9:00 PM';
-  const phone = store.phoneDisplay || '+91 81227 47947';
-  const whatsappUrl = store.whatsappNumber ? `https://wa.me/${store.whatsappNumber}` : 'https://wa.me/918122747947';
+  const phone = store.phoneDisplay || '+91 63839 40534';
+  const whatsappUrl = store.whatsappNumber ? `https://wa.me/${store.whatsappNumber}` : 'https://wa.me/916383940534';
 
   return (
     <section aria-label="About WrapStore" className="w-full bg-[#141414] text-white py-16 md:py-24 select-none">

@@ -249,19 +249,44 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
         const cat = (p.category || '').toLowerCase();
         const name = (p.name || '').toLowerCase();
 
-        const isAcc = cat.includes('accessor') || sub.includes('protector') || sub.includes('cable') || sub.includes('glass') || sub.includes('strap');
+        const isAcc =
+          cat.includes('accessor') ||
+          sub.includes('protector') ||
+          sub.includes('cable') ||
+          sub.includes('glass') ||
+          sub.includes('strap') ||
+          sub.includes('lens') ||
+          sub.includes('power');
         if (!isAcc && !cat.includes('mobile cases')) return false;
 
         if (!normSub || normSub === 'accessories') return isAcc;
 
-        if (normSub.includes('glass') || normSub.includes('screen') || normSub.includes('protect')) {
-          return sub.includes('glass') || sub.includes('screen') || sub.includes('protect') || name.includes('tempered') || name.includes('glass');
+        // Lens protector must be strictly distinguished from screen protector / tempered glass
+        if (normSub.includes('lens')) {
+          return sub.includes('lens') || name.includes('lens');
         }
+
+        if (normSub.includes('glass') || normSub.includes('screen') || normSub.includes('temper')) {
+          return (
+            !sub.includes('lens') &&
+            !name.includes('lens') &&
+            (sub.includes('glass') ||
+              sub.includes('screen') ||
+              sub.includes('temper') ||
+              name.includes('tempered') ||
+              name.includes('screen') ||
+              name.includes('glass'))
+          );
+        }
+
         if (normSub.includes('power')) {
           return sub.includes('power') || name.includes('power bank');
         }
-        if (normSub.includes('cable') || normSub.includes('charger')) {
-          return sub.includes('cable') || sub.includes('charger') || name.includes('cable');
+        if (normSub.includes('cable')) {
+          return sub.includes('cable') || name.includes('cable');
+        }
+        if (normSub.includes('charger') || normSub.includes('adapter')) {
+          return sub.includes('charger') || sub.includes('adapter') || name.includes('charger') || name.includes('adapter');
         }
         if (normSub.includes('watch') || normSub.includes('strap')) {
           return sub.includes('watch') || sub.includes('strap') || name.includes('strap');
@@ -754,7 +779,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <a
-                  href={`https://wa.me/${store.whatsappNumber || '918122747947'}?text=${encodeURIComponent(
+                  href={`https://wa.me/${store.whatsappNumber || '916383940534'}?text=${encodeURIComponent(
                     isCollectionPage
                       ? `Hi, I am looking for ${resolvedCollection?.name || 'phone'} cases for ${targetModel || 'my phone'} at WrapStore.`
                       : `Hi, I am looking for ${resolvedSubcategory || 'accessories'} at WrapStore.`
@@ -1109,7 +1134,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 {/* Prefilled WhatsApp Button */}
                 <a
-                  href={`https://wa.me/${store.whatsappNumber || '918122747947'}?text=Hi%2C%20do%20you%20have%20cases%20for%20${encodeURIComponent(resolvedModel)}%3F`}
+                  href={`https://wa.me/${store.whatsappNumber || '916383940534'}?text=Hi%2C%20do%20you%20have%20cases%20for%20${encodeURIComponent(resolvedModel)}%3F`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto min-h-[46px] px-5 bg-[#25D366] hover:bg-[#20BD5A] text-white text-[14px] font-medium rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"

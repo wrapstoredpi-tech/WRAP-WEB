@@ -80,7 +80,7 @@ export function Footer() {
 
   const whatsappUrl = store.whatsappNumber
     ? `https://wa.me/${store.whatsappNumber}`
-    : 'https://wa.me/918122747947';
+    : 'https://wa.me/916383940534';
   const instagramUrl = store.instagramUrl || 'https://instagram.com/wrapstore.in';
 
   return (

@@ -57,13 +57,16 @@ function matchesCategoryFilter(product, activeFilter) {
 
     case 'screen-protectors':
       return (
-        subName.includes('temper') ||
-        subName.includes('protector') ||
-        allSubs.some((s) => s.includes('temper') || s.includes('protector')) ||
-        prodName.includes('tempered') ||
-        prodName.includes('screen protector') ||
-        prodName.includes('lens protector') ||
-        prodName.includes('glass')
+        !subName.includes('lens') &&
+        !prodName.includes('lens') &&
+        (
+          subName.includes('temper') ||
+          subName.includes('screen') ||
+          allSubs.some((s) => s.includes('temper') || (s.includes('screen') && !s.includes('lens'))) ||
+          prodName.includes('tempered') ||
+          prodName.includes('screen protector') ||
+          prodName.includes('glass')
+        )
       );
 
     case 'chargers-adapters':

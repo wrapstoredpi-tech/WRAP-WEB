@@ -5,9 +5,9 @@ export const store = {
   combosOrderable: false,
   addressLines: ['Railway Station Rd', 'Dharmapuri, Tamil Nadu 636701', 'India'],
   addressShort: 'Railway Station Rd, Dharmapuri',
-  phoneDisplay: '+91 81227 47947',
-  phoneTel: '+918122747947',
-  whatsappNumber: '918122747947',   // TODO confirm this number is on WhatsApp
+  phoneDisplay: '+91 63839 40534',
+  phoneTel: '+916383940534',
+  whatsappNumber: '916383940534',   // TODO confirm this number is on WhatsApp
   mapsUrl: 'https://maps.app.goo.gl/87uBpgWPiUFLCtxc6',
   mapEmbedSrc: 'https://www.google.com/maps?q=12.1253261,78.1566856&z=17&output=embed',
   lat: 12.1253261,
