@@ -303,8 +303,10 @@ export function TrackOrderPage() {
                     <div>
                       <span className="font-semibold text-[#141414]">{item.name}</span>
                       <span className="text-[12px] text-[#6B6B6B] block">
-                        Model: {item.selected_model || item.mobile_model || 'Universal'}
-                        {item.color ? ' · Color: ' + item.color : ''} • Qty: {item.quantity}
+                        {Boolean(item.selected_model || item.mobile_model) && (item.selected_model || item.mobile_model).toLowerCase() !== 'universal' ? (
+                          <>Model: {item.selected_model || item.mobile_model} · </>
+                        ) : null}
+                        {item.color ? 'Color: ' + item.color + ' • ' : ''}Qty: {item.quantity}
                       </span>
                     </div>
                     <span className="font-semibold text-[#141414]">

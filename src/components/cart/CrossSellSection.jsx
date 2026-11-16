@@ -118,7 +118,7 @@ export function CrossSellSection({ onAdded, className = '', title = 'Complete th
   const handleAdd = (product, e) => {
     e.preventDefault();
     e.stopPropagation();
-    const modelToSave = activeModel || 'Universal';
+    const modelToSave = (activeModel && activeModel.toLowerCase() !== 'universal') ? activeModel : null;
     const success = addItem(product, 1, modelToSave);
     if (success) {
       setAddedIds((prev) => new Set(prev).add(product.id));

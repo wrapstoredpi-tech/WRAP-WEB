@@ -88,7 +88,7 @@ export function ComboIncludedItems({
                 (c.subcategory || '').toLowerCase().includes('samsung');
 
               const modelToShow = isModelSpecific
-                ? (selectedModel && selectedModel !== 'Universal' ? selectedModel : c.mobile_model)
+                ? (selectedModel && selectedModel !== 'Universal' ? selectedModel : (c.mobile_model && c.mobile_model !== 'Universal' ? c.mobile_model : null))
                 : null;
 
               return (
@@ -117,7 +117,7 @@ export function ComboIncludedItems({
                         </span>
                       )}
 
-                      {modelToShow && (
+                      {modelToShow && modelToShow.toLowerCase() !== 'universal' && (
                         <span className="text-[12px] text-[#737373] block mt-0.5 truncate">
                           Model: {modelToShow}
                         </span>

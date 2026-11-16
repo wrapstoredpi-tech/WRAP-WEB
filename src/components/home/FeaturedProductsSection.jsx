@@ -204,11 +204,22 @@ export function FeaturedProductCard({
       navigate('/cart');
       return;
     }
+
+    const compModels = Array.isArray(product.compatible_models) ? product.compatible_models : [];
+    const validModels = compModels.filter((m) => m && m.trim().toLowerCase() !== 'universal');
+    const isCase = (product.category || '').toLowerCase().includes('case');
+    const needsModel = isCase || validModels.length > 0;
+
+    if (needsModel) {
+      navigate(`/product/${product.id}`);
+      return;
+    }
+
     setLocalAdded(true);
     if (onAddToCart) {
       onAddToCart(product);
     } else {
-      addItem(product, 1, 'Universal');
+      addItem(product, 1, null);
     }
   };
 
@@ -580,7 +591,17 @@ export function FeaturedProductsSection({ products: propProducts = null }) {
   const handleAddToCart = (product) => {
     if (!product || product.is_out_of_stock) return;
 
-    const success = addItem(product, 1, 'Universal');
+    const compModels = Array.isArray(product.compatible_models) ? product.compatible_models : [];
+    const validModels = compModels.filter((m) => m && m.trim().toLowerCase() !== 'universal');
+    const isCase = (product.category || '').toLowerCase().includes('case');
+    const needsModel = isCase || validModels.length > 0;
+
+    if (needsModel) {
+      navigate(`/product/${product.id}`);
+      return;
+    }
+
+    const success = addItem(product, 1, null);
     if (success) {
       setAddedIds((prev) => new Set(prev).add(product.id));
       showToast({

@@ -345,7 +345,7 @@ export function AdminOrdersTab({
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="text-[13px] font-semibold text-[#141414] truncate">{it.name}</div>
-                        {it.selected_model && (
+                        {it.selected_model && it.selected_model.toLowerCase() !== 'universal' && (
                           <div className="text-[11px] text-[#6B6B6B]">Model: {it.selected_model}</div>
                         )}
                         {it.color && (

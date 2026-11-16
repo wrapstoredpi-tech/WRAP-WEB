@@ -92,8 +92,8 @@ export function ProductCard({
     }
 
     if (isDirectAdd) {
-      addItem(product, 1, 'Universal');
-      openSheet({ product, quantity: 1, selectedModel: 'Universal' });
+      addItem(product, 1, null);
+      openSheet({ product, quantity: 1, selectedModel: null });
     } else if (fitsEffectiveModel) {
       addItem(product, 1, effectiveModel);
       openSheet({ product, quantity: 1, selectedModel: effectiveModel });

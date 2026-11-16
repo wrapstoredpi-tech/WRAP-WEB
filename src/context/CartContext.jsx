@@ -43,19 +43,24 @@ export function CartProvider({ children }) {
 
     const maxStock = product.available_stock ?? product.current_stock ?? 99;
     const addQty = Math.max(1, Number(quantityToAdd) || 1);
-    const modelToSave = selectedModel || product.selected_model || null;
+    const rawModel = selectedModel || product.selected_model || null;
+    const modelToSave = (rawModel && typeof rawModel === 'string' && rawModel.trim().toLowerCase() !== 'universal') ? rawModel.trim() : null;
     const rawColor = selectedColor || product.selected_color || null;
     const colorToSave = isRealColor(rawColor) ? rawColor : (getValidColors(product)[0] || null);
 
     setCartItems((prevItems) => {
-      // Cart line key = combo_id + selected_model
-      const targetModel = modelToSave || 'Universal';
-      const lineKey = `${product.id}_${targetModel}`;
+      // Cart line key = productId + model + color
+      const targetModel = modelToSave || '';
+      const targetColor = colorToSave || '';
+      const lineKey = `${product.id}_${targetModel}_${targetColor}`;
 
-      // Find line matching both product ID and selected model
-      const existingIndex = prevItems.findIndex(
-        (i) => i.id === lineKey || (i.productId === product.id && (i.selected_model || 'Universal') === targetModel)
-      );
+      // Find line matching both product ID, selected model, and color
+      const existingIndex = prevItems.findIndex((i) => {
+        if (i.id === lineKey) return true;
+        const iModel = (i.selected_model && typeof i.selected_model === 'string' && i.selected_model.trim().toLowerCase() !== 'universal') ? i.selected_model.trim() : '';
+        const iColor = i.selected_color || '';
+        return i.productId === product.id && iModel === targetModel && iColor === targetColor;
+      });
 
       if (existingIndex > -1) {
         const currentQty = prevItems[existingIndex].quantity || 0;
@@ -160,8 +165,9 @@ export function useHydratedCart(products = []) {
       .map((item) => {
         const product = productMap[item.productId];
 
-        // Model resolution: line choice > saved product model > null
-        const resolvedModel = item.selected_model || (product ? product.mobile_model : null);
+        // Model resolution: line choice > saved product model > null (never 'Universal')
+        const rawModel = item.selected_model || (product ? product.mobile_model : null);
+        const resolvedModel = (rawModel && typeof rawModel === 'string' && rawModel.trim().toLowerCase() !== 'universal') ? rawModel.trim() : null;
         const itemColor = isRealColor(item.selected_color) ? item.selected_color : null;
         const validProdColors = product ? getValidColors(product) : [];
         const resolvedColor = itemColor || (validProdColors.length > 0 ? validProdColors[0] : null);

@@ -52,7 +52,7 @@ export function groupOrderItems(rawItems = []) {
         const comboGroup = {
           id: `combo_${comboKey}`,
           name: item.combo_name || 'Combo Bundle',
-          selected_model: item.selected_model || item.mobile_model || 'Universal',
+          selected_model: (item.selected_model && item.selected_model !== 'Universal') ? item.selected_model : (item.mobile_model && item.mobile_model !== 'Universal' ? item.mobile_model : null),
           quantity: item.combo_quantity || 1,
           price: item.combo_price || item.price || 0,
           is_combo: true,

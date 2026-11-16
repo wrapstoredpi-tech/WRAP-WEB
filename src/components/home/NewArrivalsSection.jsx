@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { homeConfig } from '../../config/home';
 import { FeaturedProductCard, FeaturedProductSkeleton } from './FeaturedProductsSection';
@@ -14,6 +14,7 @@ export function NewArrivalsSection({
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef(null);
+  const navigate = useNavigate();
 
   const { cartItems, addItem } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -39,7 +40,17 @@ export function NewArrivalsSection({
   const handleAddToCart = (product) => {
     if (!product || product.is_out_of_stock) return;
 
-    const success = addItem(product, 1, 'Universal');
+    const compModels = Array.isArray(product.compatible_models) ? product.compatible_models : [];
+    const validModels = compModels.filter((m) => m && m.trim().toLowerCase() !== 'universal');
+    const isCase = (product.category || '').toLowerCase().includes('case');
+    const needsModel = isCase || validModels.length > 0;
+
+    if (needsModel) {
+      navigate(`/product/${product.id}`);
+      return;
+    }
+
+    const success = addItem(product, 1, null);
     if (success) {
       setAddedIds((prev) => new Set(prev).add(product.id));
       showToast({

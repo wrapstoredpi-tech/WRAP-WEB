@@ -130,8 +130,10 @@ export async function submitOrder(orderInput) {
     const unitPrice = Number(item.price || item.product?.selling_price || 0);
     const qty = Number(item.quantity) || 1;
     const lineTotal = unitPrice * qty;
+    const rawModel =
+      item.selected_model || item.mobile_model || item.product?.mobile_model || null;
     const selectedModel =
-      item.selected_model || item.mobile_model || item.product?.mobile_model || 'Universal';
+      (rawModel && typeof rawModel === 'string' && rawModel.trim().toLowerCase() !== 'universal') ? rawModel.trim() : null;
     const selectedColor = item.selected_color || item.color || null;
 
     itemsToInsert.push({
@@ -458,14 +460,18 @@ export async function trackOrder(orderId, phone) {
         if (courMatch) courierName = courMatch[1].trim();
       }
 
-      const items = (matched.online_order_items || []).map((it) => ({
-        name: it.product_name,
-        selected_model: it.mobile_model || 'Universal',
-        mobile_model: it.mobile_model || 'Universal',
-        quantity: it.quantity,
-        price: Number(it.unit_price || 0),
-        color: it.selected_color || null,
-      }));
+      const items = (matched.online_order_items || []).map((it) => {
+        const rawModel = it.mobile_model || it.selected_model || null;
+        const model = (rawModel && typeof rawModel === 'string' && rawModel.trim().toLowerCase() !== 'universal') ? rawModel.trim() : null;
+        return {
+          name: it.product_name,
+          selected_model: model,
+          mobile_model: model,
+          quantity: it.quantity,
+          price: Number(it.unit_price || 0),
+          color: it.selected_color || null,
+        };
+      });
 
       const liveOrder = {
         id: matched.id,

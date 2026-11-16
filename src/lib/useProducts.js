@@ -267,7 +267,7 @@ export function normaliseProduct(raw, imagesMap = {}, catMap = {}, subMap = {}) 
     strap_mm: raw.strap_mm || null,
     // Compatibility
     mobile_brand: raw.mobile_brand || 'Universal',
-    mobile_model: compatible_models[0] || 'Universal',
+    mobile_model: compatible_models[0] || null,
     compatible_models,
     brand_compatibility: raw.mobile_brand ? [raw.mobile_brand] : [],
     color_variants,
@@ -575,7 +575,7 @@ export function normaliseCombo(
     strap_mm: null,
     mobile_brand: primaryBrand,
     brands: brands.length > 0 ? brands : [primaryBrand],
-    mobile_model: compatible_models[0] || 'Universal',
+    mobile_model: compatible_models[0] || null,
     compatible_models,
     empty_intersection: emptyIntersection,
     has_restricted_components: hasRestrictedComponents,

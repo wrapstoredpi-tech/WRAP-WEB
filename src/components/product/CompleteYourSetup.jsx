@@ -160,7 +160,7 @@ export function CompleteYourSetup({ currentProduct, selectedModel }) {
 
     // Universal product -> add directly
     if (isUniversal) {
-      addItem(p, 1, 'Universal', null);
+      addItem(p, 1, null, null);
       setAddedMap((prev) => ({ ...prev, [p.id]: true }));
       setTimeout(() => {
         setAddedMap((prev) => ({ ...prev, [p.id]: false }));

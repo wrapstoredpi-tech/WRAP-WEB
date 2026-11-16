@@ -173,7 +173,7 @@ export function ProductInfoPanel({
 
     setIsAdding(true);
     const chosenColor = currentColor || (product.color_variants && product.color_variants[0]) || product.color || null;
-    const modelToSave = selectedModel || 'Universal';
+    const modelToSave = (selectedModel && selectedModel.toLowerCase() !== 'universal') ? selectedModel : null;
 
     addItem(product, 1, modelToSave, chosenColor);
 
@@ -436,7 +436,7 @@ export function ProductInfoPanel({
                 (c.subcategory || '').toLowerCase().includes('iphone') ||
                 (c.subcategory || '').toLowerCase().includes('samsung');
               const modelDisplay = isModelSpecific
-                ? (selectedModel || c.mobile_model || 'Universal')
+                ? (selectedModel && selectedModel !== 'Universal' ? selectedModel : (c.mobile_model && c.mobile_model !== 'Universal' ? c.mobile_model : null))
                 : null;
 
               return (
@@ -457,7 +457,7 @@ export function ProductInfoPanel({
                       <p className="text-[13px] font-medium text-[#141414] leading-snug truncate">
                         {name}
                       </p>
-                      {modelDisplay && (
+                      {modelDisplay && modelDisplay.toLowerCase() !== 'universal' && (
                         <p className="text-[12px] text-[#6B6B6B] truncate pt-0.5">
                           Model: {modelDisplay}
                         </p>

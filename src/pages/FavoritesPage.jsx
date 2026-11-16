@@ -53,7 +53,8 @@ export function FavoritesPage() {
     const validColors = getValidColors(product);
     const color = validColors.length > 0 ? validColors[0] : null;
 
-    addItem(product, 1, chosenModel || 'Universal', color);
+    const modelToSave = (chosenModel && chosenModel !== 'Universal') ? chosenModel : null;
+    addItem(product, 1, modelToSave, color);
 
     setAddedItemIds((prev) => new Set(prev).add(product.id));
     setTimeout(() => {
@@ -73,7 +74,8 @@ export function FavoritesPage() {
         (product.available_stock !== undefined && product.available_stock <= 0);
       if (!isOutOfStock) {
         const compatibleModels = product.compatible_models || [];
-        const chosenModel = selectedModels[product.id] || (compatibleModels.length === 1 ? compatibleModels[0] : 'Universal');
+        const rawModel = selectedModels[product.id] || (compatibleModels.length === 1 ? compatibleModels[0] : null);
+        const chosenModel = (rawModel && rawModel !== 'Universal') ? rawModel : null;
         const validColors = getValidColors(product);
         const color = validColors.length > 0 ? validColors[0] : null;
 

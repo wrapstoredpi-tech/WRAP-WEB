@@ -248,7 +248,7 @@ export function AccountPage() {
                                 <div>
                                   <p className="font-semibold text-[#141414]">{item.name}</p>
                                   <p className="text-[12px] text-[#737373]">
-                                    Qty {item.quantity} {item.selected_model && ('• ' + item.selected_model)}
+                                    Qty {item.quantity} {item.selected_model && item.selected_model.toLowerCase() !== 'universal' && ('• ' + item.selected_model)}
                                   </p>
                                 </div>
                                 <span className="font-medium text-[#141414] tabular-nums">

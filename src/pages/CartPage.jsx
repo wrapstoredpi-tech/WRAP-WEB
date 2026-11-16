@@ -339,9 +339,11 @@ export function CartPage() {
 
                         {/* Model & Colour lines */}
                         <div className="space-y-0.5 text-[12px] sm:text-[13px] text-[#6B6B6B]">
-                          <p>
-                            Model: <span className="font-medium text-[#141414]">{line.selected_model || 'Universal'}</span>
-                          </p>
+                          {line.selected_model && line.selected_model.toLowerCase() !== 'universal' && (
+                            <p>
+                              Model: <span className="font-medium text-[#141414]">{line.selected_model}</span>
+                            </p>
+                          )}
                           {!line.is_combo && line.selected_color && (
                             <p>
                               Colour: <span className="font-medium text-[#141414]">{line.selected_color}</span>

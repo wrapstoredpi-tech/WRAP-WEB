@@ -59,7 +59,7 @@ export function StickyMobileCartBar({
       return;
     }
 
-    const modelToSave = selectedModel || 'Universal';
+    const modelToSave = (selectedModel && selectedModel.toLowerCase() !== 'universal') ? selectedModel : null;
     const colorToSave = selectedColor || (product.color_variants && product.color_variants[0]) || product.color || null;
     addItem(product, 1, modelToSave, colorToSave);
     openSheet({

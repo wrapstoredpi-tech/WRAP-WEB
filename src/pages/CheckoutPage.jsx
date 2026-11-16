@@ -201,8 +201,8 @@ export function CheckoutPage() {
         items: items.map((line) => ({
           productId: line.product.id,
           name: line.product.name,
-          mobile_model: line.selected_model || 'Universal',
-          selected_model: line.selected_model || 'Universal',
+          mobile_model: (line.selected_model && line.selected_model.toLowerCase() !== 'universal') ? line.selected_model : null,
+          selected_model: (line.selected_model && line.selected_model.toLowerCase() !== 'universal') ? line.selected_model : null,
           color: line.selected_color,
           price: line.product.selling_price,
           quantity: line.quantity,
@@ -351,10 +351,16 @@ export function CheckoutPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-[#141414] truncate">{line.product.name}</p>
-                        <p className="text-[11px] text-[#6B6B6B]">
-                          Model: {line.selected_model || 'Universal'}
-                          {line.selected_color && ` · ${line.selected_color}`}
-                        </p>
+                        {Boolean(line.selected_model && line.selected_model.toLowerCase() !== 'universal') ? (
+                          <p className="text-[11px] text-[#6B6B6B]">
+                            Model: {line.selected_model}
+                            {line.selected_color && ` · ${line.selected_color}`}
+                          </p>
+                        ) : line.selected_color ? (
+                          <p className="text-[11px] text-[#6B6B6B]">
+                            Colour: {line.selected_color}
+                          </p>
+                        ) : null}
                         <p className="text-[11px] text-[#6B6B6B]">Qty: {line.quantity}</p>
                       </div>
                       <div className="text-right shrink-0">
@@ -713,10 +719,16 @@ export function CheckoutPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-[#141414] truncate">{line.product.name}</p>
-                          <p className="text-[11px] text-[#6B6B6B]">
-                            Model: {line.selected_model || 'Universal'}
-                            {line.selected_color && ` · ${line.selected_color}`}
-                          </p>
+                          {Boolean(line.selected_model && line.selected_model.toLowerCase() !== 'universal') ? (
+                            <p className="text-[11px] text-[#6B6B6B]">
+                              Model: {line.selected_model}
+                              {line.selected_color && ` · ${line.selected_color}`}
+                            </p>
+                          ) : line.selected_color ? (
+                            <p className="text-[11px] text-[#6B6B6B]">
+                              Colour: {line.selected_color}
+                            </p>
+                          ) : null}
                           <p className="text-[11px] text-[#6B6B6B]">
                             Qty: {line.quantity} × {formatINR(line.product.selling_price)}
                           </p>

@@ -247,7 +247,7 @@ export function CompleteYourPurchaseSheet() {
     }
 
     if (isUniversal) {
-      addItem(p, 1, 'Universal', null);
+      addItem(p, 1, null, null);
       setAddedMap((prev) => ({ ...prev, [p.id]: true }));
       setTimeout(() => setAddedMap((prev) => ({ ...prev, [p.id]: false })), 2000);
       return;
@@ -398,7 +398,7 @@ export function CompleteYourPurchaseSheet() {
                     {product.name}
                   </p>
                   <div className="flex items-center gap-1.5 text-[12px] text-[#6B6B6B] truncate pt-0.5">
-                    {selectedModel && <span>Model: {selectedModel}</span>}
+                    {selectedModel && selectedModel.toLowerCase() !== 'universal' && <span>Model: {selectedModel}</span>}
                     {selectedColor && (
                       <>
                         <span>·</span>

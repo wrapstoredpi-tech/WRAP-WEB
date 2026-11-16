@@ -380,8 +380,10 @@ export function OrderConfirmationPage() {
                       <div className="min-w-0">
                         <p className="font-semibold text-[#141414] truncate">{item.name}</p>
                         <p className="text-[12px] text-[#737373]">
-                          {item.selected_model || item.mobile_model || 'Universal'}
-                          {item.color ? ' · ' + item.color : ''} · Qty {item.quantity}
+                          {Boolean(item.selected_model || item.mobile_model) && (item.selected_model || item.mobile_model).toLowerCase() !== 'universal' ? (
+                            <span>Model: {item.selected_model || item.mobile_model} · </span>
+                          ) : null}
+                          {item.color ? 'Colour: ' + item.color + ' · ' : ''}Qty {item.quantity}
                         </p>
                       </div>
                       <span className="font-semibold text-[#141414] shrink-0 tabular-nums">
