@@ -3,7 +3,7 @@ import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import { HeroFirstScreen } from '../components/home/HeroFirstScreen';
 import { ShopByPhoneSection } from '../components/home/ShopByPhoneSection';
 import { ShopByCategoryBento } from '../components/home/ShopByCategoryBento';
-import { FeaturedProductsSection } from '../components/home/FeaturedProductsSection';
+import { FeaturedProductsSection, matchesCategoryFilter } from '../components/home/FeaturedProductsSection';
 import { NewInAndCollections } from '../components/home/NewInAndCollections';
 import { HomeAboutBand } from '../components/home/HomeAboutBand';
 import { HomeSEO } from '../components/home/HomeSEO';
@@ -106,6 +106,7 @@ export function HomePage() {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [sortBy, setSortBy] = useState('newest');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [featuredCategoryPill, setFeaturedCategoryPill] = useState('all');
 
   // URL query parameters
   const location = useLocation();
@@ -169,6 +170,7 @@ export function HomePage() {
   };
 
   const handleResetFilters = () => {
+    setFeaturedCategoryPill('all');
     setFilters(INITIAL_FILTERS);
     setSearchParams(isListingMode ? (featuredQuery ? { featured: '1' } : { view: 'all' }) : {});
   };
@@ -304,6 +306,9 @@ export function HomePage() {
     // Filter by online_featured when ?featured=1
     if (featuredQuery) {
       result = result.filter((p) => p.online_featured === true);
+      if (featuredCategoryPill && featuredCategoryPill !== 'all') {
+        result = result.filter((p) => matchesCategoryFilter(p, featuredCategoryPill));
+      }
     }
 
     // Sorting
@@ -333,7 +338,7 @@ export function HomePage() {
     }
 
     return result;
-  }, [liveProducts, filters, sortBy, searchQuery, featuredQuery, bestSellerMap]);
+  }, [liveProducts, filters, sortBy, searchQuery, featuredQuery, bestSellerMap, featuredCategoryPill]);
 
   // Listing page title derivation
   const listingTitle = useMemo(() => {
@@ -460,6 +465,9 @@ export function HomePage() {
             filters={filters}
             onFilterChange={handleFilterChange}
             onResetFilters={handleResetFilters}
+            showCategoryPills={featuredQuery}
+            categoryPillFilter={featuredCategoryPill}
+            onCategoryPillChange={setFeaturedCategoryPill}
           />
         </div>
       </div>

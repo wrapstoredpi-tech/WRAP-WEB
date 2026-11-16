@@ -35,7 +35,7 @@ export const CATEGORY_PILLS = [
 /**
  * Normalizes and determines category matching for real products from Supabase
  */
-function matchesCategoryFilter(product, activeFilter) {
+export function matchesCategoryFilter(product, activeFilter) {
   if (activeFilter === 'all') return true;
 
   const catName = (product.category || '').toLowerCase().trim();
@@ -625,8 +625,14 @@ export function FeaturedProductsSection({ products: propProducts = null }) {
     return products.filter((p) => matchesCategoryFilter(p, activeFilter));
   }, [products, activeFilter]);
 
-  // Display all eligible featured products without arbitrary limits
-  const displayedProducts = filteredProducts;
+  // Limit to 8 featured products (2 rows on desktop) when more than 8 exist
+  const MAX_FEATURED_TILES = 8;
+  const displayedProducts = useMemo(() => {
+    if (filteredProducts.length > MAX_FEATURED_TILES) {
+      return filteredProducts.slice(0, MAX_FEATURED_TILES);
+    }
+    return filteredProducts;
+  }, [filteredProducts]);
 
   // If not loading and zero featured products exist across catalogue, hide section gracefully
   if (!isLoading && products.length === 0) {
@@ -689,35 +695,6 @@ export function FeaturedProductsSection({ products: propProducts = null }) {
                 </button>
               );
             })}
-          </div>
-
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0 pl-1">
-            <button
-              type="button"
-              onClick={() => handleScroll('left')}
-              disabled={!canScrollLeft}
-              aria-label="Scroll categories left"
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                canScrollLeft
-                  ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
-                  : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
-              }`}
-            >
-              <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleScroll('right')}
-              disabled={!canScrollRight}
-              aria-label="Scroll categories right"
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                canScrollRight
-                  ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
-                  : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
-              }`}
-            >
-              <ChevronRight className="w-4 h-4 stroke-[2.2]" />
-            </button>
           </div>
         </div>
 
@@ -802,16 +779,18 @@ export function FeaturedProductsSection({ products: propProducts = null }) {
           </div>
         )}
 
-        {/* Mobile-only CTA button placed after all cards */}
-        <div className="mt-6 flex sm:hidden justify-center">
-          <Link
-            to="/?featured=1"
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
-          >
-            <span>View All Featured</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-        </div>
+        {/* View All CTA button below the two row tiles when featured products > 8 */}
+        {filteredProducts.length > MAX_FEATURED_TILES && (
+          <div className="mt-8 sm:mt-10 flex justify-center">
+            <Link
+              to="/?featured=1"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98] cursor-pointer"
+            >
+              <span>View All Featured ({filteredProducts.length})</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+        )}
 
         {/* ── Accessible Floating Feedback Toast ───────────────────────────────── */}
         {toastMessage && (

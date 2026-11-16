@@ -124,10 +124,16 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
   const resolvedSubcategory = useMemo(() => {
     if (!isAccessoryPage) return null;
     if (!subcategorySlug) return 'Accessories';
+    if (subcategorySlug === 'chargers-adapters') return 'Chargers & Adapters';
+    if (subcategorySlug === 'tempered-glass') return 'Tempered Glass';
+    if (subcategorySlug === 'screen-protectors') return 'Screen Protectors';
+    if (subcategorySlug === 'ipad-cases') return 'iPad Cases';
+    if (subcategorySlug === 'lens-protector') return 'Lens Protector';
+    if (subcategorySlug === 'power-banks') return 'Power Banks';
     // Match against product subcategories
-    const normSlug = subcategorySlug.toLowerCase().replace(/-/g, ' ');
+    const normSlug = subcategorySlug.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
     const matchedProduct = products.find(
-      (p) => (p.subcategory || '').toLowerCase().replace(/-/g, ' ') === normSlug
+      (p) => (p.subcategory || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim() === normSlug
     );
     if (matchedProduct?.subcategory) return matchedProduct.subcategory;
     // Fallback: title-case slug

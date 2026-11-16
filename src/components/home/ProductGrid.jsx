@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { ProductCard } from './ProductCard';
+import { CATEGORY_PILLS } from './FeaturedProductsSection';
 
 export function ProductGrid({
   products = [],
@@ -14,6 +15,9 @@ export function ProductGrid({
   filters = {},
   onFilterChange,
   onResetFilters,
+  showCategoryPills = false,
+  categoryPillFilter = 'all',
+  onCategoryPillChange,
 }) {
   const [displayCount, setDisplayCount] = useState(12);
 
@@ -162,6 +166,37 @@ export function ProductGrid({
           </div>
         </div>
       </div>
+
+      {/* Category Filter Pills (between Featured Products (9) / controls bar and product tiles) */}
+      {showCategoryPills && (
+        <div className="w-full overflow-hidden pt-1 pb-1">
+          <div
+            role="tablist"
+            aria-label="Filter featured products by category"
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full"
+          >
+            {CATEGORY_PILLS.map((pill) => {
+              const isActive = (categoryPillFilter || 'all') === pill.id;
+              return (
+                <button
+                  key={pill.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => onCategoryPillChange && onCategoryPillChange(pill.id)}
+                  className={`px-4 sm:px-5 py-2 rounded-full font-sans text-[13px] sm:text-[14px] whitespace-nowrap transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 ${
+                    isActive
+                      ? 'bg-[#141414] text-white font-medium shadow-sm'
+                      : 'bg-[#EFEFEB] text-[#4A4A4A] hover:bg-[#E5E3DD] hover:text-[#141414] font-medium'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Active filters as removable chips above grid */}
       {activeTags.length > 0 && (
