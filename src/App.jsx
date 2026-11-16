@@ -223,6 +223,11 @@ class ErrorBoundary extends React.Component {
           <p className="text-[14px] text-[#6B6B6B] mt-2">
             An unexpected error occurred. Please refresh the page or return home.
           </p>
+          {import.meta.env.DEV && this.state.error && (
+            <pre className="mt-4 p-4 bg-red-50 text-red-700 text-[12px] font-mono rounded-[6px] border border-red-200 overflow-auto whitespace-pre-wrap max-w-2xl">
+              {this.state.error.stack || this.state.error.message || String(this.state.error)}
+            </pre>
+          )}
           <button
             type="button"
             onClick={() => window.location.assign('/')}

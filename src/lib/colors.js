@@ -98,6 +98,9 @@ export const EXTENSIVE_COLOR_MAP = {
   'storm blue': '#334155',
   bay: '#5D8AA8',
   cyan: '#06B6D4',
+  glacier: '#8EB4CB',
+  'glacier blue': '#709CB5',
+  'glacier white': '#E8EFF5',
   teal: '#0D9488',
   turquoise: '#14B8A6',
   aqua: '#00FFFF',
@@ -183,7 +186,7 @@ export const PRIMARY_COLOR_KEYWORDS = new Set([
   'copper', 'bronze', 'platinum', 'graphite', 'emerald', 'amber', 'ruby', 'lavender',
   'lilac', 'peach', 'plum', 'magenta', 'ochre', 'rust', 'caramel', 'espresso', 'coffee',
   'chocolate', 'taupe', 'ash', 'smoke', 'sand', 'saddle', 'neon', 'lime', 'turquoise',
-  'aquamarine', 'crimson', 'scarlet',
+  'aquamarine', 'crimson', 'scarlet', 'glacier',
 ]);
 
 /**
@@ -196,7 +199,7 @@ export function isRealColor(raw) {
   if (trimmed.length < 2 || trimmed.length > 35) return false;
 
   // Non-color blacklist
-  if (/^(none|n\/a|universal|default|standard|case|glass|other)$/i.test(trimmed)) {
+  if (/^(none|n\/a|universal|default|standard|case|glass|other|select|choose)$/i.test(trimmed)) {
     return false;
   }
 
@@ -213,6 +216,11 @@ export function isRealColor(raw) {
     if (PRIMARY_COLOR_KEYWORDS.has(w)) {
       return true;
     }
+  }
+
+  // Allow clean alphabetic single/double word names (e.g. Glacier, Alpine, Bordeaux) up to 25 chars
+  if (/^[a-zA-Z\s]+$/.test(trimmed) && trimmed.length <= 25) {
+    return true;
   }
 
   return false;

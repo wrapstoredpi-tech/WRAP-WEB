@@ -14,6 +14,7 @@ export function StickyMobileCartBar({
   onAddToCart,
   modelSelectRef,
   setModelError,
+  selectedColor,
 }) {
   const navigate = useNavigate();
   const { cartItems, addItem } = useCart();
@@ -59,15 +60,16 @@ export function StickyMobileCartBar({
     }
 
     const modelToSave = selectedModel || 'Universal';
-    addItem(product, 1, modelToSave, null);
+    const colorToSave = selectedColor || (product.color_variants && product.color_variants[0]) || product.color || null;
+    addItem(product, 1, modelToSave, colorToSave);
     openSheet({
       product,
       quantity: 1,
       selectedModel: modelToSave,
-      selectedColor: null,
+      selectedColor: colorToSave,
     });
     if (onAddToCart) {
-      onAddToCart(product, 1, modelToSave, null);
+      onAddToCart(product, 1, modelToSave, colorToSave);
     }
   };
 

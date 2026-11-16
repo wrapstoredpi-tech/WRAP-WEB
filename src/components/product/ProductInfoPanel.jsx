@@ -34,6 +34,10 @@ export function ProductInfoPanel({
   availableModels = [],
   modelToProductMap = new Map(),
   onModelChange,
+  availableColors = [],
+  currentColor = '',
+  onColorChange,
+  colorAvailabilityMap = {},
 }) {
   const navigate = useNavigate();
   const { products } = useProductsContext();
@@ -168,7 +172,7 @@ export function ProductInfoPanel({
     }
 
     setIsAdding(true);
-    const chosenColor = (product.color_variants && product.color_variants[0]) || product.color || null;
+    const chosenColor = currentColor || (product.color_variants && product.color_variants[0]) || product.color || null;
     const modelToSave = selectedModel || 'Universal';
 
     addItem(product, 1, modelToSave, chosenColor);
@@ -258,7 +262,9 @@ export function ProductInfoPanel({
               }`}
             >
               <option value="">Choose your phone model</option>
-              {(availableModels.length > 0 ? availableModels : compatibleModels).map((m) => {
+              {(availableModels.length > 0 ? availableModels : compatibleModels)
+                .filter((m) => m && m.trim().toLowerCase() !== 'universal')
+                .map((m) => {
                 const modelProduct = modelToProductMap instanceof Map ? modelToProductMap.get(m) : null;
                 const isOutOfStockModel = modelProduct && (
                   modelProduct.stock_status === 'OUT_OF_STOCK' ||
@@ -293,70 +299,119 @@ export function ProductInfoPanel({
       )}
 
       {/* 4. COLOUR: Swatches for genuine colour options */}
-      {!isCombo && colourSiblings.length > 1 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2 text-[13px]">
-            <span className="text-[#6B6B6B]">Colour:</span>
-            <span className="font-semibold text-[#141414]">
-              {getValidColors(product.color_variants || product.color)[0] || product.color || 'Standard'}
-            </span>
-          </div>
+      {!isCombo && (availableColors.length > 1 || colourSiblings.length > 1) && (() => {
+        const displayColors = availableColors.length > 0
+          ? availableColors
+          : colourSiblings.map((s) => getValidColors(s.color_variants || s.color)[0] || s.color).filter(Boolean);
 
-          <div className="flex items-start gap-4 flex-wrap">
-            {colourSiblings.map((sibling) => {
-              const isCurrent = sibling.id === product.id;
-              const sibColor =
-                getValidColors(sibling.color_variants || sibling.color)[0] ||
-                sibling.color ||
-                'Standard';
-              const style = resolveColorStyle(sibColor);
-              const sibOutOfStock =
-                sibling.stock_status === 'OUT_OF_STOCK' ||
-                (sibling.available_stock !== undefined && sibling.available_stock <= 0);
+        const activeColorDisplay =
+          currentColor ||
+          getValidColors(product.color_variants || product.color)[0] ||
+          product.color ||
+          'Standard';
 
-              return (
-                <button
-                  key={sibling.id}
-                  type="button"
-                  onClick={() => handleSiblingClick(sibling)}
-                  className="flex flex-col items-center gap-1.5 group cursor-pointer focus:outline-none"
-                  aria-label={`Select ${sibColor} colour`}
-                >
-                  <div
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center p-0.5 transition-all ${
-                      isCurrent
-                        ? 'ring-2 ring-offset-2 ring-[#B0521F]'
-                        : 'border border-[#E5E5E3] hover:scale-105'
+        return (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="text-[#6B6B6B]">Colour:</span>
+              <span className="font-semibold text-[#141414]">
+                {activeColorDisplay}
+              </span>
+            </div>
+
+            <div className="flex items-start gap-3.5 flex-wrap">
+              {displayColors.map((colorName) => {
+                if (!colorName) return null;
+                const isCurrent = (activeColorDisplay || '').toLowerCase() === colorName.toLowerCase();
+                const style = resolveColorStyle(colorName);
+                const availability = colorAvailabilityMap[colorName.toLowerCase()];
+                const isNotForModel = availability && !availability.available;
+                const isOutOfStockColor = availability && availability.available && !availability.inStock;
+
+                const bg = (style.backgroundColor || '').toLowerCase();
+                const isLightColor =
+                  bg === '#ffffff' ||
+                  bg === '#f4f3f0' ||
+                  bg === '#f5f5f5' ||
+                  bg === '#8eb4cb' ||
+                  bg.includes('fff') ||
+                  bg.includes('faf') ||
+                  bg === '#e8eff5';
+
+                return (
+                  <button
+                    key={colorName}
+                    type="button"
+                    onClick={() => {
+                      if (onColorChange) {
+                        onColorChange(colorName);
+                      } else {
+                        const sib = colourSiblings.find((s) => {
+                          const sColor = getValidColors(s.color_variants || s.color)[0] || s.color;
+                          return (sColor || '').toLowerCase() === colorName.toLowerCase();
+                        });
+                        if (sib) handleSiblingClick(sib);
+                      }
+                    }}
+                    className={`flex flex-col items-center gap-1.5 group cursor-pointer focus:outline-none transition-opacity ${
+                      isNotForModel ? 'opacity-60 hover:opacity-100' : ''
                     }`}
+                    aria-label={`Select ${colorName} colour`}
+                    title={
+                      isNotForModel
+                        ? `${colorName} (Switches to compatible model)`
+                        : isOutOfStockColor
+                        ? `${colorName} (Out of stock)`
+                        : colorName
+                    }
                   >
+                    <div
+                      className={`relative w-9 h-9 rounded-full flex items-center justify-center p-0.5 transition-all ${
+                        isCurrent
+                          ? 'ring-2 ring-offset-2 ring-[#141414]'
+                          : 'border border-[#E5E5E3] hover:scale-105'
+                      }`}
+                    >
+                      <span
+                        className="w-full h-full rounded-full border border-black/10 shadow-2xs block"
+                        style={style}
+                      />
+
+                      {/* Active checkmark */}
+                      {isCurrent && (
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <Check
+                            className={`w-3.5 h-3.5 ${isLightColor ? 'text-[#141414]' : 'text-white'}`}
+                            strokeWidth={2.5}
+                          />
+                        </span>
+                      )}
+
+                      {/* Sold out cross-out */}
+                      {isOutOfStockColor && (
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="w-full h-[1.5px] bg-[#141414] rotate-45 transform" />
+                        </span>
+                      )}
+                    </div>
                     <span
-                      className="w-full h-full rounded-full border border-black/10 shadow-2xs block"
-                      style={style}
-                    />
-                    {/* Sold out cross-out */}
-                    {sibOutOfStock && (
-                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span className="w-full h-[1.5px] bg-[#141414] rotate-45 transform" />
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={`text-[11px] font-medium transition-colors ${
-                      isCurrent
-                        ? 'text-[#141414] font-semibold'
-                        : sibOutOfStock
-                        ? 'text-[#6B6B6B] line-through'
-                        : 'text-[#6B6B6B] group-hover:text-[#141414]'
-                    }`}
-                  >
-                    {sibColor}
-                  </span>
-                </button>
-              );
-            })}
+                      className={`text-[11px] font-medium transition-colors ${
+                        isCurrent
+                          ? 'text-[#141414] font-semibold'
+                          : isOutOfStockColor
+                          ? 'text-[#6B6B6B] line-through'
+                          : 'text-[#6B6B6B] group-hover:text-[#141414]'
+                      }`}
+                    >
+                      {colorName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Combo: Included in this combo list */}
       {isCombo && comboItems.length > 0 && (

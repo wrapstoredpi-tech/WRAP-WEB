@@ -7,7 +7,33 @@ import { ProductInfoPanel } from '../components/product/ProductInfoPanel';
 import { StickyMobileCartBar } from '../components/product/StickyMobileCartBar';
 import { modelToSlug, sortModels } from '../lib/models';
 import { parseModels } from '../lib/useProducts';
+import { getValidColors, isRealColor } from '../lib/colors';
 import { setPageMeta } from '../lib/seo';
+
+// Helper to extract a normalised single primary color name from a product
+function extractProductColor(p) {
+  if (!p) return null;
+  const valids = getValidColors(p.color_variants || p.color);
+  if (valids && valids.length > 0) return valids[0];
+  if (typeof p.color_variants === 'string' && p.color_variants.trim() && isRealColor(p.color_variants)) {
+    return p.color_variants.trim();
+  }
+  if (typeof p.color === 'string' && p.color.trim() && isRealColor(p.color)) {
+    return p.color.trim();
+  }
+  return null;
+}
+
+// Helper to extract compatible models list from a product
+function extractProductModels(p) {
+  if (Array.isArray(p?.compatible_models) && p.compatible_models.length > 0) {
+    return p.compatible_models;
+  }
+  if (p?.mobile_model && p.mobile_model !== 'Universal') {
+    return parseModels(p.mobile_model);
+  }
+  return [];
+}
 
 export function ProductDetailPage({ onAddToCart }) {
   const { id } = useParams();
@@ -30,26 +56,17 @@ export function ProductDetailPage({ onAddToCart }) {
 
   const currentProduct = activeProduct || product;
 
-  // Sibling / collection products representing model variations of this product design
+  // Sibling / collection products representing model and color variations of this product design
   const relatedProducts = useMemo(() => {
     if (!currentProduct || !products?.length) return [];
 
     const cleanStr = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    const currentCollectionClean = cleanStr(currentProduct.collection);
     const currentNameClean = cleanStr(currentProduct.name);
     const currentSubClean = cleanStr(currentProduct.subcategory || currentProduct.category);
+    const currentCollectionClean = cleanStr(currentProduct.collection);
 
-    // 1. If product belongs to a collection (e.g. "Anti - Yellow"), match all products in that collection
-    if (currentCollectionClean && currentCollectionClean !== 'null' && currentCollectionClean !== 'undefined') {
-      const colMatches = products.filter((p) => {
-        const pColClean = cleanStr(p.collection);
-        return pColClean === currentCollectionClean;
-      });
-      if (colMatches.length > 0) return colMatches;
-    }
-
-    // 2. Otherwise match products having identical normalized name in same subcategory
+    // 1. Exact match by normalized name in same subcategory
     if (currentNameClean) {
       const nameMatches = products.filter((p) => {
         const pNameClean = cleanStr(p.name);
@@ -59,79 +76,166 @@ export function ProductDetailPage({ onAddToCart }) {
       if (nameMatches.length > 0) return nameMatches;
     }
 
+    // 2. Collection match (e.g. for design families that share collection name)
+    if (currentCollectionClean && currentCollectionClean !== 'null' && currentCollectionClean !== 'undefined') {
+      const colMatches = products.filter((p) => {
+        const pColClean = cleanStr(p.collection);
+        return pColClean === currentCollectionClean;
+      });
+      if (colMatches.length > 0) return colMatches;
+    }
+
     return [currentProduct];
   }, [products, currentProduct]);
 
-  // Aggregate all models across related products and map model -> product
-  const { availableModels, modelToProductMap } = useMemo(() => {
-    const map = new Map();
+  // Aggregate all models across related products
+  const availableModels = useMemo(() => {
+    const seen = new Set();
     const modelsList = [];
 
-    if (!relatedProducts.length && !currentProduct) {
-      return { availableModels: [], modelToProductMap: map };
-    }
-
-    const getProductModels = (p) => {
-      if (Array.isArray(p?.compatible_models) && p.compatible_models.length > 0) {
-        return p.compatible_models;
-      }
-      if (p?.mobile_model && p.mobile_model !== 'Universal') {
-        return parseModels(p.mobile_model);
-      }
-      return [];
-    };
-
-    // First add current product's models so current product has priority
+    // Current product models first
     if (currentProduct) {
-      const curModels = getProductModels(currentProduct);
-      curModels.forEach((m) => {
+      extractProductModels(currentProduct).forEach((m) => {
         const trimmed = (m || '').trim();
         if (!trimmed || trimmed.toLowerCase() === 'universal') return;
-        if (!map.has(trimmed)) {
-          map.set(trimmed, currentProduct);
+        if (!seen.has(trimmed.toLowerCase())) {
+          seen.add(trimmed.toLowerCase());
           modelsList.push(trimmed);
         }
       });
     }
 
-    // Then add all related products' models
+    // Related products models
     relatedProducts.forEach((p) => {
-      const pModels = getProductModels(p);
-      pModels.forEach((m) => {
+      extractProductModels(p).forEach((m) => {
         const trimmed = (m || '').trim();
         if (!trimmed || trimmed.toLowerCase() === 'universal') return;
-
-        if (!map.has(trimmed)) {
-          map.set(trimmed, p);
+        if (!seen.has(trimmed.toLowerCase())) {
+          seen.add(trimmed.toLowerCase());
           modelsList.push(trimmed);
-        } else {
-          // If already mapped, prefer current product or an in-stock product
-          const existing = map.get(trimmed);
-          if (p.id === currentProduct?.id) {
-            map.set(trimmed, p);
-          } else if (
-            (p.available_stock ?? p.current_stock ?? 0) > 0 &&
-            (existing.available_stock ?? existing.current_stock ?? 0) <= 0
-          ) {
-            map.set(trimmed, p);
-          }
         }
       });
     });
 
-    const sorted = sortModels(modelsList);
-    return { availableModels: sorted, modelToProductMap: map };
+    return sortModels(modelsList);
   }, [relatedProducts, currentProduct]);
 
+  // Aggregate all distinct valid colors across related products
+  const availableColors = useMemo(() => {
+    if (!relatedProducts.length && !currentProduct) return [];
+    const seen = new Set();
+    const list = [];
+
+    // Current product color first
+    const curColor = extractProductColor(currentProduct);
+    if (curColor && isRealColor(curColor)) {
+      seen.add(curColor.toLowerCase());
+      list.push(curColor);
+    }
+
+    // Related products colors
+    relatedProducts.forEach((p) => {
+      const c = extractProductColor(p);
+      if (c && isRealColor(c) && !seen.has(c.toLowerCase())) {
+        seen.add(c.toLowerCase());
+        list.push(c);
+      }
+    });
+
+    return list;
+  }, [relatedProducts, currentProduct]);
+
+  // Current active color (from URL param or current active product)
+  const currentColor = useMemo(() => {
+    const fromParam = searchParams.get('color');
+    if (fromParam && availableColors.some((c) => c.toLowerCase() === fromParam.toLowerCase())) {
+      const matched = availableColors.find((c) => c.toLowerCase() === fromParam.toLowerCase());
+      if (matched) return matched;
+    }
+    return extractProductColor(currentProduct) || (availableColors.length > 0 ? availableColors[0] : '');
+  }, [currentProduct, availableColors, searchParams]);
+
+  // Helper to find best matching product for (targetColor, targetModel)
+  const findMatchingProduct = (targetColor, targetModel) => {
+    if (!relatedProducts.length) return null;
+
+    const normColor = (targetColor || '').trim().toLowerCase();
+    const normModel = (targetModel || '').trim().toLowerCase();
+
+    // 1. Both color and model provided -> exact match
+    if (normColor && normModel) {
+      const exactMatch = relatedProducts.find((p) => {
+        const pColor = (extractProductColor(p) || '').trim().toLowerCase();
+        const pModels = extractProductModels(p).map((m) => m.trim().toLowerCase());
+        return pColor === normColor && pModels.includes(normModel);
+      });
+      if (exactMatch) return exactMatch;
+    }
+
+    // 2. Target model provided: prefer match with targetColor if possible, then in-stock
+    if (normModel) {
+      const modelMatches = relatedProducts.filter((p) => {
+        const pModels = extractProductModels(p).map((m) => m.trim().toLowerCase());
+        return pModels.includes(normModel);
+      });
+      if (modelMatches.length > 0) {
+        if (normColor) {
+          const sameColor = modelMatches.find((p) => (extractProductColor(p) || '').trim().toLowerCase() === normColor);
+          if (sameColor) return sameColor;
+        }
+        const inStock = modelMatches.find((p) => (p.available_stock ?? p.current_stock ?? 0) > 0);
+        return inStock || modelMatches[0];
+      }
+    }
+
+    // 3. Target color provided: prefer in-stock
+    if (normColor) {
+      const colorMatches = relatedProducts.filter((p) => {
+        const pColor = (extractProductColor(p) || '').trim().toLowerCase();
+        return pColor === normColor;
+      });
+      if (colorMatches.length > 0) {
+        const inStock = colorMatches.find((p) => (p.available_stock ?? p.current_stock ?? 0) > 0);
+        return inStock || colorMatches[0];
+      }
+    }
+
+    return null;
+  };
+
+  // Map each model to a product (prioritizing current active color)
+  const modelToProductMap = useMemo(() => {
+    const map = new Map();
+    availableModels.forEach((m) => {
+      const match = findMatchingProduct(currentColor, m) || findMatchingProduct(null, m);
+      if (match) map.set(m, match);
+    });
+    return map;
+  }, [availableModels, currentColor, relatedProducts]);
+
   const isCombo = Boolean(currentProduct?.is_combo || currentProduct?.product_type === 'combo');
-  const compatibleModels = (Array.isArray(currentProduct?.compatible_models) && currentProduct.compatible_models.length > 0)
-    ? currentProduct.compatible_models
-    : parseModels(currentProduct?.mobile_model);
   const isCase =
     !isCombo &&
     ((currentProduct?.category || '').toLowerCase().includes('case') ||
       (Array.isArray(currentProduct?.categories) && currentProduct.categories.some((c) => c.toLowerCase().includes('case'))));
-  const needsModelSelection = isCase || availableModels.length > 0 || compatibleModels.length > 0;
+
+  // Filter out 'Universal' or empty models so accessories/gadgets aren't treated as model-specific
+  const validCompatibleModels = useMemo(() => {
+    const raw = (Array.isArray(currentProduct?.compatible_models) && currentProduct.compatible_models.length > 0)
+      ? currentProduct.compatible_models
+      : parseModels(currentProduct?.mobile_model);
+    return raw.filter((m) => {
+      const trimmed = (m || '').trim();
+      return trimmed && trimmed.toLowerCase() !== 'universal';
+    });
+  }, [currentProduct]);
+
+  const allSelectableModels = useMemo(() => {
+    return availableModels.length > 0 ? availableModels : validCompatibleModels;
+  }, [availableModels, validCompatibleModels]);
+
+  // Accessories without specific phone models should NOT prompt for phone model selection
+  const needsModelSelection = !isCombo && allSelectableModels.length > 0;
 
   // Selected phone model state:
   // Priority: 1. URL search param ?model=..., 2. savedPhone if compatible, 3. Empty prompt
@@ -147,7 +251,8 @@ export function ProductDetailPage({ onAddToCart }) {
   };
 
   const initialModel = useMemo(() => {
-    const listToCheck = availableModels.length > 0 ? availableModels : compatibleModels;
+    if (!needsModelSelection) return '';
+    const listToCheck = allSelectableModels;
     if (paramModel) {
       const match = resolveCompatibleModel(paramModel, listToCheck);
       if (match) return match;
@@ -157,13 +262,43 @@ export function ProductDetailPage({ onAddToCart }) {
       if (match) return match;
     }
     return '';
-  }, [paramModel, savedPhone?.model, availableModels, compatibleModels]);
+  }, [needsModelSelection, paramModel, savedPhone?.model, allSelectableModels]);
 
   const [selectedModel, setSelectedModel] = useState(initialModel);
   const [modelError, setModelError] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const isModelSwitchRef = useRef(false);
   const prevIdRef = useRef(null);
+
+  // Availability map for colors relative to currently selected model
+  const colorAvailabilityMap = useMemo(() => {
+    const map = {};
+    if (!selectedModel) {
+      availableColors.forEach((c) => {
+        map[c.toLowerCase()] = { available: true, inStock: true };
+      });
+      return map;
+    }
+
+    const normModel = selectedModel.toLowerCase();
+    availableColors.forEach((c) => {
+      const normColor = c.toLowerCase();
+      const match = relatedProducts.find((p) => {
+        const pColor = (extractProductColor(p) || '').trim().toLowerCase();
+        const pModels = extractProductModels(p).map((m) => m.trim().toLowerCase());
+        return pColor === normColor && pModels.includes(normModel);
+      });
+
+      if (!match) {
+        map[normColor] = { available: false, inStock: false };
+      } else {
+        const inStock = (match.available_stock ?? match.current_stock ?? 0) > 0;
+        map[normColor] = { available: true, inStock };
+      }
+    });
+
+    return map;
+  }, [availableColors, selectedModel, relatedProducts]);
 
   // Handle phone model change in the dropdown
   const handleModelChange = (newModel) => {
@@ -180,34 +315,83 @@ export function ProductDetailPage({ onAddToCart }) {
       selectPhone(currentProduct?.mobile_brand || 'Apple', newModel);
     }
 
-    // Find the corresponding variant product in the collection
-    const targetProduct = modelToProductMap.get(newModel);
-    if (targetProduct) {
-      // 1. Immediately switch the active product in local state so image & details update with zero latency
-      setActiveProduct(targetProduct);
+    // Try preserving current color for the new model
+    let targetProduct = findMatchingProduct(currentColor, newModel);
+    if (!targetProduct) {
+      targetProduct = findMatchingProduct(null, newModel);
+    }
 
-      // 2. Update the URL in the address bar
+    if (targetProduct) {
+      setActiveProduct(targetProduct);
+      const targetColor = extractProductColor(targetProduct) || currentColor;
+
+      const params = new URLSearchParams(searchParams);
+      params.set('model', newModel);
+      if (targetColor) {
+        params.set('color', targetColor);
+      }
+
       if (targetProduct.id !== id) {
-        navigate(`/product/${targetProduct.id}?model=${encodeURIComponent(newModel)}`, { replace: true });
+        navigate(`/product/${targetProduct.id}?${params.toString()}`, { replace: true });
       }
     }
   };
 
-  // Sync active product if paramModel changes or matches a different variant
-  useEffect(() => {
-    if (paramModel && modelToProductMap.has(paramModel)) {
-      const matchProd = modelToProductMap.get(paramModel);
-      if (matchProd && matchProd.id !== currentProduct?.id) {
-        setActiveProduct(matchProd);
+  // Handle color change when clicking a color variant swatch
+  const handleColorChange = (newColor) => {
+    if (!newColor || newColor.toLowerCase() === (currentColor || '').toLowerCase()) return;
+
+    isModelSwitchRef.current = true;
+
+    // 1. Try finding matching product for newColor and current selectedModel
+    let targetProduct = findMatchingProduct(newColor, selectedModel);
+
+    // 2. If not found for current selectedModel, find any product with newColor
+    if (!targetProduct) {
+      targetProduct = findMatchingProduct(newColor, null);
+    }
+
+    if (targetProduct) {
+      setActiveProduct(targetProduct);
+
+      // If target product has specific model compatibility, adapt selectedModel
+      const targetModels = extractProductModels(targetProduct);
+      let updatedModel = selectedModel;
+      if (selectedModel && targetModels.length > 0 && !targetModels.map((m) => m.toLowerCase()).includes(selectedModel.toLowerCase())) {
+        updatedModel = targetModels[0] || '';
+        setSelectedModel(updatedModel);
+      }
+
+      const params = new URLSearchParams(searchParams);
+      if (updatedModel) {
+        params.set('model', updatedModel);
+      }
+      params.set('color', newColor);
+
+      if (targetProduct.id !== id) {
+        navigate(`/product/${targetProduct.id}?${params.toString()}`, { replace: true });
       }
     }
-  }, [paramModel, modelToProductMap, currentProduct?.id]);
+  };
+
+  // Sync active product if paramModel or paramColor changes externally
+  useEffect(() => {
+    const pModel = searchParams.get('model');
+    const pColor = searchParams.get('color');
+
+    if (pModel || pColor) {
+      const match = findMatchingProduct(pColor || currentColor, pModel || selectedModel);
+      if (match && match.id !== currentProduct?.id) {
+        setActiveProduct(match);
+      }
+    }
+  }, [searchParams, currentProduct?.id]);
 
   // Page title and meta
   useEffect(() => {
     if (currentProduct) {
       const isCombo = Boolean(currentProduct.is_combo || currentProduct.product_type === 'combo');
-      const compList = availableModels.length > 0 ? availableModels : compatibleModels;
+      const compList = allSelectableModels;
       let title;
       let description;
 
@@ -218,8 +402,8 @@ export function ProductDetailPage({ onAddToCart }) {
         title = `${currentProduct.name} | WrapStore`;
         description = 'This combo is not available for any single phone model.';
       } else {
-        const modelsStr = compList.length > 0 ? compList.slice(0, 3).join(', ') : 'All Devices';
-        title = `${currentProduct.name} for ${modelsStr} | WrapStore`;
+        const modelsStr = compList.length > 0 ? compList.slice(0, 3).join(', ') : '';
+        title = `${currentProduct.name}${modelsStr ? ` for ${modelsStr}` : ''} | WrapStore`;
         description =
           currentProduct.description && currentProduct.description.length >= 20
             ? currentProduct.description
@@ -229,7 +413,7 @@ export function ProductDetailPage({ onAddToCart }) {
         currentProduct.image_url || (Array.isArray(currentProduct.images) && currentProduct.images[0]) || '';
       setPageMeta({ title, description, image });
     }
-  }, [currentProduct, availableModels, compatibleModels]);
+  }, [currentProduct, allSelectableModels]);
 
   // Scroll to top only on new product navigations, not on in-page model variant changes
   useEffect(() => {
@@ -263,10 +447,11 @@ export function ProductDetailPage({ onAddToCart }) {
   }, []);
 
   const isModelSelected = Boolean(
-    selectedModel &&
-      (!availableModels.length && !compatibleModels.length
+    !needsModelSelection ||
+    (selectedModel &&
+      (!allSelectableModels.length
         ? true
-        : availableModels.includes(selectedModel) || compatibleModels.includes(selectedModel))
+        : allSelectableModels.includes(selectedModel)))
   );
 
   // Derive brand for breadcrumbs
@@ -446,9 +631,13 @@ export function ProductDetailPage({ onAddToCart }) {
             modelSelectRef={modelSelectRef}
             isModelSelected={isModelSelected}
             needsModelSelection={needsModelSelection}
-            availableModels={availableModels}
+            availableModels={allSelectableModels}
             modelToProductMap={modelToProductMap}
             onModelChange={handleModelChange}
+            availableColors={availableColors}
+            currentColor={currentColor}
+            onColorChange={handleColorChange}
+            colorAvailabilityMap={colorAvailabilityMap}
           />
         </div>
 
@@ -465,6 +654,7 @@ export function ProductDetailPage({ onAddToCart }) {
         onAddToCart={onAddToCart}
         modelSelectRef={modelSelectRef}
         setModelError={setModelError}
+        selectedColor={currentColor}
       />
 
     </main>
