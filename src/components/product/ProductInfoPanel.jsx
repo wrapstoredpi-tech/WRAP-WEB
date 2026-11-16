@@ -35,6 +35,7 @@ export function ProductInfoPanel({
   modelToProductMap = new Map(),
   onModelChange,
   availableColors = [],
+  allProductColors = [],
   currentColor = '',
   onColorChange,
   colorAvailabilityMap = {},
@@ -299,10 +300,20 @@ export function ProductInfoPanel({
       )}
 
       {/* 4. COLOUR: Swatches for genuine colour options */}
-      {!isCombo && (availableColors.length > 1 || colourSiblings.length > 1) && (() => {
-        const displayColors = availableColors.length > 0
+      {!isCombo && ((allProductColors.length > 1 || availableColors.length > 1 || colourSiblings.length > 1)) && (() => {
+        const rawColors = availableColors.length > 0
           ? availableColors
           : colourSiblings.map((s) => getValidColors(s.color_variants || s.color)[0] || s.color).filter(Boolean);
+
+        // Show ONLY available colors of the product for the selected model
+        const displayColors = rawColors.filter((colorName) => {
+          if (!colorName) return false;
+          const availability = colorAvailabilityMap[colorName.toLowerCase()];
+          if (availability && availability.available === false) return false;
+          return true;
+        });
+
+        if (displayColors.length === 0) return null;
 
         const activeColorDisplay =
           currentColor ||
@@ -325,7 +336,6 @@ export function ProductInfoPanel({
                 const isCurrent = (activeColorDisplay || '').toLowerCase() === colorName.toLowerCase();
                 const style = resolveColorStyle(colorName);
                 const availability = colorAvailabilityMap[colorName.toLowerCase()];
-                const isNotForModel = availability && !availability.available;
                 const isOutOfStockColor = availability && availability.available && !availability.inStock;
 
                 const bg = (style.backgroundColor || '').toLowerCase();
@@ -353,14 +363,10 @@ export function ProductInfoPanel({
                         if (sib) handleSiblingClick(sib);
                       }
                     }}
-                    className={`flex flex-col items-center gap-1.5 group cursor-pointer focus:outline-none transition-opacity ${
-                      isNotForModel ? 'opacity-60 hover:opacity-100' : ''
-                    }`}
+                    className="flex flex-col items-center gap-1.5 group cursor-pointer focus:outline-none"
                     aria-label={`Select ${colorName} colour`}
                     title={
-                      isNotForModel
-                        ? `${colorName} (Switches to compatible model)`
-                        : isOutOfStockColor
+                      isOutOfStockColor
                         ? `${colorName} (Out of stock)`
                         : colorName
                     }

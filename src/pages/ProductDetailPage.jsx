@@ -120,20 +120,75 @@ export function ProductDetailPage({ onAddToCart }) {
     return sortModels(modelsList);
   }, [relatedProducts, currentProduct]);
 
-  // Aggregate all distinct valid colors across related products
-  const availableColors = useMemo(() => {
+  const isCombo = Boolean(currentProduct?.is_combo || currentProduct?.product_type === 'combo');
+  const isCase =
+    !isCombo &&
+    ((currentProduct?.category || '').toLowerCase().includes('case') ||
+      (Array.isArray(currentProduct?.categories) && currentProduct.categories.some((c) => c.toLowerCase().includes('case'))));
+
+  // Filter out 'Universal' or empty models so accessories/gadgets aren't treated as model-specific
+  const validCompatibleModels = useMemo(() => {
+    const raw = (Array.isArray(currentProduct?.compatible_models) && currentProduct.compatible_models.length > 0)
+      ? currentProduct.compatible_models
+      : parseModels(currentProduct?.mobile_model);
+    return raw.filter((m) => {
+      const trimmed = (m || '').trim();
+      return trimmed && trimmed.toLowerCase() !== 'universal';
+    });
+  }, [currentProduct]);
+
+  const allSelectableModels = useMemo(() => {
+    return availableModels.length > 0 ? availableModels : validCompatibleModels;
+  }, [availableModels, validCompatibleModels]);
+
+  // Accessories without specific phone models should NOT prompt for phone model selection
+  const needsModelSelection = !isCombo && allSelectableModels.length > 0;
+
+  // Selected phone model state:
+  // Priority: 1. URL search param ?model=..., 2. savedPhone if compatible, 3. Empty prompt
+  const paramModel = searchParams.get('model');
+
+  const resolveCompatibleModel = (input, list = []) => {
+    if (!input || !list.length) return input || '';
+    const target = modelToSlug(input);
+    const found = list.find(
+      (m) => modelToSlug(m) === target || (m || '').toLowerCase().trim() === input.toLowerCase().trim()
+    );
+    return found || null;
+  };
+
+  const initialModel = useMemo(() => {
+    if (!needsModelSelection) return '';
+    const listToCheck = allSelectableModels;
+    if (paramModel) {
+      const match = resolveCompatibleModel(paramModel, listToCheck);
+      if (match) return match;
+    }
+    if (savedPhone?.model) {
+      const match = resolveCompatibleModel(savedPhone.model, listToCheck);
+      if (match) return match;
+    }
+    return '';
+  }, [needsModelSelection, paramModel, savedPhone?.model, allSelectableModels]);
+
+  const [selectedModel, setSelectedModel] = useState(initialModel);
+  const [modelError, setModelError] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const isModelSwitchRef = useRef(false);
+  const prevIdRef = useRef(null);
+
+  // All distinct valid colors across all related products (regardless of model)
+  const allProductColors = useMemo(() => {
     if (!relatedProducts.length && !currentProduct) return [];
     const seen = new Set();
     const list = [];
 
-    // Current product color first
     const curColor = extractProductColor(currentProduct);
     if (curColor && isRealColor(curColor)) {
       seen.add(curColor.toLowerCase());
       list.push(curColor);
     }
 
-    // Related products colors
     relatedProducts.forEach((p) => {
       const c = extractProductColor(p);
       if (c && isRealColor(c) && !seen.has(c.toLowerCase())) {
@@ -145,6 +200,46 @@ export function ProductDetailPage({ onAddToCart }) {
     return list;
   }, [relatedProducts, currentProduct]);
 
+  // Only colors available for the currently selected model (or all if no model selected)
+  const availableColors = useMemo(() => {
+    if (!relatedProducts.length && !currentProduct) return [];
+    const seen = new Set();
+    const list = [];
+
+    const isModelChosen = Boolean(selectedModel && selectedModel.toLowerCase() !== 'universal');
+    const relevantProducts = isModelChosen
+      ? relatedProducts.filter((p) => {
+          const models = extractProductModels(p).map((m) => m.trim().toLowerCase());
+          return models.length === 0 || models.includes(selectedModel.trim().toLowerCase());
+        })
+      : relatedProducts;
+
+    const curColor = extractProductColor(currentProduct);
+    const isCurColorRelevant = relevantProducts.some((p) => {
+      const c = extractProductColor(p);
+      return c && curColor && c.trim().toLowerCase() === curColor.trim().toLowerCase();
+    });
+
+    if (curColor && isRealColor(curColor) && isCurColorRelevant) {
+      seen.add(curColor.toLowerCase());
+      list.push(curColor);
+    }
+
+    relevantProducts.forEach((p) => {
+      const c = extractProductColor(p);
+      if (c && isRealColor(c) && !seen.has(c.toLowerCase())) {
+        seen.add(c.toLowerCase());
+        list.push(c);
+      }
+    });
+
+    if (list.length === 0 && curColor && isRealColor(curColor)) {
+      list.push(curColor);
+    }
+
+    return list;
+  }, [relatedProducts, currentProduct, selectedModel]);
+
   // Current active color (from URL param or current active product)
   const currentColor = useMemo(() => {
     const fromParam = searchParams.get('color');
@@ -152,7 +247,11 @@ export function ProductDetailPage({ onAddToCart }) {
       const matched = availableColors.find((c) => c.toLowerCase() === fromParam.toLowerCase());
       if (matched) return matched;
     }
-    return extractProductColor(currentProduct) || (availableColors.length > 0 ? availableColors[0] : '');
+    const curColor = extractProductColor(currentProduct);
+    if (curColor && availableColors.some((c) => c.toLowerCase() === curColor.toLowerCase())) {
+      return curColor;
+    }
+    return availableColors.length > 0 ? availableColors[0] : (curColor || '');
   }, [currentProduct, availableColors, searchParams]);
 
   // Helper to find best matching product for (targetColor, targetModel)
@@ -213,63 +312,6 @@ export function ProductDetailPage({ onAddToCart }) {
     return map;
   }, [availableModels, currentColor, relatedProducts]);
 
-  const isCombo = Boolean(currentProduct?.is_combo || currentProduct?.product_type === 'combo');
-  const isCase =
-    !isCombo &&
-    ((currentProduct?.category || '').toLowerCase().includes('case') ||
-      (Array.isArray(currentProduct?.categories) && currentProduct.categories.some((c) => c.toLowerCase().includes('case'))));
-
-  // Filter out 'Universal' or empty models so accessories/gadgets aren't treated as model-specific
-  const validCompatibleModels = useMemo(() => {
-    const raw = (Array.isArray(currentProduct?.compatible_models) && currentProduct.compatible_models.length > 0)
-      ? currentProduct.compatible_models
-      : parseModels(currentProduct?.mobile_model);
-    return raw.filter((m) => {
-      const trimmed = (m || '').trim();
-      return trimmed && trimmed.toLowerCase() !== 'universal';
-    });
-  }, [currentProduct]);
-
-  const allSelectableModels = useMemo(() => {
-    return availableModels.length > 0 ? availableModels : validCompatibleModels;
-  }, [availableModels, validCompatibleModels]);
-
-  // Accessories without specific phone models should NOT prompt for phone model selection
-  const needsModelSelection = !isCombo && allSelectableModels.length > 0;
-
-  // Selected phone model state:
-  // Priority: 1. URL search param ?model=..., 2. savedPhone if compatible, 3. Empty prompt
-  const paramModel = searchParams.get('model');
-
-  const resolveCompatibleModel = (input, list = []) => {
-    if (!input || !list.length) return input || '';
-    const target = modelToSlug(input);
-    const found = list.find(
-      (m) => modelToSlug(m) === target || (m || '').toLowerCase().trim() === input.toLowerCase().trim()
-    );
-    return found || null;
-  };
-
-  const initialModel = useMemo(() => {
-    if (!needsModelSelection) return '';
-    const listToCheck = allSelectableModels;
-    if (paramModel) {
-      const match = resolveCompatibleModel(paramModel, listToCheck);
-      if (match) return match;
-    }
-    if (savedPhone?.model) {
-      const match = resolveCompatibleModel(savedPhone.model, listToCheck);
-      if (match) return match;
-    }
-    return '';
-  }, [needsModelSelection, paramModel, savedPhone?.model, allSelectableModels]);
-
-  const [selectedModel, setSelectedModel] = useState(initialModel);
-  const [modelError, setModelError] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const isModelSwitchRef = useRef(false);
-  const prevIdRef = useRef(null);
-
   // Availability map for colors relative to currently selected model
   const colorAvailabilityMap = useMemo(() => {
     const map = {};
@@ -286,7 +328,7 @@ export function ProductDetailPage({ onAddToCart }) {
       const match = relatedProducts.find((p) => {
         const pColor = (extractProductColor(p) || '').trim().toLowerCase();
         const pModels = extractProductModels(p).map((m) => m.trim().toLowerCase());
-        return pColor === normColor && pModels.includes(normModel);
+        return pColor === normColor && (pModels.length === 0 || pModels.includes(normModel));
       });
 
       if (!match) {
@@ -635,6 +677,7 @@ export function ProductDetailPage({ onAddToCart }) {
             modelToProductMap={modelToProductMap}
             onModelChange={handleModelChange}
             availableColors={availableColors}
+            allProductColors={allProductColors}
             currentColor={currentColor}
             onColorChange={handleColorChange}
             colorAvailabilityMap={colorAvailabilityMap}
