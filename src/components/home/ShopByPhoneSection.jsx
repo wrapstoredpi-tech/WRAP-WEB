@@ -108,51 +108,21 @@ export function ShopByPhoneSection() {
       className="w-full bg-white border-b border-[#E7E5E0] select-none"
     >
       <div className="w-full max-w-[1280px] mx-auto px-4 md:px-8 py-10 md:py-14">
-        {/* Header Row */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-[26px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em] leading-tight">
-              Shop by phone
-            </h2>
-            <p className="text-[14px] sm:text-[15px] text-[#5A5A5A] mt-1">
-              {activeBrand === 'Samsung'
-                ? 'Tap your Galaxy. Everything after this fits it.'
-                : 'Tap your iPhone. Everything after this fits it.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 self-end md:self-auto">
-            <Link
-              to="/cases"
-              className="text-[14px] font-medium text-[#141414] underline underline-offset-4 decoration-1 hover:text-[#B0521F] transition-colors"
-            >
-              All models
-            </Link>
-
-            {/* Desktop 44px Round Scroll Buttons */}
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleScroll('left')}
-                aria-label="Scroll phone models left"
-                className="w-11 h-11 rounded-full border border-[#E7E5E0] hover:border-[#141414] flex items-center justify-center text-[#141414] transition-colors cursor-pointer bg-white shadow-2xs hover:shadow-xs active:scale-95"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleScroll('right')}
-                aria-label="Scroll phone models right"
-                className="w-11 h-11 rounded-full border border-[#E7E5E0] hover:border-[#141414] flex items-center justify-center text-[#141414] transition-colors cursor-pointer bg-white shadow-2xs hover:shadow-xs active:scale-95"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+        {/* Header Title & Subtitle */}
+        <div className="mb-4 sm:mb-5">
+          <h2 className="text-[26px] sm:text-[30px] font-semibold text-[#141414] tracking-[-0.025em] leading-tight">
+            Shop by phone
+          </h2>
+          <p className="text-[14px] sm:text-[15px] text-[#5A5A5A] mt-1">
+            {activeBrand === 'Samsung'
+              ? 'Tap your Galaxy. Everything after this fits it.'
+              : 'Tap your iPhone. Everything after this fits it.'}
+          </p>
         </div>
 
-        {/* Segmented Pill Switch (iPhone / Samsung) */}
-        <div className="mb-6">
+        {/* Controls Row: Segmented Pill Switch (iPhone / Samsung) & All models */}
+        <div className="flex items-center justify-between gap-4 mb-5 sm:mb-6">
+          {/* Segmented Pill Switch (iPhone / Samsung) - reduced by ~15% */}
           <div
             role="tablist"
             aria-label="Phone brand"
@@ -163,7 +133,7 @@ export function ShopByPhoneSection() {
               role="tab"
               aria-selected={activeBrand === 'Apple'}
               onClick={() => handleBrandChange('Apple')}
-              className={`px-5 py-2 text-[14px] font-medium rounded-full transition-all cursor-pointer ${
+              className={`px-4 py-1.5 text-[12px] sm:text-[12.5px] font-medium rounded-full transition-all cursor-pointer ${
                 activeBrand === 'Apple'
                   ? 'bg-[#141414] text-white shadow-2xs'
                   : 'text-[#5A5A5A] hover:text-[#141414]'
@@ -178,7 +148,7 @@ export function ShopByPhoneSection() {
                 role="tab"
                 aria-selected={activeBrand === 'Samsung'}
                 onClick={() => handleBrandChange('Samsung')}
-                className={`px-5 py-2 text-[14px] font-medium rounded-full transition-all cursor-pointer ${
+                className={`px-4 py-1.5 text-[12px] sm:text-[12.5px] font-medium rounded-full transition-all cursor-pointer ${
                   activeBrand === 'Samsung'
                     ? 'bg-[#141414] text-white shadow-2xs'
                     : 'text-[#5A5A5A] hover:text-[#141414]'
@@ -188,12 +158,42 @@ export function ShopByPhoneSection() {
               </button>
             )}
           </div>
+
+          {/* Right Action: All models & Desktop Scroll Buttons */}
+          <div className="flex items-center gap-3">
+            <Link
+              to="/cases"
+              className="text-[13px] sm:text-[14px] font-medium text-[#141414] underline underline-offset-4 decoration-1 hover:text-[#B0521F] transition-colors whitespace-nowrap"
+            >
+              All models
+            </Link>
+
+            {/* Desktop 44px Round Scroll Buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleScroll('left')}
+                aria-label="Scroll phone models left"
+                className="w-10 h-10 rounded-full border border-[#E7E5E0] hover:border-[#141414] flex items-center justify-center text-[#141414] transition-colors cursor-pointer bg-white shadow-2xs hover:shadow-xs active:scale-95"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScroll('right')}
+                aria-label="Scroll phone models right"
+                className="w-10 h-10 rounded-full border border-[#E7E5E0] hover:border-[#141414] flex items-center justify-center text-[#141414] transition-colors cursor-pointer bg-white shadow-2xs hover:shadow-xs active:scale-95"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Horizontal Scroll-Snap Row of Realistic Phone Cards */}
         <div
           ref={scrollContainerRef}
-          className={`flex items-start gap-3.5 sm:gap-4 overflow-x-auto scroll-smooth pb-4 pt-1.5 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar transition-opacity duration-200 ease-out ${
+          className={`flex items-start gap-3.5 sm:gap-4 overflow-x-auto scroll-smooth pb-4 pt-1.5 no-scrollbar transition-opacity duration-200 ease-out ${
             isTransitioning ? 'opacity-40' : 'opacity-100'
           }`}
           style={{ scrollSnapType: 'x mandatory' }}

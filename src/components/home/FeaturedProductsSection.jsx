@@ -294,8 +294,11 @@ export function FeaturedProductCard({
       </div>
 
       {/* Product Info */}
-      <div className="pt-3 sm:pt-4 px-0.5 sm:px-1 pb-0.5 sm:pb-1 flex flex-col flex-1 justify-between">
-        <h3 className="font-sans font-medium sm:font-semibold text-[13px] sm:text-[15px] text-[#141414] leading-[1.3] sm:leading-[1.35] tracking-[-0.01em] line-clamp-2 min-h-[34px] sm:min-h-[42px] group-hover:text-[#B0521F] transition-colors">
+      <div className="pt-2 sm:pt-2.5 px-0.5 sm:px-1 pb-0.5 sm:pb-1 flex flex-col flex-1 justify-between">
+        <h3
+          className="font-sans font-medium sm:font-semibold text-[12px] sm:text-[13px] text-[#141414] leading-snug tracking-[-0.01em] truncate block group-hover:text-[#B0521F] transition-colors"
+          title={product.name}
+        >
           {product.name}
         </h3>
 

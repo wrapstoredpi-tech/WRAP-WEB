@@ -1,15 +1,41 @@
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProductsContext } from '../../context/ProductsContext';
+import { usePhoneContext } from '../../context/PhoneContext';
 import { groupProductsByDesign } from '../../lib/models';
 import { formatINR } from '../../lib/currency';
 import { ProductCard } from './ProductCard';
-import { collections } from '../../config/collections';
+import { collectionNameToSlug } from '../../config/collections';
+import { CollectionModelModal } from '../collection/CollectionModelModal';
 
 export function NewInAndCollections() {
+  const navigate = useNavigate();
   const { products = [], isLoading } = useProductsContext();
+  const { savedPhone, selectPhone } = usePhoneContext();
   const [activePill, setActivePill] = useState('all');
+  const [selectedCollectionForModal, setSelectedCollectionForModal] = useState(null);
+
+  // Category pill horizontal scrolling controls (matching Featured Products)
+  const pillContainerRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Update category scroll button visibility
+  const updateScrollButtons = useCallback(() => {
+    const el = pillContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  const handleScroll = (direction) => {
+    const el = pillContainerRef.current;
+    if (!el) return;
+    const scrollAmount = direction === 'left' ? -260 : 260;
+    el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  };
 
   // Filter in-stock only
   const inStockProducts = useMemo(() => {
@@ -97,6 +123,18 @@ export function NewInAndCollections() {
     return list;
   }, [sortedNewest, newCases, newScreen, newPower, newWatch]);
 
+  useEffect(() => {
+    const el = pillContainerRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    el.addEventListener('scroll', updateScrollButtons, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, [updateScrollButtons, availablePills]);
+
   // Selected pill products grouped by design (max 4 cards)
   const displayProducts = useMemo(() => {
     let source = sortedNewest;
@@ -134,54 +172,84 @@ export function NewInAndCollections() {
   };
 
   // ─── Tier B: Trending Collections ──────────────────────────────────────────
+  // Dynamically extract distinct collection names from products table
   const activeCollections = useMemo(() => {
-    return collections
-      .map((col) => {
-        const matches = inStockProducts.filter((p) => {
-          const isCase =
-            (p.category || '').toLowerCase().includes('case') ||
-            (p.subcategory || '').toLowerCase().includes('iphone') ||
-            (p.subcategory || '').toLowerCase().includes('samsung');
-          if (!isCase) return false;
+    const colMap = new Map();
 
-          const pName = (p.name || '').toLowerCase();
-          const pDesc = (p.description || '').toLowerCase();
-          const pCol = (p.collection || '').toLowerCase();
-          return col.match.some(
-            (k) =>
-              pName.includes(k.toLowerCase()) ||
-              pDesc.includes(k.toLowerCase()) ||
-              pCol.includes(k.toLowerCase())
-          );
+    inStockProducts.forEach((p) => {
+      const isCase =
+        !p.is_combo &&
+        p.product_type !== 'combo' &&
+        ((p.category || '').toLowerCase().includes('case') ||
+          (p.subcategory || '').toLowerCase().includes('iphone') ||
+          (p.subcategory || '').toLowerCase().includes('samsung') ||
+          (p.category || '').toLowerCase().includes('mobile cases'));
+      if (!isCase) return;
+
+      const rawCol = (p.collection || '').trim();
+      if (!rawCol || rawCol.toLowerCase().startsWith('combo')) return;
+
+      const slug = collectionNameToSlug(rawCol);
+      if (!colMap.has(slug)) {
+        colMap.set(slug, {
+          name: rawCol,
+          slug,
+          products: [],
         });
+      }
+      colMap.get(slug).products.push(p);
+    });
 
-        if (matches.length === 0) return null;
+    const palette = [
+      { bg: '#F2F4F7', dark: false }, // Soft cool grey/slate
+      { bg: '#FAF0E6', dark: false }, // Soft linen/sand
+      { bg: '#EAE8E3', dark: false }, // Neutral stone
+      { bg: '#E8F1F2', dark: false }, // Soft frost
+      { bg: '#F6F3EE', dark: false }, // Warm ivory
+    ];
 
-        const minPrice = matches.reduce(
-          (min, p) => (p.selling_price && p.selling_price < min ? p.selling_price : min),
-          matches[0].selling_price || 299
-        );
+    let idx = 0;
+    return Array.from(colMap.values()).map((col) => {
+      const pList = col.products;
+      const minPrice = pList.reduce(
+        (min, p) => (p.selling_price && p.selling_price < min ? p.selling_price : min),
+        pList[0]?.selling_price || 299
+      );
 
-        // Take up to 2 unique product images for overlapping preview
-        const img1 =
-          matches[0]?.image_url ||
-          (Array.isArray(matches[0]?.images) && matches[0].images[0]) ||
-          '/subcategories/iphone.jpg';
-        const img2 =
-          matches[1]?.image_url ||
-          (Array.isArray(matches[1]?.images) && matches[1].images[0]) ||
-          img1;
+      // Primary case image from this collection
+      const primaryImg =
+        pList[0]?.image_url ||
+        (Array.isArray(pList[0]?.images) && pList[0].images[0]) ||
+        '/subcategories/iphone.jpg';
 
-        return {
-          ...col,
-          count: matches.length,
-          minPrice,
-          image1: img1,
-          image2: img2,
-        };
-      })
-      .filter(Boolean);
+      const style = palette[idx % palette.length];
+      idx++;
+
+      return {
+        name: col.name,
+        slug: col.slug,
+        count: pList.length,
+        minPrice,
+        image: primaryImg,
+        bg: style.bg,
+        dark: style.dark,
+        products: pList,
+      };
+    });
   }, [inStockProducts]);
+
+  const handleOpenCollectionModal = (col) => {
+    setSelectedCollectionForModal(col);
+  };
+
+  const handleSelectModel = (brand, model) => {
+    selectPhone(brand, model);
+    const colSlug = selectedCollectionForModal?.slug;
+    setSelectedCollectionForModal(null);
+    if (colSlug) {
+      navigate(`/collection/${colSlug}?model=${encodeURIComponent(model)}&brand=${encodeURIComponent(brand)}`);
+    }
+  };
 
   // If loading and no products, show skeleton
   if (isLoading && products.length === 0) {
@@ -221,38 +289,74 @@ export function NewInAndCollections() {
               </p>
             </div>
 
+            {/* View All New CTA (Desktop / Tablet) */}
             <Link
               to="/?sortBy=newest"
-              className="text-[14px] font-medium text-[#141414] underline underline-offset-4 decoration-1 hover:text-[#B0521F] transition-colors self-start sm:self-auto"
+              className="hidden sm:inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 self-start md:self-auto shrink-0 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 cursor-pointer group"
             >
-              View all new
+              <span>View All New</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
 
-          {/* Filter Pills */}
+          {/* Category Filter Bar with Horizontal Carousel Controls (matching Featured Products) */}
           {availablePills.length > 1 && (
-            <div className="mb-6">
+            <div className="relative mb-6 sm:mb-8 flex items-center gap-3 min-w-0 w-full overflow-hidden">
               <div
+                ref={pillContainerRef}
                 role="tablist"
                 aria-label="New in categories"
-                className="inline-flex p-1 bg-[#F4F2EE] rounded-full gap-1 border border-[#E7E5E0] overflow-x-auto max-w-full no-scrollbar"
+                className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 min-w-0 flex-1"
               >
-                {availablePills.map((pill) => (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={activePill === pill.id}
-                    onClick={() => setActivePill(pill.id)}
-                    className={`px-4 py-2 text-[13px] sm:text-[14px] font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
-                      activePill === pill.id
-                        ? 'bg-[#141414] text-white shadow-2xs'
-                        : 'text-[#5A5A5A] hover:text-[#141414]'
-                    }`}
-                  >
-                    {pill.label}
-                  </button>
-                ))}
+                {availablePills.map((pill) => {
+                  const isActive = activePill === pill.id;
+                  return (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActivePill(pill.id)}
+                      className={`px-4 sm:px-5 py-2 rounded-full font-sans text-[13px] sm:text-[14px] whitespace-nowrap transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 ${
+                        isActive
+                          ? 'bg-[#141414] text-white font-medium shadow-sm'
+                          : 'bg-[#EFEFEB] text-[#4A4A4A] hover:bg-[#E5E3DD] hover:text-[#141414] font-medium'
+                      }`}
+                    >
+                      {pill.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Scroll buttons */}
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0 pl-1">
+                <button
+                  type="button"
+                  onClick={() => handleScroll('left')}
+                  disabled={!canScrollLeft}
+                  aria-label="Scroll categories left"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                    canScrollLeft
+                      ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
+                      : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleScroll('right')}
+                  disabled={!canScrollRight}
+                  aria-label="Scroll categories right"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                    canScrollRight
+                      ? 'bg-[#EFEFEB] hover:bg-[#E5E3DD] text-[#4A4A4A] active:scale-90 cursor-pointer'
+                      : 'bg-[#F5F5F3] text-[#B0AEA8] opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+                </button>
               </div>
             </div>
           )}
@@ -267,6 +371,17 @@ export function NewInAndCollections() {
                 infoLine={getCardInfoLine(product)}
               />
             ))}
+          </div>
+
+          {/* Mobile-only CTA button placed after all cards (matching Featured Products) */}
+          <div className="mt-6 flex sm:hidden justify-center">
+            <Link
+              to="/?sortBy=newest"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#141414] hover:bg-[#2A2A2A] text-white font-sans text-[14px] font-medium transition-colors duration-200 shadow-sm group focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2 active:scale-[0.98]"
+            >
+              <span>View All New</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </Link>
           </div>
         </div>
 
@@ -283,43 +398,31 @@ export function NewInAndCollections() {
               </p>
             </div>
 
-            {/* 3 Large Cards Row (Desktop grid, Mobile swipe row) */}
+            {/* Collection Cards Row (Separate tile for each collection from DB) */}
             <div className="flex md:grid md:grid-cols-3 gap-4 md:gap-6 overflow-x-auto scroll-smooth pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar" style={{ scrollSnapType: 'x mandatory' }}>
               {activeCollections.map((col) => {
                 const isDark = col.dark === true;
 
                 return (
-                  <Link
+                  <button
                     key={col.slug}
-                    to={`/collection/${col.slug}`}
-                    className={`w-[85vw] sm:w-[360px] md:w-auto shrink-0 snap-start min-h-[440px] rounded-[18px] p-6 sm:p-8 flex flex-col justify-between group overflow-hidden relative border transition-all duration-300 shadow-2xs hover:shadow-md cursor-pointer ${
+                    type="button"
+                    onClick={() => handleOpenCollectionModal(col)}
+                    className={`w-[85vw] sm:w-[340px] md:w-auto shrink-0 snap-start min-h-[400px] rounded-[18px] p-6 sm:p-7 flex flex-col justify-between group overflow-hidden relative border text-left transition-all duration-300 shadow-2xs hover:shadow-md cursor-pointer ${
                       isDark
                         ? 'border-[#3D3E44] text-white hover:border-white'
                         : 'border-[#E7E5E0] text-[#141414] hover:border-[#141414]'
                     }`}
                     style={{ backgroundColor: col.bg }}
-                    aria-label={`Collection: ${col.name}, From Rs ${col.minPrice}`}
+                    aria-label={`Collection: ${col.name}, From Rs ${col.minPrice}. Click to select your phone model`}
                   >
-                    {/* Top Overlapping Images Area */}
+                    {/* Top Case Image Area */}
                     <div className="relative h-[220px] w-full flex items-center justify-center pt-2">
-                      {/* Secondary image behind left */}
-                      <div className="absolute left-6 top-3 w-[140px] h-[175px] rounded-[14px] overflow-hidden bg-white/70 shadow-md rotate-[-8deg] group-hover:rotate-[-12deg] transition-transform duration-300 border border-black/5 p-1">
+                      <div className="w-[155px] h-[195px] rounded-[14px] overflow-hidden bg-white/90 shadow-md group-hover:scale-105 transition-transform duration-300 border border-black/5 p-2 flex items-center justify-center">
                         <img
-                          src={col.image2}
-                          alt=""
-                          className="w-full h-full object-cover rounded-[10px]"
-                          onError={(e) => {
-                            e.currentTarget.src = '/subcategories/iphone.jpg';
-                          }}
-                        />
-                      </div>
-
-                      {/* Primary image front right */}
-                      <div className="absolute right-6 top-6 w-[150px] h-[185px] rounded-[14px] overflow-hidden bg-white shadow-xl rotate-[6deg] group-hover:rotate-[2deg] group-hover:scale-102 transition-transform duration-300 border border-black/10 p-1 z-10">
-                        <img
-                          src={col.image1}
+                          src={col.image}
                           alt={col.name}
-                          className="w-full h-full object-cover rounded-[10px]"
+                          className="w-full h-full object-contain rounded-[10px]"
                           onError={(e) => {
                             e.currentTarget.src = '/subcategories/iphone.jpg';
                           }}
@@ -342,7 +445,7 @@ export function NewInAndCollections() {
                             isDark ? 'text-white/70' : 'text-[#5A5A5A]'
                           }`}
                         >
-                          {col.tagline || col.description} · from {formatINR(col.minPrice)}
+                          {col.count} {col.count === 1 ? 'design' : 'designs'} · from {formatINR(col.minPrice)}
                         </p>
                       </div>
 
@@ -357,13 +460,22 @@ export function NewInAndCollections() {
                         <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                       </div>
                     </div>
-                  </Link>
+                  </button>
                 );
               })}
             </div>
           </div>
         )}
       </div>
+
+      {/* Modal: Ask for mobile model before showing cases */}
+      <CollectionModelModal
+        isOpen={Boolean(selectedCollectionForModal)}
+        onClose={() => setSelectedCollectionForModal(null)}
+        collection={selectedCollectionForModal}
+        selectedModel={savedPhone?.model}
+        onSelectModel={handleSelectModel}
+      />
     </section>
   );
 }

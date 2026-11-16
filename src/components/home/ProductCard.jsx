@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Check } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
-import { ColorSwatch, getValidColors } from '../ui/ColorSwatch';
 import { useFavorites } from '../../context/FavoritesContext';
 import { useCart } from '../../context/CartContext';
 import { usePhoneContext } from '../../context/PhoneContext';
@@ -23,33 +22,6 @@ export function ProductCard({
   const { items = [], addItem } = useCart();
   const { savedPhone } = usePhoneContext();
   const { openSheet } = usePurchaseSheet();
-
-  // Sibling color dots with stock awareness (Rule 15) - Hook must run unconditionally
-  const siblingDots = useMemo(() => {
-    if (!product) return [];
-    if (!product.allSiblings || product.allSiblings.length === 0) {
-      const raw = product.aggregatedColors || getValidColors(product);
-      return (raw || []).map((c) => ({
-        name: typeof c === 'string' ? c : c?.name || c?.color,
-        inStock: true,
-      }));
-    }
-    const dots = [];
-    const seenNames = new Set();
-    product.allSiblings.forEach((s) => {
-      const isStocked =
-        (s.available_stock ?? s.current_stock ?? 0) > 0 && s.stock_status !== 'OUT_OF_STOCK';
-      const sColors = getValidColors(s);
-      sColors.forEach((c) => {
-        const cName = typeof c === 'string' ? c : c?.name || c?.color;
-        if (cName && !seenNames.has(cName.toLowerCase())) {
-          seenNames.add(cName.toLowerCase());
-          dots.push({ name: cName, inStock: isStocked });
-        }
-      });
-    });
-    return dots;
-  }, [product]);
 
   if (!product) return null;
 
@@ -143,11 +115,11 @@ export function ProductCard({
       role="article"
       aria-label={`${product.name}, Price ₹${sellingPrice}`}
     >
-      {/* Real photo at fixed 4:5 aspect ratio on #F4F3F0 */}
-      <div className="relative aspect-[4/5] w-full bg-[#F4F3F0] overflow-hidden">
+      {/* Photo container with compact 1:1 aspect ratio on #F4F3F0 */}
+      <div className="relative aspect-square w-full bg-[#F4F3F0] overflow-hidden">
         {/* Optional New / Category Badge */}
         {badge && (
-          <span className="absolute top-2.5 left-2.5 z-10 bg-[#141414] text-white text-[11px] font-semibold px-2 py-0.5 rounded-[4px] uppercase tracking-wider">
+          <span className="absolute top-2 left-2 z-10 bg-[#141414] text-white text-[10px] sm:text-[11px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-[4px] uppercase tracking-wider">
             {badge}
           </span>
         )}
@@ -174,10 +146,10 @@ export function ProductCard({
           onClick={handleFavoriteClick}
           aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
           title={isFav ? 'Remove from favourites' : 'Add to favourites'}
-          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-white flex items-center justify-center transition-colors shadow-2xs cursor-pointer focus:outline-none"
+          className="absolute top-2 right-2 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center transition-colors shadow-2xs cursor-pointer focus:outline-none"
         >
           <Heart
-            className={`w-4 h-4 transition-colors ${
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
               isFav ? 'fill-[#B0521F] text-[#B0521F]' : 'text-[#141414]'
             }`}
           />
@@ -185,42 +157,38 @@ export function ProductCard({
       </div>
 
       {/* Card Details */}
-      <div className="p-3 sm:p-4 flex flex-col flex-1 justify-between">
-        <div className="space-y-1.5">
-          {/* Color Dots below image (Rule 15: show all siblings, sold out crossed out) */}
-          {!product.is_combo && siblingDots.length > 0 && (
-            <div className="pb-0.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-              <ColorSwatch colors={siblingDots} size="xs" />
-            </div>
-          )}
-
-          {/* Product name in Poppins 500, sentence case, up to 2 lines */}
-          <h3 className="font-sans font-medium text-[14px] sm:text-[15px] text-[#141414] group-hover:text-[#B0521F] transition-colors line-clamp-2 leading-snug">
+      <div className="p-2 sm:p-2.5 flex flex-col flex-1 justify-between">
+        <div className="space-y-0.5 sm:space-y-1">
+          {/* Product name: reduced font, single line truncated at card width */}
+          <h3
+            className="font-sans font-medium text-[12px] sm:text-[13px] text-[#141414] group-hover:text-[#B0521F] transition-colors truncate block leading-snug"
+            title={product.name}
+          >
             {product.name}
           </h3>
 
           {/* Optional Info line under name */}
           {infoLine && (
-            <p className="text-[12px] text-[#5A5A5A] line-clamp-1 leading-normal">
+            <p className="text-[11px] text-[#6B6B6B] truncate leading-normal">
               {infoLine}
             </p>
           )}
         </div>
 
         {/* Price and Quick-Add CTA */}
-        <div className="mt-3 pt-2.5 border-t border-[#E5E5E3] space-y-2.5">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="font-sans font-semibold text-[15px] sm:text-[16px] text-[#141414] tabular-nums">
+        <div className="mt-1.5 sm:mt-2 pt-1.5 sm:pt-2 border-t border-[#E5E5E3] space-y-1.5 sm:space-y-2">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="font-sans font-semibold text-[13px] sm:text-[14px] text-[#141414] tabular-nums">
               {formatINR(sellingPrice)}
             </span>
             {hasDiscount && (
-              <span className="font-sans text-[12px] sm:text-[13px] text-[#6B6B6B] line-through tabular-nums">
+              <span className="font-sans text-[11px] sm:text-[12px] text-[#6B6B6B] line-through tabular-nums">
                 {formatINR(mrp)}
               </span>
             )}
             {/* Rule 18: Discount shown once per card as 'N% off' next to the price */}
             {hasDiscount && (
-              <span className="text-[12px] font-semibold text-[#B0521F]">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#B0521F]">
                 {discountPercent}% off
               </span>
             )}
@@ -228,7 +196,7 @@ export function ProductCard({
 
           {/* Quick-Add Button */}
           {isInBag && (!isCombo || isComboOrderable) ? (
-            <div className="w-full py-2 px-3 bg-[#F4F3F0] text-[#6B6B6B] text-[12px] font-medium rounded-[6px] text-center flex items-center justify-center gap-1.5 border border-[#E5E5E3]">
+            <div className="w-full py-1.5 px-2 bg-[#F4F3F0] text-[#6B6B6B] text-[11px] sm:text-[12px] font-medium rounded-[6px] text-center flex items-center justify-center gap-1 border border-[#E5E5E3] min-h-[30px] sm:min-h-[34px]">
               <Check className="w-3.5 h-3.5 text-[#141414]" />
               <span>In bag</span>
             </div>
@@ -236,7 +204,7 @@ export function ProductCard({
             <button
               type="button"
               onClick={handleQuickAdd}
-              className={`w-full py-2 px-3 text-[12px] sm:text-[13px] font-semibold rounded-[6px] transition-colors text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`w-full py-1.5 px-2 text-[11px] sm:text-[12px] font-semibold rounded-[6px] transition-colors text-center cursor-pointer flex items-center justify-center gap-1 min-h-[30px] sm:min-h-[34px] ${
                 outlinedButton
                   ? 'border border-[#141414] text-[#141414] hover:bg-[#141414] hover:text-white bg-transparent'
                   : 'bg-[#141414] hover:bg-[#2A2A2A] text-white'

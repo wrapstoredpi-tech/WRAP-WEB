@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown, X, MessageCircle, ArrowRight, Check, PackageSearch } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, ChevronRight, X, MessageCircle, ArrowRight, Check, PackageSearch } from 'lucide-react';
 import { useProductsContext } from '../context/ProductsContext';
 import { usePhoneContext } from '../context/PhoneContext';
 import {
@@ -15,6 +15,7 @@ import { ProductCard } from '../components/home/ProductCard';
 import { setPageMeta } from '../lib/seo';
 import { store } from '../config/store';
 import { getCollectionBySlug } from '../config/collections';
+import { CollectionModelModal } from '../components/collection/CollectionModelModal';
 
 const PRICE_RANGES = [
   { label: 'All prices', min: 0, max: Infinity },
@@ -86,12 +87,21 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
   const navigate = useNavigate();
   const { products = [], isLoading, error, refetch } = useProductsContext();
   const { savedPhone, selectPhone } = usePhoneContext();
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
 
   // Collection definition if on a collection page
   const resolvedCollection = useMemo(() => {
     if (!isCollectionPage) return null;
-    return getCollectionBySlug(collectionSlug);
-  }, [isCollectionPage, collectionSlug]);
+    return getCollectionBySlug(collectionSlug, products);
+  }, [isCollectionPage, collectionSlug, products]);
+
+  // Target model for collection page (from URL ?model= or savedPhone)
+  const targetModel = useMemo(() => {
+    const urlModel = searchParams.get('model');
+    if (urlModel) return urlModel.trim();
+    if (savedPhone?.model) return savedPhone.model.trim();
+    return null;
+  }, [searchParams, savedPhone]);
 
   const brandCap = useMemo(() => {
     if (!brandSlug) return 'Apple';
@@ -191,7 +201,8 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
       if (!resolvedCollection) {
         return { casesList: [], screenList: [], combosList: [], allModelProducts: [] };
       }
-      const matchKeywords = resolvedCollection.match || [];
+      const colNameNorm = resolvedCollection.name.toLowerCase().trim();
+
       const matched = products.filter((p) => {
         if (!p || p.is_active === false || p.online_visible === false) return false;
         const stock = p.available_stock ?? p.current_stock ?? 0;
@@ -200,24 +211,18 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
         const isCase =
           (p.category || '').toLowerCase().includes('case') ||
           (p.subcategory || '').toLowerCase().includes('iphone') ||
-          (p.subcategory || '').toLowerCase().includes('samsung');
+          (p.subcategory || '').toLowerCase().includes('samsung') ||
+          (p.category || '').toLowerCase().includes('mobile cases');
         if (!isCase) return false;
 
-        const pName = (p.name || '').toLowerCase();
-        const pDesc = (p.description || '').toLowerCase();
-        const pCol = (p.collection || '').toLowerCase();
-        const matchesCol = matchKeywords.some(
-          (k) =>
-            pName.includes(k.toLowerCase()) ||
-            pDesc.includes(k.toLowerCase()) ||
-            pCol.includes(k.toLowerCase())
-        );
-        if (!matchesCol) return false;
+        // Exact collection check
+        const pCol = (p.collection || '').toLowerCase().trim();
+        if (pCol !== colNameNorm) return false;
 
-        // Filter to saved phone when set
-        if (savedPhone?.model) {
+        // Filter to target model when set
+        if (targetModel) {
           const comp = (p.compatible_models || []).map((m) => (m || '').toLowerCase().trim());
-          const targetM = savedPhone.model.toLowerCase().trim();
+          const targetM = targetModel.toLowerCase().trim();
           if (comp.length > 0 && !comp.includes('universal') && !comp.includes(targetM)) {
             return false;
           }
@@ -277,7 +282,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
       return { casesList: [], screenList: [], combosList: [], allModelProducts: [] };
     }
 
-    const targetModel = resolvedModel.toLowerCase().trim();
+    const activeModelLower = resolvedModel.toLowerCase().trim();
 
     const cases = [];
     const screens = [];
@@ -286,7 +291,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
     products.forEach((p) => {
       if (!p) return;
       const compModels = (p.compatible_models || []).map((m) => (m || '').toLowerCase().trim());
-      const fitsThisModel = compModels.includes(targetModel);
+      const fitsThisModel = compModels.includes(activeModelLower);
       const isUniversal = compModels.length === 0 || compModels.includes('universal');
 
       const isCombo = Boolean(p.is_combo || p.product_type === 'combo');
@@ -304,7 +309,7 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           cat.includes('screen'));
 
       if (isCombo) {
-        if (isComboEligible(p, targetModel)) {
+        if (isComboEligible(p, activeModelLower)) {
           combos.push(p);
         }
       } else if (isCase && fitsThisModel) {
@@ -323,7 +328,40 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
       combosList: combos,
       allModelProducts: all,
     };
-  }, [products, resolvedModel, isAccessoryPage, resolvedSubcategory]);
+  }, [products, resolvedModel, isAccessoryPage, resolvedSubcategory, isCollectionPage, resolvedCollection, targetModel]);
+
+  // Newly added cases that support the user-selected mobile model (for empty collection scenario)
+  const otherCasesGrouped = useMemo(() => {
+    if (!isCollectionPage || !targetModel) return [];
+    const targetM = targetModel.toLowerCase().trim();
+
+    const matched = products.filter((p) => {
+      if (!p || p.is_active === false || p.online_visible === false) return false;
+      const stock = p.available_stock ?? p.current_stock ?? 0;
+      if (stock <= 0 || p.stock_status === 'OUT_OF_STOCK') return false;
+
+      const isCase =
+        !p.is_combo &&
+        p.product_type !== 'combo' &&
+        ((p.category || '').toLowerCase().includes('case') ||
+          (p.subcategory || '').toLowerCase().includes('iphone') ||
+          (p.subcategory || '').toLowerCase().includes('samsung') ||
+          (p.category || '').toLowerCase().includes('mobile cases'));
+      if (!isCase) return false;
+
+      const comp = (p.compatible_models || []).map((m) => (m || '').toLowerCase().trim());
+      return comp.includes(targetM);
+    });
+
+    // Sort newest first
+    matched.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return groupProductsByDesign(matched);
+  }, [isCollectionPage, targetModel, products]);
 
   // 2. Build Round Chips Data (72px circle with real photo on #F4F3F0; Only chips with items)
   const chips = useMemo(() => {
@@ -620,9 +658,32 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
               {resolvedCollection.description}
             </p>
           )}
-          {isCollectionPage && savedPhone?.model && (
-            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#E7E5E0] rounded-full text-[12px] text-[#5A5A5A]">
-              <span>Filtered for <strong>{savedPhone.model}</strong></span>
+          {isCollectionPage && (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-[#E7E5E0] rounded-full text-[13px] text-[#5A5A5A] shadow-xs">
+                {targetModel ? (
+                  <>
+                    <span>Showing cases for <strong className="text-[#141414] font-semibold">{targetModel}</strong></span>
+                    <span className="text-[#CCC]">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsCollectionModalOpen(true)}
+                      className="text-[#141414] font-medium underline underline-offset-2 hover:text-[#B0521F] transition-colors cursor-pointer"
+                    >
+                      Change model
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsCollectionModalOpen(true)}
+                    className="text-[#141414] font-medium hover:text-[#B0521F] transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Select your phone model</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {!isCollectionPage && (
@@ -673,43 +734,83 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
           </div>
         )}
 
-        {/* ─── SCENARIO: NO PRODUCTS IN THIS CATEGORY / ACCESSORY ─── */}
+        {/* ─── SCENARIO: NO PRODUCTS IN THIS CATEGORY / ACCESSORY / COLLECTION ─── */}
         {((isAccessoryPage || isCollectionPage) && allModelProducts.length === 0 && !isLoading) ? (
-          <div className="py-16 sm:py-20 px-4 max-w-lg mx-auto text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#F4F2EE] border border-[#E7E5E0] mx-auto flex items-center justify-center text-[#141414]">
-              <PackageSearch className="w-7 h-7 stroke-[1.5]" />
+          <div className="space-y-12">
+            <div className="py-12 sm:py-16 px-4 max-w-lg mx-auto text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#F4F2EE] border border-[#E7E5E0] mx-auto flex items-center justify-center text-[#141414]">
+                <PackageSearch className="w-7 h-7 stroke-[1.5]" />
+              </div>
+
+              <h2 className="text-2xl sm:text-3xl font-semibold text-[#141414] tracking-[-0.025em]">
+                No product found
+              </h2>
+
+              <p className="text-[14px] sm:text-[15px] text-[#6B6B6B] leading-relaxed max-w-md mx-auto">
+                {isCollectionPage
+                  ? `We don't have products in "${resolvedCollection?.name || 'this collection'}" for ${targetModel || 'your phone model'} online right now. Feel free to contact us on WhatsApp to check store availability.`
+                  : `We don't have products in ${resolvedSubcategory ? `"${resolvedSubcategory}"` : 'this category'} online right now. Feel free to contact us on WhatsApp to check store availability.`}
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a
+                  href={`https://wa.me/${store.whatsappNumber || '918122747947'}?text=${encodeURIComponent(
+                    isCollectionPage
+                      ? `Hi, I am looking for ${resolvedCollection?.name || 'phone'} cases for ${targetModel || 'my phone'} at WrapStore.`
+                      : `Hi, I am looking for ${resolvedSubcategory || 'accessories'} at WrapStore.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto min-h-[46px] px-6 bg-[#25D366] hover:bg-[#20BD5A] text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
+                >
+                  <MessageCircle className="w-4 h-4 fill-white" />
+                  <span>Contact us</span>
+                </a>
+
+                <Link
+                  to="/cases"
+                  className="w-full sm:w-auto min-h-[46px] px-5 border border-[#E5E5E3] hover:border-[#141414] bg-white text-[#141414] text-[14px] font-medium rounded-[6px] transition-colors flex items-center justify-center cursor-pointer"
+                >
+                  Browse phone cases
+                </Link>
+
+                {isCollectionPage && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCollectionModalOpen(true)}
+                    className="w-full sm:w-auto min-h-[46px] px-5 border border-[#141414] bg-[#141414] hover:bg-black text-white text-[14px] font-medium rounded-[6px] transition-colors flex items-center justify-center cursor-pointer shadow-xs active:scale-[0.98]"
+                  >
+                    Choose another phone model
+                  </button>
+                )}
+              </div>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-semibold text-[#141414] tracking-[-0.025em]">
-              No product found
-            </h2>
+            {/* Newly added cases that support the user-selected mobile model */}
+            {isCollectionPage && targetModel && otherCasesGrouped.length > 0 && (
+              <div className="pt-8 border-t border-[#E5E5E3] space-y-6">
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-semibold text-[#141414] tracking-[-0.02em]">
+                    Don't worry, we got some cases that supports {targetModel}
+                  </h3>
+                  <p className="text-[13px] sm:text-[14px] text-[#6B6B6B] mt-1">
+                    Newly added cases designed to fit your phone.
+                  </p>
+                </div>
 
-            <p className="text-[14px] sm:text-[15px] text-[#6B6B6B] leading-relaxed max-w-md mx-auto">
-              We don't have products in {resolvedSubcategory ? `"${resolvedSubcategory}"` : 'this category'} online right now. Feel free to contact us on WhatsApp to check store availability.
-            </p>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a
-                href={`https://wa.me/${store.whatsappNumber || '918122747947'}?text=${encodeURIComponent(
-                  `Hi, I am looking for ${resolvedSubcategory || 'accessories'} at WrapStore.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto min-h-[46px] px-6 bg-[#25D366] hover:bg-[#20BD5A] text-white text-[14px] font-semibold rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
-              >
-                <MessageCircle className="w-4 h-4 fill-white" />
-                <span>Contact us</span>
-              </a>
-
-              <Link
-                to="/cases"
-                className="w-full sm:w-auto min-h-[46px] px-5 border border-[#E5E5E3] hover:border-[#141414] bg-white text-[#141414] text-[14px] font-medium rounded-[6px] transition-colors flex items-center justify-center cursor-pointer"
-              >
-                Browse phone cases
-              </Link>
-            </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+                  {otherCasesGrouped.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      contextModel={targetModel}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        ) : (hasCases || (isAccessoryPage && allModelProducts.length > 0) || isCollectionPage) ? (
+        ) : (hasCases || (isAccessoryPage && allModelProducts.length > 0) || (isCollectionPage && allModelProducts.length > 0)) ? (
           <div className="space-y-6">
             
             {/* 3. Bar: "Filters" button on left, sort on right. Under it: "Model: <model> ›" */}
@@ -1050,6 +1151,21 @@ export function ModelCasesPage({ isAccessoryPage = false, isCollectionPage = fal
         )}
 
       </div>
+
+      {/* Model Picker Modal for Collections */}
+      {isCollectionPage && (
+        <CollectionModelModal
+          isOpen={isCollectionModalOpen}
+          onClose={() => setIsCollectionModalOpen(false)}
+          collection={resolvedCollection}
+          selectedModel={targetModel}
+          onSelectModel={(brand, model) => {
+            selectPhone(brand, model);
+            setIsCollectionModalOpen(false);
+            navigate(`/collection/${collectionSlug}?model=${encodeURIComponent(model)}&brand=${encodeURIComponent(brand)}`);
+          }}
+        />
+      )}
     </div>
   );
 }
