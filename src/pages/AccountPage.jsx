@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, MapPin, User, LogOut, ArrowRight, Heart } from 'lucide-react';
+import { Package, MapPin, User, LogOut, ArrowRight, Heart, Check, Edit2, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatINR } from '../lib/currency';
 import { groupOrderItems, CompactComboComponentList } from '../components/cart/OrderItemsList';
 
 export function AccountPage() {
-  const { user, firstName, isLoading, signOut } = useAuth();
+  const { user, customerProfile, firstName, isLoading, signOut, updateCustomerProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -15,13 +15,50 @@ export function AccountPage() {
   const [userOrders, setUserOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
+  // Profile Edit State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+  const [profileErr, setProfileErr] = useState('');
+
+  // Address Edit State
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [addressCity, setAddressCity] = useState('');
+  const [addressState, setAddressState] = useState('');
+  const [addressPincode, setAddressPincode] = useState('');
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressMsg, setAddressMsg] = useState('');
+  const [addressErr, setAddressErr] = useState('');
+
+  // Sync initial profile values
+  useEffect(() => {
+    if (customerProfile) {
+      setEditFullName(customerProfile.full_name || '');
+      setEditPhone(customerProfile.phone || '');
+      const addr = customerProfile.default_shipping_address || {};
+      setAddressLine1(addr.line1 || '');
+      setAddressLine2(addr.line2 || '');
+      setAddressCity(addr.city || '');
+      setAddressState(addr.state || '');
+      setAddressPincode(addr.postal_code || addr.pincode || '');
+    } else if (user) {
+      const meta = user.user_metadata || {};
+      setEditFullName(meta.full_name || meta.name || '');
+      setEditPhone(meta.phone || user.phone || '');
+    }
+  }, [customerProfile, user]);
+
   useEffect(() => {
     async function loadOrders() {
       setLoadingOrders(true);
       try {
         const local = JSON.parse(localStorage.getItem('wrapstore_orders_v2') || '[]');
         const userEmail = (user?.email || '').toLowerCase().trim();
-        const userPhone = (user?.user_metadata?.phone || '').replace(/\D/g, '');
+        const userPhone = (customerProfile?.phone || user?.user_metadata?.phone || '').replace(/\D/g, '');
 
         let matchedLocal = local.filter((o) => {
           const oEmail = (o.contact?.email || '').toLowerCase().trim();
@@ -81,8 +118,7 @@ export function AccountPage() {
     if (user) {
       loadOrders();
     }
-  }, [user]);
-
+  }, [user, customerProfile]);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -103,6 +139,63 @@ export function AccountPage() {
     }
   };
 
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setProfileMsg('');
+    setProfileErr('');
+
+    if (!editFullName.trim()) {
+      setProfileErr('Please enter your full name.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      await updateCustomerProfile({
+        full_name: editFullName.trim(),
+        phone: editPhone.trim(),
+      });
+      setProfileMsg('Profile updated successfully.');
+      setIsEditingProfile(false);
+    } catch (err) {
+      setProfileErr(err.message || 'Unable to update profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleSaveAddress = async (e) => {
+    e.preventDefault();
+    setAddressMsg('');
+    setAddressErr('');
+
+    if (!addressLine1.trim() || !addressCity.trim() || !addressState.trim()) {
+      setAddressErr('Please fill in line 1, city, and state.');
+      return;
+    }
+
+    setIsSavingAddress(true);
+    try {
+      const newAddress = {
+        line1: addressLine1.trim(),
+        line2: addressLine2.trim(),
+        city: addressCity.trim(),
+        state: addressState.trim(),
+        postal_code: addressPincode.trim(),
+        country: 'India',
+      };
+      await updateCustomerProfile({
+        default_shipping_address: newAddress,
+      });
+      setAddressMsg('Saved delivery address updated successfully.');
+      setIsEditingAddress(false);
+    } catch (err) {
+      setAddressErr(err.message || 'Unable to save address.');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
   if (isLoading || !user) {
     return (
       <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-16 flex items-center justify-center">
@@ -112,7 +205,10 @@ export function AccountPage() {
   }
 
   const meta = user.user_metadata || {};
-  const fullName = meta.full_name || meta.name || firstName || 'User';
+  const displayFullName = customerProfile?.full_name || meta.full_name || meta.name || firstName || 'User';
+  const displayPhone = customerProfile?.phone || meta.phone || 'Not provided';
+  const savedAddress = customerProfile?.default_shipping_address || {};
+  const hasSavedAddress = Boolean(savedAddress.line1 && savedAddress.city);
 
   return (
     <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-16">
@@ -286,44 +382,265 @@ export function AccountPage() {
           {/* TAB 2: Addresses */}
           {activeTab === 'addresses' && (
             <div className="space-y-6">
-              <h2 className="text-[18px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-3">
-                Saved Delivery Addresses
-              </h2>
-              <div className="p-8 text-center bg-[#FAFAF9] rounded-[6px] border border-[#E5E5E3] space-y-2">
-                <MapPin className="w-8 h-8 text-[#6B6B6B] mx-auto" />
-                <p className="text-[14px] text-[#6B6B6B]">
-                  Your delivery address will be securely saved when you complete your next order at checkout.
-                </p>
+              <div className="flex items-center justify-between border-b border-[#E5E5E3] pb-3">
+                <h2 className="text-[18px] font-semibold text-[#141414]">
+                  Saved Delivery Addresses
+                </h2>
+                {!isEditingAddress && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingAddress(true)}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#141414] hover:text-[#B0521F] cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>{hasSavedAddress ? 'Edit address' : 'Add address'}</span>
+                  </button>
+                )}
               </div>
+
+              {addressMsg && (
+                <div className="p-3 bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] rounded-[6px] text-[13px] flex items-center gap-2">
+                  <Check className="w-4 h-4 shrink-0" />
+                  <span>{addressMsg}</span>
+                </div>
+              )}
+              {addressErr && (
+                <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] rounded-[6px] text-[13px] flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{addressErr}</span>
+                </div>
+              )}
+
+              {isEditingAddress ? (
+                <form onSubmit={handleSaveAddress} className="space-y-4 max-w-lg">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Address Line 1 *
+                    </label>
+                    <input
+                      type="text"
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      placeholder="House / Flat / Street address"
+                      className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Address Line 2 (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={addressLine2}
+                      onChange={(e) => setAddressLine2(e.target.value)}
+                      placeholder="Apartment, suite, landmark"
+                      className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        value={addressCity}
+                        onChange={(e) => setAddressCity(e.target.value)}
+                        placeholder="City"
+                        className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                        State *
+                      </label>
+                      <input
+                        type="text"
+                        value={addressState}
+                        onChange={(e) => setAddressState(e.target.value)}
+                        placeholder="State"
+                        className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      PIN Code
+                    </label>
+                    <input
+                      type="text"
+                      value={addressPincode}
+                      onChange={(e) => setAddressPincode(e.target.value)}
+                      placeholder="600001"
+                      className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSavingAddress}
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-[#141414] text-white text-[13px] font-semibold rounded-[4px] hover:bg-[#383836] transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingAddress && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      <span>Save address</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAddress(false)}
+                      className="px-4 py-2 border border-[#E5E5E3] text-[#141414] text-[13px] font-semibold rounded-[4px] hover:bg-[#FAFAF9] transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : hasSavedAddress ? (
+                <div className="p-5 bg-[#FAFAF9] rounded-[6px] border border-[#E5E5E3] space-y-1 text-[14px]">
+                  <p className="font-semibold text-[#141414]">{displayFullName}</p>
+                  <p className="text-[#404040]">{savedAddress.line1}</p>
+                  {savedAddress.line2 && <p className="text-[#404040]">{savedAddress.line2}</p>}
+                  <p className="text-[#404040]">
+                    {savedAddress.city}, {savedAddress.state} {savedAddress.postal_code || savedAddress.pincode}
+                  </p>
+                  <p className="text-[#737373] text-[13px] pt-1">Default Shipping Address</p>
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-[#FAFAF9] rounded-[6px] border border-[#E5E5E3] space-y-2">
+                  <MapPin className="w-8 h-8 text-[#6B6B6B] mx-auto" />
+                  <p className="text-[14px] text-[#6B6B6B]">
+                    No saved address yet. You can add one above or during checkout.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           {/* TAB 3: Profile */}
           {activeTab === 'profile' && (
             <div className="space-y-6">
-              <h2 className="text-[18px] font-semibold text-[#141414] border-b border-[#E5E5E3] pb-3">
-                Profile Details
-              </h2>
-              <div className="space-y-4 max-w-md text-[14px]">
-                <div>
-                  <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
-                    Full Name
-                  </label>
-                  <p className="text-[15px] font-medium text-[#141414]">{fullName}</p>
-                </div>
-                <div>
-                  <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
-                    Email Address
-                  </label>
-                  <p className="text-[15px] font-medium text-[#141414]">{user.email}</p>
-                </div>
-                <div>
-                  <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
-                    Account ID
-                  </label>
-                  <p className="text-[13px] font-mono text-[#8C8C8C]">{user.id}</p>
-                </div>
+              <div className="flex items-center justify-between border-b border-[#E5E5E3] pb-3">
+                <h2 className="text-[18px] font-semibold text-[#141414]">
+                  Profile Details
+                </h2>
+                {!isEditingProfile && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(true)}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#141414] hover:text-[#B0521F] cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit details</span>
+                  </button>
+                )}
               </div>
+
+              {profileMsg && (
+                <div className="p-3 bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] rounded-[6px] text-[13px] flex items-center gap-2">
+                  <Check className="w-4 h-4 shrink-0" />
+                  <span>{profileMsg}</span>
+                </div>
+              )}
+              {profileErr && (
+                <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] rounded-[6px] text-[13px] flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{profileErr}</span>
+                </div>
+              )}
+
+              {isEditingProfile ? (
+                <form onSubmit={handleSaveProfile} className="space-y-4 max-w-md">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="w-full bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] px-3.5 py-2 text-[14px] text-[#141414] focus:outline-none focus:border-[#141414]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Email Address (Locked)
+                    </label>
+                    <p className="text-[14px] text-[#737373] bg-[#F4F4F2] px-3.5 py-2 rounded-[6px] border border-[#E5E5E3]">
+                      {user.email}
+                    </p>
+                    <span className="text-[11px] text-[#8C8C8C] mt-1 block">
+                      Email address changes require authentication verification.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSavingProfile}
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-[#141414] text-white text-[13px] font-semibold rounded-[4px] hover:bg-[#383836] transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingProfile && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      <span>Save changes</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(false)}
+                      className="px-4 py-2 border border-[#E5E5E3] text-[#141414] text-[13px] font-semibold rounded-[4px] hover:bg-[#FAFAF9] transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4 max-w-md text-[14px]">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Full Name
+                    </label>
+                    <p className="text-[15px] font-medium text-[#141414]">{displayFullName}</p>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Phone Number
+                    </label>
+                    <p className="text-[15px] font-medium text-[#141414]">{displayPhone}</p>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Email Address
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[15px] font-medium text-[#141414]">{user.email}</p>
+                      {customerProfile?.email_verified && (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+                          Verified
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#6B6B6B] uppercase mb-1">
+                      Account ID
+                    </label>
+                    <p className="text-[13px] font-mono text-[#8C8C8C]">{user.id}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

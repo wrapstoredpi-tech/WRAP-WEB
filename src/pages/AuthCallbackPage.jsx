@@ -72,6 +72,11 @@ export function AuthCallbackPage() {
       isCompleted = true;
       clearTimeout(timeoutId);
 
+      // Record customer login timestamp via RPC
+      try {
+        supabase.rpc('record_customer_login').catch(() => {});
+      } catch {}
+
       // Clean URL: remove code/auth parameters
       try {
         window.history.replaceState({}, document.title, window.location.pathname);

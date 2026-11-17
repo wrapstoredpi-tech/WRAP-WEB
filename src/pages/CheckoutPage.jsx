@@ -70,23 +70,30 @@ export function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, customerProfile } = useAuth();
 
-  // Prefill Google name and email if signed in, keeping typed details intact
+  // Prefill customer profile name, email, phone and address if signed in
   useEffect(() => {
     if (user) {
       setFields((prev) => {
         const meta = user.user_metadata || {};
-        const googleName = meta.full_name || meta.name || '';
-        const userEmail = user.email || '';
+        const profileName = customerProfile?.full_name || meta.full_name || meta.name || '';
+        const userEmail = customerProfile?.email || user.email || '';
+        const userPhone = customerProfile?.phone || '';
+        const addr = customerProfile?.default_shipping_address || {};
         return {
           ...prev,
-          name: prev.name.trim() ? prev.name : googleName,
+          name: prev.name.trim() ? prev.name : profileName,
           email: prev.email.trim() ? prev.email : userEmail,
+          phone: prev.phone.trim() ? prev.phone : userPhone,
+          address: prev.address?.trim() ? prev.address : (addr.line1 || ''),
+          city: prev.city?.trim() ? prev.city : (addr.city || ''),
+          state: prev.state?.trim() ? prev.state : (addr.state || prev.state),
+          pincode: prev.pincode?.trim() ? prev.pincode : (addr.postal_code || addr.pincode || ''),
         };
       });
     }
-  }, [user]);
+  }, [user, customerProfile]);
 
   // Remember details for returning visitors
   useEffect(() => {
