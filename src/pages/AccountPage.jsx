@@ -66,15 +66,20 @@ export function AccountPage() {
           return (userEmail && oEmail === userEmail) || (userPhone && oPhone && oPhone.includes(userPhone));
         });
 
-        if (userEmail) {
+        const queryFilters = [];
+        if (userEmail) queryFilters.push(`customer_email.eq.${userEmail}`);
+        if (userPhone) queryFilters.push(`customer_phone.eq.${userPhone}`);
+
+        if (queryFilters.length > 0) {
           const { data: dbOrders } = await supabase
             .from('online_orders')
             .select('*, online_order_items(*)')
-            .eq('customer_email', userEmail)
+            .or(queryFilters.join(','))
             .order('created_at', { ascending: false });
 
           if (dbOrders && dbOrders.length > 0) {
             const formattedDb = dbOrders.map((o) => ({
+              id: o.id,
               order_number: o.order_number,
               orderId: o.order_number,
               createdAt: o.created_at,
@@ -82,13 +87,16 @@ export function AccountPage() {
               total: o.grand_total,
               items: (o.online_order_items || []).map((it) => ({
                 name: it.product_name,
-                price: it.unit_price,
+                product_name: it.product_name,
+                product_id_code: it.product_id_code,
+                product_id: it.product_id,
+                price: Number(it.unit_price || 0),
+                unit_price: Number(it.unit_price || 0),
                 quantity: it.quantity,
+                line_total: Number(it.line_total || 0),
                 selected_model: it.mobile_model,
-                combo_id: it.combo_id,
-                combo_name: it.combo_name,
-                is_combo: it.is_combo || it.product_type === 'combo',
-                components: it.combo_components || [],
+                mobile_model: it.mobile_model,
+                is_combo: it.product_type === 'combo',
               })),
             }));
 

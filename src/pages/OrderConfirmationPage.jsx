@@ -35,7 +35,11 @@ export function OrderConfirmationPage() {
   const orderId = order?.id || '';
   const customerPhone = order?.contact?.phone || order?.customer_phone || '';
   const orderState = order?.shipping_state || order?.delivery?.state || null;
-  const groupedItems = useMemo(() => (Array.isArray(order?.items) ? groupOrderItems(order.items) : []), [order?.items]);
+
+  // Real-time server-verified items from online_order_items
+  const [serverItems, setServerItems] = useState(null);
+  const itemsToRender = (serverItems && serverItems.length > 0) ? serverItems : (order?.items || []);
+  const groupedItems = useMemo(() => (Array.isArray(itemsToRender) ? groupOrderItems(itemsToRender) : []), [itemsToRender]);
 
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -81,7 +85,7 @@ export function OrderConfirmationPage() {
 
     async function verifyServerOrder() {
       try {
-        let query = supabase.from('online_orders').select('*');
+        let query = supabase.from('online_orders').select('*, online_order_items(*)');
         if (orderId) {
           query = query.eq('id', orderId);
         } else {
@@ -92,6 +96,23 @@ export function OrderConfirmationPage() {
         if (!error && data && isMounted) {
           setServerPaymentStatus(data.payment_status || 'PAID');
           setLiveOrderStatus(data.order_status || 'CONFIRMED');
+
+          if (Array.isArray(data.online_order_items) && data.online_order_items.length > 0) {
+            setServerItems(data.online_order_items.map((it) => ({
+              name: it.product_name,
+              product_name: it.product_name,
+              product_id: it.product_id,
+              product_id_code: it.product_id_code,
+              selected_model: (it.mobile_model && it.mobile_model.toLowerCase() !== 'universal') ? it.mobile_model : null,
+              mobile_model: (it.mobile_model && it.mobile_model.toLowerCase() !== 'universal') ? it.mobile_model : null,
+              price: Number(it.unit_price || 0),
+              unit_price: Number(it.unit_price || 0),
+              quantity: it.quantity,
+              color: it.selected_color || null,
+              line_total: Number(it.line_total || (it.quantity * it.unit_price) || 0),
+              is_combo: it.product_type === 'combo',
+            })));
+          }
         }
       } catch (err) {
         console.warn('Notice verifying server order:', err);

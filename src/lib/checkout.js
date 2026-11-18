@@ -6,8 +6,8 @@
  * Deducts stock atomically and updates POS in real time.
  */
 
-import { supabase } from './supabase';
-import { INDIAN_STATES, getShippingFee, getCourierPartner } from '../config/policies';
+import { supabase } from './supabase.js';
+import { INDIAN_STATES, getShippingFee, getCourierPartner } from '../config/policies.js';
 
 const LOCAL_STORAGE_ORDERS_KEY = 'wrapstore_orders_v2';
 
@@ -61,7 +61,81 @@ export async function submitOrder(orderInput) {
   const total = Number(orderInput.total) || subtotal + shippingFee;
   const gstAmount = Math.round((subtotal * 0.18) / 1.18);
 
-  // 1. Insert into online_orders table
+  // 1. Prepare Cart Items for Persistence
+  const rawItems = orderInput.items || [];
+  if (rawItems.length === 0) {
+    throw new Error('Cannot place an order with an empty cart.');
+  }
+
+  const itemsPayload = [];
+  const normalizedItems = [];
+
+  for (const item of rawItems) {
+    const isCombo = Boolean(item.is_combo || item.product?.is_combo);
+    const comboComponents = item.combo_items || item.product?.combo_items || [];
+    const selectedColor = item.selected_color || item.color || null;
+    const rawModel =
+      item.selected_model || item.mobile_model || item.product?.mobile_model || null;
+    const selectedModel =
+      (rawModel && typeof rawModel === 'string' && rawModel.trim().toLowerCase() !== 'universal') ? rawModel.trim() : null;
+
+    let displayName = item.name || item.product?.name || 'Product';
+    if (selectedColor && typeof selectedColor === 'string' && !displayName.toLowerCase().includes(selectedColor.trim().toLowerCase())) {
+      displayName = `${displayName} - ${selectedColor.trim()}`;
+    }
+    if (isCombo && comboComponents.length > 0) {
+      const compDesc = comboComponents
+        .map((c) => `${c.product_name || c.name} (1 unit)`)
+        .join(', ');
+      displayName = `${displayName} [Includes: ${compDesc}]`;
+    }
+
+    const unitPrice = Number(item.price || item.product?.selling_price || 0);
+    const qty = Math.max(1, Number(item.quantity) || 1);
+    const lineTotal = unitPrice * qty;
+
+    const rawProdId = item.productId || item.product?.id || null;
+    const isValidUuid = typeof rawProdId === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(rawProdId);
+    const productCode = item.product?.product_id || item.product_id_code || item.productCode || null;
+
+    itemsPayload.push({
+      product_id: (!isCombo && isValidUuid) ? rawProdId : null,
+      product_id_code: productCode,
+      product_name: displayName,
+      product_type: isCombo ? 'combo' : (item.product?.product_type || 'case'),
+      mobile_brand: item.product?.mobile_brand || null,
+      mobile_model: selectedModel,
+      quantity: qty,
+      unit_price: unitPrice,
+      discount_pct: 0,
+      gst_pct: 18,
+      line_total: lineTotal,
+    });
+
+    normalizedItems.push({
+      productId: rawProdId,
+      product_id: rawProdId,
+      product_id_code: productCode,
+      name: displayName,
+      product_name: displayName,
+      mobile_model: selectedModel,
+      selected_model: selectedModel,
+      color: selectedColor,
+      price: unitPrice,
+      unit_price: unitPrice,
+      quantity: qty,
+      line_total: lineTotal,
+      image: item.image || item.product?.image_url,
+      is_combo: isCombo,
+      combo_items: comboComponents,
+    });
+  }
+
+  // 2. Prepare Order Header Payload
+  const notesSummary = itemsPayload
+    .map((it) => `${it.quantity}x ${it.product_name}${it.mobile_model ? ` (${it.mobile_model})` : ''}`)
+    .join(', ');
+
   const orderInsertPayload = {
     customer_name: orderInput.contact?.name || 'Customer',
     customer_phone: cleanPhone,
@@ -69,6 +143,7 @@ export async function submitOrder(orderInput) {
     shipping_address: shippingAddress,
     billing_address: shippingAddress,
     shipping_state: validatedState,
+    notes: notesSummary,
     subtotal,
     discount_amount: 0,
     gst_amount: gstAmount,
@@ -82,277 +157,278 @@ export async function submitOrder(orderInput) {
   };
 
   let dbOrder = null;
-  let { data: createdOrder, error: orderErr } = await supabase
-    .from('online_orders')
-    .insert(orderInsertPayload)
-    .select()
-    .single();
+  let insertedDbItems = null;
+  let didDeductViaRpc = false;
 
-  // Graceful fallback if shipping_state column has not been added to Supabase table yet
-  if (orderErr && (orderErr.message?.includes('shipping_state') || orderErr.code === 'PGRST204' || orderErr.code === '42703')) {
-    console.warn('shipping_state column not yet present in online_orders schema, retrying without column:', orderErr.message);
-    const fallbackPayload = { ...orderInsertPayload };
-    delete fallbackPayload.shipping_state;
-    const retry = await supabase
+  // 3. Attempt Atomic Order Creation via PostgreSQL RPC
+  try {
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('create_online_order_atomic', {
+      p_order: orderInsertPayload,
+      p_items: itemsPayload,
+    });
+
+    if (!rpcErr && rpcRes?.success && rpcRes.order) {
+      dbOrder = rpcRes.order;
+      insertedDbItems = rpcRes.items || [];
+      didDeductViaRpc = true;
+    }
+  } catch (rpcEx) {
+    console.warn('Atomic RPC create_online_order_atomic notice, falling back to transaction flow:', rpcEx);
+  }
+
+  // 4. Fallback: Transaction-Safe Client Flow with Strict Rollback on Failure
+  if (!dbOrder) {
+    let { data: createdOrder, error: orderErr } = await supabase
       .from('online_orders')
-      .insert(fallbackPayload)
+      .insert(orderInsertPayload)
       .select()
       .single();
-    createdOrder = retry.data;
-    orderErr = retry.error;
+
+    // Fallback if shipping_state or notes causes column error
+    if (orderErr && (orderErr.code === 'PGRST204' || orderErr.code === '42703')) {
+      const fallbackPayload = { ...orderInsertPayload };
+      delete fallbackPayload.shipping_state;
+      const retry = await supabase
+        .from('online_orders')
+        .insert(fallbackPayload)
+        .select()
+        .single();
+      createdOrder = retry.data;
+      orderErr = retry.error;
+    }
+
+    if (orderErr) {
+      console.error('Failed to create online order in Supabase:', orderErr);
+      throw new Error('Could not record online order: ' + orderErr.message);
+    }
+
+    dbOrder = createdOrder;
+
+    // Attach generated order UUID as order_id to each cart item
+    const itemsToInsert = itemsPayload.map((it) => ({
+      ...it,
+      order_id: dbOrder.id,
+    }));
+
+    let itemsData = null;
+    let itemsErr = null;
+
+    const insertRes = await supabase
+      .from('online_order_items')
+      .insert(itemsToInsert)
+      .select();
+
+    itemsData = insertRes.data;
+    itemsErr = insertRes.error;
+
+    // Retry with product_id: null if foreign key constraint on products(id) fails
+    if (itemsErr && (itemsErr.code === '23503' || itemsErr.message?.includes('foreign key'))) {
+      console.warn('Foreign key violation on product_id. Retrying with product_id: null:', itemsErr.message);
+      const sanitizedItems = itemsToInsert.map((it) => ({ ...it, product_id: null }));
+      const retryRes = await supabase
+        .from('online_order_items')
+        .insert(sanitizedItems)
+        .select();
+      itemsData = retryRes.data;
+      itemsErr = retryRes.error;
+    }
+
+    if (itemsErr) {
+      console.error('CRITICAL: Failed to insert online_order_items. Rolling back online_orders:', itemsErr.message);
+      // TRANSACTION ROLLBACK: Delete order header so database is never left with an orphan order header
+      try {
+        await supabase.from('online_orders').delete().eq('id', dbOrder.id);
+      } catch (rollbackErr) {
+        console.error('Rollback delete failed:', rollbackErr);
+      }
+      throw new Error('Order creation failed because items could not be saved: ' + itemsErr.message);
+    }
+
+    insertedDbItems = itemsData || [];
   }
 
-  if (orderErr) {
-    console.error('Failed to create online order in Supabase:', orderErr);
-    throw new Error('Could not record online order: ' + orderErr.message);
-  }
-
-  dbOrder = createdOrder;
   const orderNumber = dbOrder.order_number || `WS-ONL-${dbOrder.id.slice(0, 6).toUpperCase()}`;
 
-  // 2. Prepare items and insert into online_order_items
-  const rawItems = orderInput.items || [];
-  const itemsToInsert = [];
-  const normalizedItems = [];
+  // 5. Stock Deduction: Executed exactly once only after items are successfully persisted
+  if (!didDeductViaRpc) {
+    const affectedProductIds = new Set();
+    const deductedProductsThisOrder = new Set();
 
-  for (const item of rawItems) {
-    const isCombo = item.is_combo || item.product?.is_combo || false;
-    const comboComponents = item.combo_items || item.product?.combo_items || [];
+    for (const item of rawItems) {
+      const isCombo = Boolean(item.is_combo || item.product?.is_combo);
+      const comboComponents = item.combo_items || item.product?.combo_items || [];
+      const itemQty = Math.max(1, Number(item.quantity) || 1);
 
-    let displayName = item.name || item.product?.name || 'Product';
-    if (isCombo && comboComponents.length > 0) {
-      const compDesc = comboComponents
-        .map((c) => `${c.product_name || c.name} (1 unit)`)
-        .join(', ');
-      displayName = `${displayName} [Includes: ${compDesc}]`;
-    }
+      if (isCombo) {
+        const comboId = item.productId || item.product?.id;
+        let comboSold = false;
 
-    const unitPrice = Number(item.price || item.product?.selling_price || 0);
-    const qty = Number(item.quantity) || 1;
-    const lineTotal = unitPrice * qty;
-    const rawModel =
-      item.selected_model || item.mobile_model || item.product?.mobile_model || null;
-    const selectedModel =
-      (rawModel && typeof rawModel === 'string' && rawModel.trim().toLowerCase() !== 'universal') ? rawModel.trim() : null;
-    const selectedColor = item.selected_color || item.color || null;
-
-    itemsToInsert.push({
-      order_id: dbOrder.id,
-      // For combos, product_id in products table is null (combos have their own ID in combos table)
-      // to avoid FK violation on online_order_items_product_id_fkey
-      product_id: isCombo ? null : (item.productId || item.product?.id || null),
-      product_name: displayName,
-      product_type: isCombo ? 'combo' : (item.product?.product_type || 'case'),
-      mobile_brand: item.product?.mobile_brand || null,
-      mobile_model: selectedModel,
-      quantity: qty,
-      unit_price: unitPrice,
-      discount_pct: 0,
-      gst_pct: 18,
-      line_total: lineTotal,
-      is_combo: isCombo,
-      combo_id: isCombo ? (item.productId || item.product?.id || null) : null,
-      combo_components: isCombo ? comboComponents : null,
-    });
-
-    normalizedItems.push({
-      productId: item.productId || item.product?.id,
-      name: displayName,
-      mobile_model: selectedModel,
-      selected_model: selectedModel,
-      color: selectedColor,
-      price: unitPrice,
-      quantity: qty,
-      image: item.image || item.product?.image_url,
-      is_combo: isCombo,
-      combo_items: comboComponents,
-    });
-  }
-
-  if (itemsToInsert.length > 0) {
-    const { error: itemsErr } = await supabase.from('online_order_items').insert(itemsToInsert);
-    if (itemsErr) {
-      console.warn('Error inserting online_order_items:', itemsErr.message);
-    }
-  }
-
-  // 3. Stock deduction: Reduce stock accurately and log movement
-  // Note: For combos, each combo sold deducts exactly 1 unit of each constituent product
-  const affectedProductIds = new Set();
-  for (const item of rawItems) {
-    const isCombo = item.is_combo || item.product?.is_combo || false;
-    const comboComponents = item.combo_items || item.product?.combo_items || [];
-    const itemQty = Number(item.quantity) || 1;
-
-    if (isCombo) {
-      const comboId = item.productId || item.product?.id;
-      let comboSold = false;
-
-      // 1. Attempt atomic sell_combo RPC
-      if (comboId) {
-        try {
-          const { data: sellRes, error: sellErr } = await supabase.rpc('sell_combo', {
-            p_combo_id: comboId,
-            p_qty: itemQty,
-            p_channel: 'ONLINE',
-            p_reference: orderNumber,
-            p_performed_by: null,
-          });
-
-          if (!sellErr && sellRes?.success) {
-            comboSold = true;
-            if (Array.isArray(sellRes.items)) {
-              sellRes.items.forEach((it) => affectedProductIds.add(it.product_id));
-            }
-          }
-        } catch (e) {
-          console.warn('sell_combo RPC notice:', e);
-        }
-      }
-
-      // 2. Direct per-component fallback if sell_combo RPC not yet available
-      if (!comboSold && comboComponents.length > 0) {
-        for (const comp of comboComponents) {
-          const compProdId = comp.product_id || comp.id;
-          const compUnitQty = Number(comp.qty_per_combo) || Number(comp.unit_quantity) || Number(comp.quantity) || 1;
-          const compQty = compUnitQty * itemQty;
-          if (compProdId) {
-            affectedProductIds.add(compProdId);
-            try {
-              const { error: rpcErr } = await supabase.rpc('deduct_stock', {
-                p_product_id: compProdId,
-                p_quantity: compQty,
-                p_channel: 'ONLINE',
-                p_performed_by: null,
-                p_reference_id: orderNumber,
-              });
-
-              if (rpcErr) {
-                const { data: prod } = await supabase
-                  .from('products')
-                  .select('current_stock')
-                  .eq('id', compProdId)
-                  .single();
-
-                if (prod) {
-                  const prev = Number(prod.current_stock) || 0;
-                  const next = Math.max(0, prev - compQty);
-                  await supabase.from('products').update({ current_stock: next }).eq('id', compProdId);
-                  await supabase.from('inventory_movements').insert({
-                    product_id: compProdId,
-                    movement_type: 'ONLINE_SALE',
-                    quantity: compQty,
-                    previous_stock: prev,
-                    new_stock: next,
-                    reason: `Online Sale: Combo ${item.name || ''} (${compQty} unit${compQty > 1 ? 's' : ''})`,
-                    reference_id: orderNumber,
-                    channel: 'website',
-                  });
-                }
-              }
-            } catch (e) {
-              console.warn('deduct_stock combo error:', e);
-            }
-          }
-        }
-      }
-    } else {
-      const prodId = item.productId || item.product?.id;
-      if (prodId) {
-        affectedProductIds.add(prodId);
-        try {
-          const { error: rpcErr } = await supabase.rpc('deduct_stock', {
-            p_product_id: prodId,
-            p_quantity: itemQty,
-            p_channel: 'ONLINE',
-            p_performed_by: null,
-            p_reference_id: orderNumber,
-          });
-
-          if (rpcErr) {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('current_stock')
-              .eq('id', prodId)
-              .single();
-
-            if (prod) {
-              const prev = Number(prod.current_stock) || 0;
-              const next = Math.max(0, prev - itemQty);
-              await supabase.from('products').update({ current_stock: next }).eq('id', prodId);
-              await supabase.from('inventory_movements').insert({
-                product_id: prodId,
-                movement_type: 'ONLINE_SALE',
-                quantity: itemQty,
-                previous_stock: prev,
-                new_stock: next,
-                reason: 'ONLINE sale',
-                reference_id: orderNumber,
-                channel: 'website',
-              });
-            }
-          }
-        } catch (e) {
-          console.warn('deduct_stock product error:', e);
-        }
-      }
-    }
-  }
-
-  // 3b. Reconcile combo available stock across all active combos containing affected products
-  if (affectedProductIds.size > 0) {
-    try {
-      const validProdIds = Array.from(affectedProductIds);
-      const { data: activeCombos } = await supabase
-        .from('combos')
-        .select('*')
-        .eq('is_active', true);
-
-      if (activeCombos && activeCombos.length > 0) {
-        const affectedCombos = activeCombos.filter((c) => {
-          const items = Array.isArray(c.items) ? c.items : [];
-          return items.some((it) => validProdIds.includes(it.product_id));
-        });
-
-        if (affectedCombos.length > 0) {
-          // Fetch current stock for all items in affected combos
-          const allItemProdIds = new Set();
-          affectedCombos.forEach((c) => {
-            const items = Array.isArray(c.items) ? c.items : [];
-            items.forEach((it) => {
-              if (it.product_id) allItemProdIds.add(it.product_id);
+        // 5a. Attempt atomic sell_combo RPC
+        if (comboId) {
+          try {
+            const { data: sellRes, error: sellErr } = await supabase.rpc('sell_combo', {
+              p_combo_id: comboId,
+              p_qty: itemQty,
+              p_channel: 'ONLINE',
+              p_reference: orderNumber,
+              p_performed_by: null,
             });
-          });
 
-          const { data: prods } = await supabase
-            .from('products')
-            .select('id, current_stock')
-            .in('id', Array.from(allItemProdIds));
+            if (!sellErr && sellRes?.success) {
+              comboSold = true;
+              if (Array.isArray(sellRes.items)) {
+                sellRes.items.forEach((it) => affectedProductIds.add(it.product_id));
+              }
+            }
+          } catch (e) {
+            console.warn('sell_combo RPC notice:', e);
+          }
+        }
 
-          const stockMap = {};
-          (prods || []).forEach((p) => {
-            stockMap[p.id] = Math.max(0, Number(p.current_stock) || 0);
-          });
+        // 5b. Direct per-component fallback if sell_combo RPC not available
+        if (!comboSold && comboComponents.length > 0) {
+          for (const comp of comboComponents) {
+            const compProdId = comp.product_id || comp.id;
+            const compUnitQty = Number(comp.qty_per_combo) || Number(comp.unit_quantity) || Number(comp.quantity) || 1;
+            const compQty = compUnitQty * itemQty;
+            if (compProdId) {
+              affectedProductIds.add(compProdId);
+              try {
+                const { error: rpcErr } = await supabase.rpc('deduct_stock', {
+                  p_product_id: compProdId,
+                  p_quantity: compQty,
+                  p_channel: 'ONLINE',
+                  p_performed_by: null,
+                  p_reference_id: orderNumber,
+                });
 
-          for (const c of affectedCombos) {
-            const items = Array.isArray(c.items) ? c.items : [];
-            if (items.length === 0) continue;
-            const itemStocks = items.map((it) => stockMap[it.product_id] ?? 0);
-            const newAllotted = Math.max(0, Math.min(...itemStocks));
-            const updatedItems = items.map((it) => ({ ...it, allotted_qty: newAllotted }));
-            await supabase
-              .from('combos')
-              .update({ items: updatedItems, updated_at: new Date().toISOString() })
-              .eq('id', c.id);
-            await supabase
-              .from('combo_items')
-              .update({ allotted_qty: newAllotted })
-              .eq('combo_id', c.id);
+                if (rpcErr) {
+                  const { data: prod } = await supabase
+                    .from('products')
+                    .select('current_stock')
+                    .eq('id', compProdId)
+                    .single();
+
+                  if (prod) {
+                    const prev = Number(prod.current_stock) || 0;
+                    const next = Math.max(0, prev - compQty);
+                    await supabase.from('products').update({ current_stock: next }).eq('id', compProdId);
+                    await supabase.from('inventory_movements').insert({
+                      product_id: compProdId,
+                      movement_type: 'ONLINE_SALE',
+                      quantity: compQty,
+                      previous_stock: prev,
+                      new_stock: next,
+                      reason: `Online Sale: Combo ${item.name || ''} (${compQty} unit${compQty > 1 ? 's' : ''})`,
+                      reference_id: orderNumber,
+                      channel: 'website',
+                    });
+                  }
+                }
+              } catch (e) {
+                console.warn('deduct_stock combo component error:', e);
+              }
+            }
+          }
+        }
+      } else {
+        const prodId = item.productId || item.product?.id;
+        if (prodId && !deductedProductsThisOrder.has(prodId)) {
+          deductedProductsThisOrder.add(prodId);
+          affectedProductIds.add(prodId);
+          try {
+            const { error: rpcErr } = await supabase.rpc('deduct_stock', {
+              p_product_id: prodId,
+              p_quantity: itemQty,
+              p_channel: 'ONLINE',
+              p_performed_by: null,
+              p_reference_id: orderNumber,
+            });
+
+            if (rpcErr) {
+              const { data: prod } = await supabase
+                .from('products')
+                .select('current_stock')
+                .eq('id', prodId)
+                .single();
+
+              if (prod) {
+                const prev = Number(prod.current_stock) || 0;
+                const next = Math.max(0, prev - itemQty);
+                await supabase.from('products').update({ current_stock: next }).eq('id', prodId);
+                await supabase.from('inventory_movements').insert({
+                  product_id: prodId,
+                  movement_type: 'ONLINE_SALE',
+                  quantity: itemQty,
+                  previous_stock: prev,
+                  new_stock: next,
+                  reason: 'ONLINE sale',
+                  reference_id: orderNumber,
+                  channel: 'website',
+                });
+              }
+            }
+          } catch (e) {
+            console.warn('deduct_stock product error:', e);
           }
         }
       }
-    } catch (syncErr) {
-      console.warn('Combo sync after checkout notice:', syncErr);
+    }
+
+    // 5c. Reconcile combo available stock across all active combos containing affected products
+    if (affectedProductIds.size > 0) {
+      try {
+        const validProdIds = Array.from(affectedProductIds);
+        const { data: activeCombos } = await supabase
+          .from('combos')
+          .select('*')
+          .eq('is_active', true);
+
+        if (activeCombos && activeCombos.length > 0) {
+          const affectedCombos = activeCombos.filter((c) => {
+            const items = Array.isArray(c.items) ? c.items : [];
+            return items.some((it) => validProdIds.includes(it.product_id));
+          });
+
+          if (affectedCombos.length > 0) {
+            const allItemProdIds = new Set();
+            affectedCombos.forEach((c) => {
+              const items = Array.isArray(c.items) ? c.items : [];
+              items.forEach((it) => {
+                if (it.product_id) allItemProdIds.add(it.product_id);
+              });
+            });
+
+            const { data: prods } = await supabase
+              .from('products')
+              .select('id, current_stock')
+              .in('id', Array.from(allItemProdIds));
+
+            const stockMap = {};
+            (prods || []).forEach((p) => {
+              stockMap[p.id] = Math.max(0, Number(p.current_stock) || 0);
+            });
+
+            for (const c of affectedCombos) {
+              const items = Array.isArray(c.items) ? c.items : [];
+              if (items.length === 0) continue;
+              const itemStocks = items.map((it) => stockMap[it.product_id] ?? 0);
+              const newAllotted = Math.max(0, Math.min(...itemStocks));
+              const updatedItems = items.map((it) => ({ ...it, allotted_qty: newAllotted }));
+              await supabase
+                .from('combos')
+                .update({ items: updatedItems, updated_at: new Date().toISOString() })
+                .eq('id', c.id);
+              await supabase
+                .from('combo_items')
+                .update({ allotted_qty: newAllotted })
+                .eq('combo_id', c.id);
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Combo sync after checkout notice:', syncErr);
+      }
     }
   }
 
@@ -394,12 +470,14 @@ export async function submitOrder(orderInput) {
     payment_reference: paymentRef,
   };
 
-  try {
-    const existingOrders = JSON.parse(localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY) || '[]');
-    existingOrders.unshift(newOrder);
-    localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(existingOrders));
-  } catch (e) {
-    console.warn('Could not save order to localStorage:', e);
+  if (typeof window !== 'undefined' && typeof window.localStorage?.getItem === 'function') {
+    try {
+      const existingOrders = JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY) || '[]');
+      existingOrders.unshift(newOrder);
+      window.localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(existingOrders));
+    } catch (e) {
+      console.warn('Could not save order to localStorage:', e);
+    }
   }
 
   if (typeof window !== 'undefined') {
