@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, MapPin, User, LogOut, ArrowRight, Heart, Check, Edit2, Loader2, AlertCircle } from 'lucide-react';
+import {
+  Package, MapPin, User, LogOut, ArrowRight, Heart, Check, Edit2,
+  Loader2, AlertCircle, ChevronDown, Truck, RotateCcw,
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatINR } from '../lib/currency';
 import { groupOrderItems, CompactComboComponentList } from '../components/cart/OrderItemsList';
+import { ORDER_STATUS_STEPS, mapDbStatusToDisplay } from '../lib/checkout';
+import { policies, getDeliveryLine } from '../config/policies';
+
+const OrderConfirmedScene = lazy(() => import('../components/order/OrderConfirmedScene'));
 
 export function AccountPage() {
   const { user, customerProfile, firstName, isLoading, signOut, updateCustomerProfile } = useAuth();
@@ -14,6 +21,25 @@ export function AccountPage() {
   const activeTab = searchParams.get('tab') || 'orders';
   const [userOrders, setUserOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [expandedOrderIds, setExpandedOrderIds] = useState(() => new Set());
+
+  const toggleOrderAccordion = (orderNum) => {
+    setExpandedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderNum)) {
+        next.delete(orderNum);
+      } else {
+        next.add(orderNum);
+      }
+      return next;
+    });
+  };
+
+  const getOrderStatusIndex = (status, paymentStatus) => {
+    const displayStatus = mapDbStatusToDisplay(status, paymentStatus);
+    const idx = ORDER_STATUS_STEPS.indexOf(displayStatus);
+    return idx >= 0 ? idx : 1;
+  };
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -84,7 +110,17 @@ export function AccountPage() {
               orderId: o.order_number,
               createdAt: o.created_at,
               status: o.order_status,
-              total: o.grand_total,
+              payment_status: o.payment_status,
+              shipping_address: o.shipping_address,
+              shipping_state: o.shipping_state,
+              tracking_number: o.tracking_number,
+              courier_partner: o.courier_partner || o.courier_name,
+              tracking_url: o.tracking_url,
+              cancelled_reason: o.cancelled_reason,
+              refund_status: o.refund_status,
+              total: Number(o.grand_total || 0),
+              subtotal: Number(o.subtotal || 0),
+              shipping_amount: Number(o.shipping_amount || 0),
               items: (o.online_order_items || []).map((it) => ({
                 name: it.product_name,
                 product_name: it.product_name,
@@ -96,13 +132,33 @@ export function AccountPage() {
                 line_total: Number(it.line_total || 0),
                 selected_model: it.mobile_model,
                 mobile_model: it.mobile_model,
-                is_combo: it.product_type === 'combo',
+                color: it.color || it.selected_color || '',
+                combo_id: it.combo_id,
+                combo_name: it.combo_name,
+                is_combo: it.is_combo || it.product_type === 'combo',
+                components: it.combo_components || [],
               })),
+            }));
+
+            const formattedLocal = matchedLocal.map((o) => ({
+              id: o.order_number || o.orderId,
+              order_number: o.order_number || o.orderId,
+              orderId: o.order_number || o.orderId,
+              createdAt: o.createdAt || new Date().toISOString(),
+              status: o.status || 'CONFIRMED',
+              payment_status: 'PAID',
+              shipping_address: [o.delivery?.address, o.delivery?.city, o.delivery?.state, o.delivery?.pincode].filter(Boolean).join(', '),
+              shipping_state: o.delivery?.state,
+              tracking_number: o.tracking_number || null,
+              courier_partner: o.courier_partner || null,
+              total: Number(o.total || 0),
+              subtotal: Number(o.subtotal || 0),
+              items: o.items || [],
             }));
 
             const seen = new Set();
             const merged = [];
-            [...formattedDb, ...matchedLocal].forEach((ord) => {
+            [...formattedDb, ...formattedLocal].forEach((ord) => {
               const num = ord.order_number || ord.orderId;
               if (num && !seen.has(num)) {
                 seen.add(num);
@@ -115,7 +171,21 @@ export function AccountPage() {
           }
         }
 
-        setUserOrders(matchedLocal);
+        setUserOrders(matchedLocal.map((o) => ({
+          id: o.order_number || o.orderId,
+          order_number: o.order_number || o.orderId,
+          orderId: o.order_number || o.orderId,
+          createdAt: o.createdAt || new Date().toISOString(),
+          status: o.status || 'CONFIRMED',
+          payment_status: 'PAID',
+          shipping_address: [o.delivery?.address, o.delivery?.city, o.delivery?.state, o.delivery?.pincode].filter(Boolean).join(', '),
+          shipping_state: o.delivery?.state,
+          tracking_number: o.tracking_number || null,
+          courier_partner: o.courier_partner || null,
+          total: Number(o.total || 0),
+          subtotal: Number(o.subtotal || 0),
+          items: o.items || [],
+        })));
       } catch (e) {
         console.warn('Error loading user orders:', e);
       } finally {
@@ -322,50 +392,273 @@ export function AccountPage() {
               ) : userOrders.length > 0 ? (
                 <div className="space-y-4">
                   {userOrders.map((ord, oIdx) => {
+                    const orderNum = ord.order_number || ord.orderId || `order-${oIdx}`;
+                    const isExpanded = expandedOrderIds.has(orderNum);
+                    const displayStatus = mapDbStatusToDisplay(ord.status, ord.payment_status);
+                    const currentStepIdx = getOrderStatusIndex(ord.status, ord.payment_status);
+                    const statusLower = (ord.status || '').toLowerCase();
+                    const isCancelledOrRefunded =
+                      statusLower.includes('cancel') ||
+                      statusLower.includes('refund') ||
+                      statusLower.includes('returned');
+                    const orderState = ord.shipping_state || (ord.shipping_address ? ord.shipping_address.split(',').pop().trim() : null);
                     const grouped = groupOrderItems(ord.items || []);
+
                     return (
-                      <div key={ord.order_number || oIdx} className="bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] p-4 sm:p-5 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E5E3] pb-3 text-[13px]">
-                          <div>
-                            <span className="font-semibold text-[#141414]">Order #{ord.order_number}</span>
-                            {ord.createdAt && (
-                              <span className="text-[#737373] ml-2 block sm:inline">
-                                {new Date(ord.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-white border border-[#E5E5E3] text-[#141414]">
-                              {ord.status || 'Confirmed'}
-                            </span>
-                            <span className="font-bold text-[#141414] tabular-nums">
-                              {formatINR(ord.total || 0)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Items */}
-                        <div className="space-y-2 pt-1 text-[13px]">
-                          {grouped.map((item, iIdx) => (
-                            <div key={iIdx} className="space-y-1">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-semibold text-[#141414]">{item.name}</p>
-                                  <p className="text-[12px] text-[#737373]">
-                                    Qty {item.quantity} {item.selected_model && item.selected_model.toLowerCase() !== 'universal' && ('• ' + item.selected_model)}
-                                  </p>
-                                </div>
-                                <span className="font-medium text-[#141414] tabular-nums">
-                                  {formatINR((item.price || 0) * (item.quantity || 1))}
+                      <div
+                        key={orderNum}
+                        className={`bg-[#FAFAF9] border rounded-[6px] transition-all duration-200 overflow-hidden ${
+                          isExpanded ? 'border-[#141414] shadow-sm' : 'border-[#E5E5E3] hover:border-[#141414]/30'
+                        }`}
+                      >
+                        {/* Accordion Toggle Header */}
+                        <button
+                          type="button"
+                          onClick={() => toggleOrderAccordion(orderNum)}
+                          className="w-full text-left p-4 sm:p-5 transition-colors cursor-pointer select-none focus:outline-none"
+                          aria-expanded={isExpanded}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-[#141414]">Order #{orderNum}</span>
+                              {ord.createdAt && (
+                                <span className="text-[#737373] ml-1">
+                                  {new Date(ord.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </span>
-                              </div>
-
-                              {item.is_combo && Array.isArray(item.components) && item.components.length > 0 && (
-                                <CompactComboComponentList components={item.components} quantity={item.quantity} />
                               )}
                             </div>
-                          ))}
-                        </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                                isCancelledOrRefunded
+                                  ? 'bg-red-50 text-red-700 border-red-200'
+                                  : 'bg-white border-[#E5E5E3] text-[#141414]'
+                              }`}>
+                                {ord.status || 'CONFIRMED'}
+                              </span>
+                              <span className="font-bold text-[#141414] tabular-nums">
+                                {formatINR(ord.total || 0)}
+                              </span>
+                              <ChevronDown
+                                className={`w-4 h-4 text-[#737373] transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180 text-[#141414]' : ''
+                                }`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Items preview when collapsed */}
+                          {!isExpanded && (
+                            <div className="space-y-2 pt-3 mt-3 border-t border-[#E5E5E3] text-[13px]">
+                              {grouped.map((item, iIdx) => (
+                                <div key={iIdx} className="space-y-1">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-semibold text-[#141414]">{item.name}</p>
+                                      <p className="text-[12px] text-[#737373]">
+                                        Qty {item.quantity} {item.selected_model && item.selected_model.toLowerCase() !== 'universal' && ('• ' + item.selected_model)}
+                                      </p>
+                                    </div>
+                                    <span className="font-medium text-[#141414] tabular-nums">
+                                      {formatINR((item.price || 0) * (item.quantity || 1))}
+                                    </span>
+                                  </div>
+
+                                  {item.is_combo && Array.isArray(item.components) && item.components.length > 0 && (
+                                    <CompactComboComponentList components={item.components} quantity={item.quantity} />
+                                  )}
+                                </div>
+                              ))}
+                              <p className="text-[11px] text-[#B0521F] font-semibold pt-1 flex items-center gap-1">
+                                <span>Click to view live order tracking & fulfillment progress</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </p>
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Expanded Tracking Details */}
+                        {isExpanded && (
+                          <div className="border-t border-[#E5E5E3] bg-white p-4 sm:p-6 space-y-6">
+                            {/* Animated Van Delivery Scene */}
+                            <Suspense fallback={<div className="w-full aspect-[16/9] bg-[#F4F3F0] rounded-[6px] animate-pulse" />}>
+                              <OrderConfirmedScene
+                                mode="tracking"
+                                orderStatus={displayStatus}
+                                paymentStatus={ord.payment_status || 'PAID'}
+                                orderNumber={orderNum}
+                                className="border border-[#E5E5E3] rounded-[6px] overflow-hidden"
+                              />
+                            </Suspense>
+
+                            {/* Live Tracking Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E5E5E3] gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[12px] text-[#6B6B6B]">Order #{orderNum}</span>
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Tracking
+                                  </span>
+                                </div>
+                                <h3 className="text-[18px] sm:text-[20px] font-semibold text-[#141414] flex items-center gap-2 mt-1">
+                                  Status:{' '}
+                                  <span className={isCancelledOrRefunded ? 'text-red-600 font-bold' : 'text-[#B0521F]'}>
+                                    {displayStatus}
+                                  </span>
+                                </h3>
+                              </div>
+                              {ord.createdAt && (
+                                <span className="text-[12px] text-[#6B6B6B]">
+                                  Ordered on {new Date(ord.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Fulfillment Progress Stepper */}
+                            {!isCancelledOrRefunded ? (
+                              <div className="py-2 space-y-4">
+                                <h4 className="text-[14px] font-semibold text-[#141414]">Fulfillment Progress</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center">
+                                  {ORDER_STATUS_STEPS.map((stage, idx) => {
+                                    const isDone = idx <= currentStepIdx;
+                                    const isCurrent = idx === currentStepIdx;
+
+                                    return (
+                                      <div key={stage} className="flex flex-col items-center gap-2">
+                                        <div
+                                          className={`w-8 h-8 rounded-[6px] flex items-center justify-center text-[12px] font-semibold border ${
+                                            isDone
+                                              ? 'bg-[#141414] text-white border-[#141414]'
+                                              : 'bg-white text-[#6B6B6B] border-[#E5E5E3]'
+                                          }`}
+                                        >
+                                          {isDone ? <Check className="w-4 h-4" /> : idx + 1}
+                                        </div>
+                                        <span
+                                          className={`text-[12px] leading-tight ${
+                                            isCurrent ? 'font-semibold text-[#141414]' : 'text-[#6B6B6B]'
+                                          }`}
+                                        >
+                                          {stage}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Tracking number banner if shipped */}
+                                {(ord.tracking_number || ord.courier_partner) && (
+                                  <div className="mt-4 p-4 bg-[#eff6ff] border border-[#bfdbfe] rounded-[6px] flex items-start gap-3">
+                                    <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      <h5 className="text-[14px] font-semibold text-blue-900">Dispatched for delivery</h5>
+                                      {ord.courier_partner && (
+                                        <p className="text-[13px] text-blue-800 mt-0.5">
+                                          Courier: <strong>{ord.courier_partner}</strong>
+                                        </p>
+                                      )}
+                                      {ord.tracking_number && (
+                                        <p className="text-[13px] text-blue-800 mt-0.5">
+                                          Tracking Number:{' '}
+                                          <strong className="font-mono">{ord.tracking_number}</strong>
+                                        </p>
+                                      )}
+                                      {ord.tracking_url && (
+                                        <a
+                                          href={ord.tracking_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-block mt-2 text-[12px] font-semibold text-blue-700 underline hover:text-blue-900"
+                                        >
+                                          Track on carrier website →
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="p-4 bg-red-50 border border-red-200 rounded-[6px] text-[14px] text-red-800 space-y-2">
+                                <div className="flex items-center gap-2 font-semibold">
+                                  <RotateCcw className="w-4 h-4 text-red-600" />
+                                  <span>This order was cancelled.</span>
+                                </div>
+                                {ord.cancelled_reason && (
+                                  <p className="text-[13px] text-red-700">
+                                    Reason: <em>{ord.cancelled_reason}</em>
+                                  </p>
+                                )}
+                                {ord.refund_status && ord.refund_status !== 'NONE' && (
+                                  <p className="text-[12px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 inline-block">
+                                    Refund Status: {ord.refund_status}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Estimated Delivery */}
+                            {!isCancelledOrRefunded && (
+                              <div className="p-4 bg-[#FAFAF9] border border-[#E5E5E3] rounded-[6px] text-[13px] text-[#6B6B6B] space-y-1.5">
+                                <p className="font-semibold text-[#141414]">Estimated Delivery</p>
+                                {orderState ? (
+                                  <p>{getDeliveryLine(orderState)}</p>
+                                ) : (
+                                  <div className="space-y-0.5">
+                                    <p>Orders delivered within {policies.delivery.tn.label}: {policies.delivery.tn.text}.</p>
+                                    <p>Orders delivered to {policies.delivery.other.label.toLowerCase()}: {policies.delivery.other.text.toLowerCase()}.</p>
+                                  </div>
+                                )}
+                                <p className="pt-1">
+                                  <Link to="/shipping-policy" className="text-[#B0521F] hover:underline font-medium inline-flex items-center gap-1">
+                                    View shipping policy →
+                                  </Link>
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Items in Shipment */}
+                            <div className="pt-4 border-t border-[#E5E5E3] space-y-3">
+                              <h4 className="text-[14px] font-semibold text-[#141414]">Items in Shipment</h4>
+                              <div className="divide-y divide-[#E5E5E3]">
+                                {grouped.map((item, idx) => (
+                                  <div key={idx} className="py-2.5 text-[13px] space-y-1">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <span className="font-semibold text-[#141414]">{item.name}</span>
+                                        <span className="text-[12px] text-[#6B6B6B] block">
+                                          {Boolean(item.selected_model || item.mobile_model) && (item.selected_model || item.mobile_model).toLowerCase() !== 'universal' ? (
+                                            <>Model: {item.selected_model || item.mobile_model} · </>
+                                          ) : null}
+                                          {item.color ? 'Color: ' + item.color + ' • ' : ''}Qty: {item.quantity}
+                                        </span>
+                                      </div>
+                                      <span className="font-semibold text-[#141414] tabular-nums">
+                                        {formatINR((item.price || 0) * (item.quantity || 1))}
+                                      </span>
+                                    </div>
+
+                                    {item.is_combo && Array.isArray(item.components) && item.components.length > 0 && (
+                                      <CompactComboComponentList components={item.components} quantity={item.quantity} />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Delivery Address & Breakdown */}
+                            <div className="pt-3 border-t border-[#E5E5E3] text-[13px] space-y-2 text-[#6B6B6B]">
+                              {ord.shipping_address && (
+                                <div className="p-3 bg-[#FAFAF9] rounded-[4px] border border-[#E5E5E3]">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6B6B6B]">Delivery Address</p>
+                                  <p className="font-medium text-[#141414] mt-0.5">{ord.shipping_address}</p>
+                                </div>
+                              )}
+                              <div className="flex justify-between font-semibold text-[#141414] text-[14px] pt-2">
+                                <span>Total Paid</span>
+                                <span className="tabular-nums">{formatINR(ord.total || 0)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

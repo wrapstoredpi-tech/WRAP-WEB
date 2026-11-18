@@ -20,6 +20,62 @@ import { combosOrderable, store } from '../../config/store';
 import { CompleteYourSetup } from './CompleteYourSetup';
 import { ProductAccordions } from './ProductAccordions';
 
+/**
+ * Helper to extract a human-friendly variant / pattern label
+ * e.g. "Tribal Truck art pattern Magsafe Case Pattern 1" -> "Pattern 1"
+ * e.g. "Tribal Truck art pattern Magsafe Case - Pattern 2" -> "Pattern 2"
+ */
+export function getVariantLabel(variant, collectionName = '', allVariants = []) {
+  if (!variant?.name) return 'Variant';
+
+  const name = variant.name.trim();
+
+  // 1. Explicit "Pattern X" match
+  const patternMatch = name.match(/Pattern\s*(\d+|[A-Za-z0-9]+)/i);
+  if (patternMatch) {
+    return `Pattern ${patternMatch[1]}`;
+  }
+
+  // 2. Dash suffix match: "Case - Floral" or "Case - Matte Black"
+  const dashMatch = name.match(/[-–—]\s*([^–—]+)$/);
+  if (dashMatch && dashMatch[1].trim().length <= 25) {
+    return dashMatch[1].trim();
+  }
+
+  // 3. Strip common prefix if all variants share one
+  if (Array.isArray(allVariants) && allVariants.length > 1) {
+    const names = allVariants.map((v) => (v.name || '').trim());
+    let prefix = names[0];
+    for (let i = 1; i < names.length; i++) {
+      while (!names[i].toLowerCase().startsWith(prefix.toLowerCase()) && prefix.length > 0) {
+        prefix = prefix.slice(0, -1);
+      }
+    }
+    if (prefix.trim().length >= 4) {
+      const suffix = name.slice(prefix.length).replace(/^[-–—\s,]+/, '').trim();
+      if (suffix.length > 0 && suffix.length <= 25) {
+        return suffix;
+      }
+    }
+  }
+
+  // 4. Collection name suffix
+  if (collectionName) {
+    const colRegex = new RegExp(collectionName, 'i');
+    const withoutCol = name.replace(colRegex, '').replace(/^[-–—\s,]+|[-–—\s,]+$/g, '').trim();
+    if (withoutCol && withoutCol.length <= 25) {
+      return withoutCol;
+    }
+  }
+
+  // 5. Fallback: last 2 words
+  const words = name.split(/\s+/);
+  if (words.length > 3) {
+    return words.slice(-2).join(' ');
+  }
+  return name;
+}
+
 export function ProductInfoPanel({
   product,
   onAddToCart,
@@ -39,6 +95,8 @@ export function ProductInfoPanel({
   currentColor = '',
   onColorChange,
   colorAvailabilityMap = {},
+  collectionVariants = [],
+  onVariantChange,
 }) {
   const navigate = useNavigate();
   const { products } = useProductsContext();
@@ -296,6 +354,90 @@ export function ProductInfoPanel({
               Choose your model to add to bag
             </p>
           )}
+        </div>
+      )}
+
+      {/* 3B. VARIANT / PATTERN TILES (DailyObjects Style) - only shown when phone model is selected and 2+ variants exist */}
+      {!isCombo && isModelSelected && selectedModel && collectionVariants.length > 1 && (
+        <div className="space-y-2.5 pt-0.5">
+          <div className="flex items-center justify-between text-[13px]">
+            <div className="flex items-center gap-2">
+              <span className="text-[#6B6B6B] uppercase tracking-wider text-[11px] font-semibold">
+                Variant:
+              </span>
+              <span className="font-semibold text-[#141414]">
+                {getVariantLabel(product, product.collection, collectionVariants)}
+              </span>
+            </div>
+            <span className="text-[12px] text-[#6B6B6B]">
+              {collectionVariants.length} designs available
+            </span>
+          </div>
+
+          <div className="flex items-start gap-3 flex-wrap">
+            {collectionVariants.map((variant) => {
+              const isCurrent = String(variant.id) === String(product.id);
+              const label = getVariantLabel(variant, product.collection, collectionVariants);
+              const thumbImg =
+                variant.image_url ||
+                (Array.isArray(variant.images) && variant.images[0]) ||
+                '/subcategories/iphone.jpg';
+
+              const isVariantOutOfStock =
+                variant.stock_status === 'OUT_OF_STOCK' ||
+                (variant.available_stock !== undefined && variant.available_stock === 0) ||
+                (variant.current_stock !== undefined && variant.current_stock === 0);
+
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  onClick={() => {
+                    if (onVariantChange) {
+                      onVariantChange(variant);
+                    } else {
+                      handleSiblingClick(variant);
+                    }
+                  }}
+                  className={`flex flex-col items-center p-2 rounded-[8px] bg-white transition-all cursor-pointer text-center group focus:outline-none relative select-none ${
+                    isCurrent
+                      ? 'border-2 border-[#141414] ring-1 ring-[#141414] shadow-xs'
+                      : 'border border-[#E5E5E3] hover:border-[#141414]/60'
+                  }`}
+                  style={{ width: '84px', minWidth: '84px' }}
+                  title={`${variant.name}${isVariantOutOfStock ? ' (Out of stock)' : ''}`}
+                  aria-label={`Select ${label}`}
+                  aria-pressed={isCurrent}
+                >
+                  {/* Thumbnail Container */}
+                  <div className="w-[68px] h-[68px] rounded-[6px] bg-[#F4F3F0] overflow-hidden flex items-center justify-center mb-1.5 p-1 relative">
+                    <img
+                      src={thumbImg}
+                      alt={label}
+                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                      loading="lazy"
+                    />
+                    {isVariantOutOfStock && (
+                      <span className="absolute inset-0 bg-white/70 flex items-center justify-center text-[10px] font-semibold text-[#B0521F]">
+                        Sold out
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Label */}
+                  <span
+                    className={`text-[12px] leading-tight line-clamp-2 px-0.5 ${
+                      isCurrent
+                        ? 'font-semibold text-[#141414]'
+                        : 'font-normal text-[#6B6B6B] group-hover:text-[#141414]'
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -725,7 +725,7 @@ export function CheckoutPage() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-[#141414] truncate">{line.product.name}</p>
+                          <p className="font-semibold text-[#141414] break-words leading-snug">{line.product.name}</p>
                           {Boolean(line.selected_model && line.selected_model.toLowerCase() !== 'universal') ? (
                             <p className="text-[11px] text-[#6B6B6B]">
                               Model: {line.selected_model}

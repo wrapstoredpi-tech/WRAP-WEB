@@ -66,18 +66,18 @@ export function ProductDetailPage({ onAddToCart }) {
     const currentSubClean = cleanStr(currentProduct.subcategory || currentProduct.category);
     const currentCollectionClean = cleanStr(currentProduct.collection);
 
-    // 1. Exact match by normalized name in same subcategory
+    // 1. Exact match by normalized name in same subcategory (multiple products with same name across models)
     if (currentNameClean) {
       const nameMatches = products.filter((p) => {
         const pNameClean = cleanStr(p.name);
         const pSubClean = cleanStr(p.subcategory || p.category);
         return pNameClean === currentNameClean && (!currentSubClean || !pSubClean || pSubClean === currentSubClean);
       });
-      if (nameMatches.length > 0) return nameMatches;
+      if (nameMatches.length > 1) return nameMatches;
     }
 
     // 2. Collection match (e.g. for design families that share collection name)
-    if (currentCollectionClean && currentCollectionClean !== 'null' && currentCollectionClean !== 'undefined') {
+    if (currentCollectionClean && currentCollectionClean !== 'null' && currentCollectionClean !== 'undefined' && currentCollectionClean !== 'normal') {
       const colMatches = products.filter((p) => {
         const pColClean = cleanStr(p.collection);
         return pColClean === currentCollectionClean;
@@ -176,6 +176,60 @@ export function ProductDetailPage({ onAddToCart }) {
   const [toastMessage, setToastMessage] = useState('');
   const isModelSwitchRef = useRef(false);
   const prevIdRef = useRef(null);
+
+  // Collection / pattern variants: Products sharing the same collection or design family
+  const collectionVariants = useMemo(() => {
+    if (!currentProduct || !products?.length) return [];
+
+    const cleanStr = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const currentColClean = cleanStr(currentProduct.collection);
+
+    let candidates = [];
+
+    // 1. Collection match (e.g. 'Art Pattern')
+    if (currentColClean && currentColClean !== 'null' && currentColClean !== 'undefined' && currentColClean !== 'normal') {
+      candidates = products.filter((p) => {
+        if (!p || !p.id) return false;
+        const pColClean = cleanStr(p.collection);
+        return pColClean === currentColClean;
+      });
+    }
+
+    // 2. If candidates <= 1, check by shared design family name prefix
+    if (candidates.length <= 1) {
+      const baseClean = cleanStr(
+        (currentProduct.name || '')
+          .replace(/[-–—]?\s*pattern\s*\d+/i, '')
+          .replace(/[-–—]?\s*(variant|style|design)\s*\d+/i, '')
+      );
+      if (baseClean && baseClean.length >= 6) {
+        candidates = products.filter((p) => {
+          const pBase = cleanStr(
+            (p.name || '')
+              .replace(/[-–—]?\s*pattern\s*\d+/i, '')
+              .replace(/[-–—]?\s*(variant|style|design)\s*\d+/i, '')
+          );
+          return pBase === baseClean;
+        });
+      }
+    }
+
+    if (candidates.length <= 1) return [];
+
+    // When phone model is selected, filter candidates to those supporting this phone model
+    if (selectedModel && selectedModel.toLowerCase() !== 'universal') {
+      const normModel = selectedModel.trim().toLowerCase();
+      const modelCandidates = candidates.filter((p) => {
+        const pModels = extractProductModels(p).map((m) => m.trim().toLowerCase());
+        return pModels.length === 0 || pModels.includes(normModel);
+      });
+      // Show tiles only when 2+ variants are available for this specific model
+      return modelCandidates.length > 1 ? modelCandidates : [];
+    }
+
+    // Do NOT show variant selection if phone model is not selected
+    return [];
+  }, [currentProduct, products, selectedModel]);
 
   // All distinct valid colors across all related products (regardless of model)
   const allProductColors = useMemo(() => {
@@ -278,6 +332,10 @@ export function ProductDetailPage({ onAddToCart }) {
         return pModels.includes(normModel);
       });
       if (modelMatches.length > 0) {
+        // If current product already matches this model, prefer staying on current product
+        if (currentProduct && modelMatches.some((p) => p.id === currentProduct.id)) {
+          return currentProduct;
+        }
         if (normColor) {
           const sameColor = modelMatches.find((p) => (extractProductColor(p) || '').trim().toLowerCase() === normColor);
           if (sameColor) return sameColor;
@@ -414,6 +472,25 @@ export function ProductDetailPage({ onAddToCart }) {
         navigate(`/product/${targetProduct.id}?${params.toString()}`, { replace: true });
       }
     }
+  };
+
+  // Handle pattern / variant tile change
+  const handleVariantChange = (targetProduct) => {
+    if (!targetProduct || targetProduct.id === currentProduct?.id) return;
+
+    isModelSwitchRef.current = true;
+    setActiveProduct(targetProduct);
+
+    const params = new URLSearchParams(searchParams);
+    if (selectedModel) {
+      params.set('model', selectedModel);
+    }
+    const color = extractProductColor(targetProduct) || currentColor;
+    if (color) {
+      params.set('color', color);
+    }
+
+    navigate(`/product/${targetProduct.id}?${params.toString()}`);
   };
 
   // Sync active product if paramModel or paramColor changes externally
@@ -681,6 +758,8 @@ export function ProductDetailPage({ onAddToCart }) {
             currentColor={currentColor}
             onColorChange={handleColorChange}
             colorAvailabilityMap={colorAvailabilityMap}
+            collectionVariants={collectionVariants}
+            onVariantChange={handleVariantChange}
           />
         </div>
 

@@ -222,10 +222,10 @@ export function CartPage() {
           - Middle: 1px vertical line (Desktop)
           - Right: Order summary (Sticky)
           ─────────────────────────────────────────────────────────────────────────── */}
-      <div className="lg:grid lg:grid-cols-[1fr_1px_380px] xl:grid-cols-[1fr_1px_420px] gap-8 lg:gap-10 items-start">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_1px_380px] xl:grid-cols-[minmax(0,1fr)_1px_420px] gap-8 lg:gap-10 items-start">
         
         {/* LEFT COLUMN: Items List */}
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-4 min-w-0">
           {/* Stock Warnings Banner */}
           {hasStockWarnings && (
             <div className="p-3.5 bg-[#F9EDE7] border border-[#B0521F] rounded-[6px] text-[#141414] flex items-start gap-3">
@@ -248,8 +248,8 @@ export function CartPage() {
                 return (
                   <div key={line.id || line.productId} className="p-4 sm:p-5 bg-[#FAFAF9]">
                     <div className="flex gap-4 items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-[15px] font-semibold text-[#141414]">
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-[#141414] break-words leading-snug">
                           {line.product.name}
                         </p>
                         <p className="text-[12px] text-[#B0521F]">
@@ -312,7 +312,7 @@ export function CartPage() {
                         <div className="flex items-start justify-between gap-3">
                           <Link
                             to={`/product/${line.product.id}`}
-                            className="text-[15px] sm:text-[16px] font-semibold text-[#141414] hover:text-[#B0521F] transition-colors truncate block"
+                            className="text-[15px] sm:text-[16px] font-semibold text-[#141414] hover:text-[#B0521F] transition-colors break-words flex-1 min-w-0 leading-snug"
                           >
                             {line.product.name}
                           </Link>
