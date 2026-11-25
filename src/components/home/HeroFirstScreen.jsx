@@ -103,7 +103,23 @@ export function HeroFirstScreen() {
     let isMounted = true;
     fetchHeroSlides().then((dbSlides) => {
       if (isMounted && Array.isArray(dbSlides) && dbSlides.length > 0) {
-        setSlides(dbSlides);
+        setSlides((prevSlides) => {
+          if (!prevSlides || prevSlides.length !== dbSlides.length) {
+            return dbSlides;
+          }
+          const isSame = prevSlides.every((s, i) => {
+            const d = dbSlides[i];
+            return (
+              s.id === d.id &&
+              s.image === d.image &&
+              s.video === d.video &&
+              s.tag === d.tag &&
+              s.tagSubtitle === d.tagSubtitle &&
+              (s.link || s.link_url) === (d.link || d.link_url)
+            );
+          });
+          return isSame ? prevSlides : dbSlides;
+        });
       }
     });
 
@@ -191,7 +207,24 @@ export function HeroFirstScreen() {
     }, 150);
   };
 
-  if (!slides || slides.length === 0) return null;
+  if (!slides || slides.length === 0) {
+    return (
+      <div className="w-full">
+        <section
+          aria-label="Hero Carousel Loading"
+          style={heroRevealStyle}
+          className="w-full select-none"
+        >
+          <div
+            className="w-full aspect-[4/5] md:aspect-[21/8] min-h-[380px] md:min-h-[440px] max-h-[640px] overflow-hidden bg-[#141414]"
+            aria-hidden="true"
+          >
+            <div className="w-full h-full animate-pulse bg-neutral-900" />
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   const currentSlide = slides[safeIndex] || slides[0] || {};
   const rewrittenLink = rewriteHeroLinkUrl(currentSlide.link_url || currentSlide.link || '/cases');

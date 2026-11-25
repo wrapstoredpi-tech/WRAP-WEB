@@ -43,7 +43,26 @@ export const homeConfig = {
   heroSlider: {
     autoplayIntervalMs: 6000,
     aspectRatio: '21/9',
-    slides: [],
+    slides: [
+      {
+        id: '4cc00ecf-6ff4-41a0-92cc-4b3599538087',
+        type: 'image',
+        image: '/hero/hero-straps.webp',
+        tag: 'Colourfull Straps',
+        tagSubtitle: 'Find your perfect color',
+        link: '/?subcategory=Watch+Strap&category=Accessories',
+        alt: 'Colourfull Straps',
+      },
+      {
+        id: 'a9f458d1-9269-43de-a589-5cd4d6e1788a',
+        type: 'image',
+        image: '/hero/hero-prints.webp',
+        tag: 'Unlimited Prints',
+        tagSubtitle: 'Find your perfect case',
+        link: '/?category=Mobile%20Cases',
+        alt: 'Prints Banner',
+      },
+    ],
   },
 
   // Deal of the Day configuration (imported from src/config/deal.js)

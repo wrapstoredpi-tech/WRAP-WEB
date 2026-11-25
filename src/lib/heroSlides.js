@@ -8,12 +8,31 @@ let inMemorySlides = null;
 
 /**
  * Returns the current active hero slider slides synchronously.
- * Falls back to default slides in homeConfig if no memory cache exists.
+ * Reads memory cache -> localStorage cache -> default slides in homeConfig.
  */
 export function getHeroSlides() {
   if (inMemorySlides && inMemorySlides.length > 0) {
     return inMemorySlides;
   }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const allHaveMedia = parsed.every((s) => Boolean(s.image || s.video));
+          if (allHaveMedia) {
+            inMemorySlides = parsed;
+            return parsed;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[heroSlides] Failed to read from localStorage:', e);
+    }
+  }
+
   return homeConfig.heroSlider?.slides || [];
 }
 
@@ -38,16 +57,27 @@ export async function fetchHeroSlides() {
       .order('sort_order', { ascending: true });
 
     if (!dedicated.error && Array.isArray(dedicated.data) && dedicated.data.length > 0) {
-      const formatted = dedicated.data.map((row) => ({
-        id: row.id,
-        type: row.type || 'image',
-        video: row.type === 'video' ? row.media_url : undefined,
-        image: row.type === 'video' ? row.poster_url || row.media_url : row.media_url,
-        tag: row.tag || '',
-        tagSubtitle: row.tag_subtitle || '',
-        link: row.link_url || '/?category=Mobile%20Cases',
-        alt: row.alt_text || row.tag || 'Hero slide',
-      }));
+      const defaultSlides = homeConfig.heroSlider?.slides || [];
+      const formatted = dedicated.data.map((row, index) => {
+        let img = row.type === 'video' ? row.poster_url || row.media_url : row.media_url;
+        // If image is base64, check if there is a static asset match in defaultSlides
+        if (img && img.startsWith('data:')) {
+          const match = defaultSlides.find((s) => s.id === row.id) || defaultSlides[index];
+          if (match && match.image) {
+            img = match.image;
+          }
+        }
+        return {
+          id: row.id,
+          type: row.type || 'image',
+          video: row.type === 'video' ? row.media_url : undefined,
+          image: img,
+          tag: row.tag || '',
+          tagSubtitle: row.tag_subtitle || '',
+          link: row.link_url || '/?category=Mobile%20Cases',
+          alt: row.alt_text || row.tag || 'Hero slide',
+        };
+      });
 
       updateLocalCache(formatted);
       if (typeof window !== 'undefined') {
@@ -160,7 +190,7 @@ function updateLocalCache(slides) {
   inMemorySlides = Array.isArray(slides) ? slides : [];
   if (typeof window === 'undefined') return;
   try {
-    const metadataOnly = (slides || []).map((slide) => {
+    const sanitized = (slides || []).map((slide) => {
       const isImgBase64 = typeof slide.image === 'string' && slide.image.startsWith('data:');
       const isVidBase64 = typeof slide.video === 'string' && slide.video.startsWith('data:');
       return {
@@ -174,7 +204,10 @@ function updateLocalCache(slides) {
         video: isVidBase64 ? undefined : slide.video,
       };
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(metadataOnly));
+    // Only cache if every slide has a valid non-base64 image or video
+    if (sanitized.every((s) => Boolean(s.image || s.video))) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    }
   } catch (e) {
     console.warn('[heroSlides] Failed to write hero slide metadata to localStorage:', e);
   }
